@@ -182,6 +182,12 @@ public class PDSInputFile extends VicarInputFile
 
     // 20110907, xing
     PDSImageReadParam pdsImageReadParam;
+
+    // Resolved PDS3 OBJECT name on the IMAGE-style read path (e.g. "IMAGE",
+    // "RFL_IMAGE"). Null means "no IMAGE-style match — let the SPECTRAL_QUBE /
+    // QUBE branches handle it". Resolved once per document; see resolveImageObjectName().
+    private String _resolvedImageObjectName = null;
+    private boolean _imageObjectResolved = false;
    
 ////////////////////////////////////////////////////////////////////////
 
@@ -1130,13 +1136,25 @@ protected void openInternalLast() {
         NodeList nlist;
         String nodeValue;
         
-        String xPath = "//OBJECT[@name='IMAGE']/item[@key='VALID_MINIMUM']" ;
+        String imageObjectName = resolveImageObjectName(doc);
+        if (imageObjectName == null) {
+            // Not an IMAGE-style label (SPECTRAL_QUBE/QUBE, or no image OBJECT
+            // at all). The cube branch reads CORE_VALID_MINIMUM directly; here
+            // there is nothing to do.
+            if (debug) {
+                System.out.println("getValidMinimumMximum: no IMAGE-style OBJECT, skipping");
+            }
+            return;
+        }
+        String imageObjectPrefix = "//OBJECT[@name='" + imageObjectName + "']";
+
+        String xPath = imageObjectPrefix + "/item[@key='VALID_MINIMUM']" ;
         nodeValue = domUtils.getItemValue(root, xPath);
         if (nodeValue != null && !nodeValue.isEmpty()) {
         	validMinimum = Double.parseDouble(nodeValue);
         }
-        
-        xPath = "//OBJECT[@name='IMAGE']/item[@key='VALID_MAXIMUM']" ;
+
+        xPath = imageObjectPrefix + "/item[@key='VALID_MAXIMUM']" ;
         nodeValue = domUtils.getItemValue(root, xPath);
         if (nodeValue != null && !nodeValue.isEmpty()) {
         	validMaximum = Double.parseDouble(nodeValue);
@@ -1147,10 +1165,93 @@ protected void openInternalLast() {
     }
 
     /**************************************************************
+     * Resolve which PDS3 OBJECT block to read on the IMAGE-style path.
+     *
+     * Priority order:
+     *   1) Explicit user override via PDSImageReadParam.setPdsObjectName(...)
+     *   2) Literal "IMAGE" (historical default — most PDS3 products)
+     *   3) Null when SPECTRAL_QUBE or QUBE is present, so the existing
+     *      cube branches in createSystemLabel handle it
+     *   4) Heuristic: first OBJECT containing SAMPLE_BITS + LINES +
+     *      LINE_SAMPLES child items (covers Moon Mineralogy Mapper RFL_IMAGE
+     *      and any similarly-named PDS3 image product)
+     *   5) Null when nothing recognizable is present
+     *
+     * Result is cached on the instance.
+     *****/
+    private String resolveImageObjectName(Document doc) {
+        if (_imageObjectResolved) {
+            return _resolvedImageObjectName;
+        }
+        _imageObjectResolved = true;
+        DOMutils domUtils = new DOMutils();
+
+        if (pdsImageReadParam != null && pdsImageReadParam.getPdsObjectName() != null
+                && !pdsImageReadParam.getPdsObjectName().isEmpty()) {
+            _resolvedImageObjectName = pdsImageReadParam.getPdsObjectName();
+            if (debug) System.out.println("resolveImageObjectName: using user-supplied PDS_OBJECT='"
+                    + _resolvedImageObjectName + "'");
+            return _resolvedImageObjectName;
+        }
+
+        if (domUtils.getSingleNode(doc, "//OBJECT[@name='IMAGE']") != null) {
+            _resolvedImageObjectName = "IMAGE";
+            return _resolvedImageObjectName;
+        }
+
+        if (domUtils.getSingleNode(doc, "//OBJECT[@name='SPECTRAL_QUBE']") != null
+                || domUtils.getSingleNode(doc, "//OBJECT[@name='QUBE']") != null) {
+            _resolvedImageObjectName = null;
+            return _resolvedImageObjectName;
+        }
+
+        NodeList objects = domUtils.getNodeList(doc, "//OBJECT");
+        for (int i = 0; i < objects.getLength(); i++) {
+            Node obj = objects.item(i);
+            if (obj.getAttributes() == null) continue;
+            Node nameAttr = obj.getAttributes().getNamedItem("name");
+            if (nameAttr == null) continue;
+            String name = nameAttr.getNodeValue();
+            if (name == null || name.isEmpty()) continue;
+            String prefix = "//OBJECT[@name='" + name + "']";
+            if (domUtils.getSingleNode(doc, prefix + "/item[@key='SAMPLE_BITS']") != null
+                    && domUtils.getSingleNode(doc, prefix + "/item[@key='LINES']") != null
+                    && domUtils.getSingleNode(doc, prefix + "/item[@key='LINE_SAMPLES']") != null) {
+                System.out.println("PDSInputFile: auto-detected PDS3 image OBJECT name '" + name
+                        + "'. Use PDS_OBJECT=<name> on the command line to force a specific OBJECT.");
+                _resolvedImageObjectName = name;
+                return _resolvedImageObjectName;
+            }
+        }
+
+        _resolvedImageObjectName = null;
+        return _resolvedImageObjectName;
+    }
+
+    /**
+     * List the names of every OBJECT block in the PDS3 label. Used to produce
+     * a helpful diagnostic when no image-shaped OBJECT can be found.
+     */
+    private List<String> listObjectNames(Document doc) {
+        DOMutils domUtils = new DOMutils();
+        NodeList objects = domUtils.getNodeList(doc, "//OBJECT");
+        List<String> names = new ArrayList<String>();
+        for (int i = 0; i < objects.getLength(); i++) {
+            Node obj = objects.item(i);
+            if (obj.getAttributes() == null) continue;
+            Node nameAttr = obj.getAttributes().getNamedItem("name");
+            if (nameAttr != null) {
+                names.add(nameAttr.getNodeValue());
+            }
+        }
+        return names;
+    }
+
+    /**************************************************************
     * Create a SystemLabel from the contents of the Document
     *
     * @param Document this is specific to a Document filled from a PDS image label
-    * 
+    *
     *****/
     public SystemLabel  createSystemLabel(Document doc) {
     	
@@ -1245,25 +1346,31 @@ protected void openInternalLast() {
     
     // domUtils.setDebug(true);
     // System.out.println("\n ****************************************************");
-    Node node = domUtils.getSingleNode(_PDS_document,"//OBJECT[@name='IMAGE']");   
+    String imageObjectName = resolveImageObjectName(doc);
+    String imageObjectPrefix = (imageObjectName != null)
+        ? "//OBJECT[@name='" + imageObjectName + "']"
+        : null;
+    Node node = (imageObjectPrefix != null)
+        ? domUtils.getSingleNode(_PDS_document, imageObjectPrefix)
+        : null;
     /*
     grabbing the node first and then trying to get things from that node does NOT seem to
     work. Instead we must give a more specific XPATH expression
     */
-    if (node != null) { // ^IMAGE
-    	
+    if (node != null) { // ^IMAGE (or the resolved IMAGE-style OBJECT name, e.g. ^RFL_IMAGE)
+
         // serialize the Node returned to see if it's what was expected
         if (debug) {
-        	System.out.println(" createSystemLabel for ^IMAGE");
-        
+        	System.out.println(" createSystemLabel for ^"+imageObjectName);
+
         	Node pNode = node.getParentNode();
         	String pname = pNode.getNodeName();
         	String name = node.getNodeName();
         	System.out.println("before serialize IMAGE.xml >"+name+ "< >"+pname+"< %%%%%%%%%%%%%%%%%%%%&&&");
         	domUtils.serializeNode(node, "IMAGE.xml", "xml");
         }
-    
-        xPath = "//OBJECT[@name='IMAGE']/item[@key='SAMPLE_BITS']" ;
+
+        xPath = imageObjectPrefix + "/item[@key='SAMPLE_BITS']" ;
         nodeValue = domUtils.getItemValue(node, xPath);
         if (debug) System.out.println("SAMPLE_BITS <"+nodeValue+"> ");
         if (nodeValue != null && !nodeValue.isEmpty()) {
@@ -1271,7 +1378,7 @@ protected void openInternalLast() {
         }
         // use this to get format or SAMPLE_TYPE
     
-        xPath = "//OBJECT[@name='IMAGE']/item[@key='SAMPLE_TYPE']" ;
+        xPath = imageObjectPrefix + "/item[@key='SAMPLE_TYPE']" ;
         nodeValue = domUtils.getItemValue(node, xPath);
         if (debug) System.out.println("createSystemLabel SAMPLE_TYPE <"+nodeValue+"> bits = "+bits+" ");
         // convert PDS SAMPLE_TYPE to vicar
@@ -1360,7 +1467,7 @@ protected void openInternalLast() {
     
         
         // xPath = "//item[@key='LINES']" ;
-        xPath = "//OBJECT[@name='IMAGE']/item[@key='LINES']" ;
+        xPath = imageObjectPrefix + "/item[@key='LINES']" ;
         if (debug) {
         	Node pNode = node.getParentNode();
         	String pname = pNode.getNodeName();
@@ -1379,7 +1486,7 @@ protected void openInternalLast() {
         // sys.setNL(nl);
     
         xPath = "//item[@key='LINE_SAMPLES']" ;
-        xPath = "//OBJECT[@name='IMAGE']/item[@key='LINE_SAMPLES']" ;
+        xPath = imageObjectPrefix + "/item[@key='LINE_SAMPLES']" ;
         nodeValue = domUtils.getItemValue(node, xPath);
         if (debug) System.out.println("LINES_SAMPLES "+nodeValue+" ###############");
         if (nodeValue.equalsIgnoreCase(na) || nodeValue.equalsIgnoreCase(na2)) {
@@ -1390,7 +1497,7 @@ protected void openInternalLast() {
         }
         // sys.setNS(ns);
     
-        xPath = "//OBJECT[@name='IMAGE']/item[@key='BANDS']" ;
+        xPath = imageObjectPrefix + "/item[@key='BANDS']" ;
         nodeValue = domUtils.getItemValue(root, xPath);
         if (debug) System.out.println("PDSInputFile BANDS <"+nodeValue+"> ");
         if (nodeValue != null && !nodeValue.isEmpty()  &&
@@ -1402,7 +1509,7 @@ protected void openInternalLast() {
         // sys.setNB(nb);
         
     	
-        xPath = "//OBJECT[@name='IMAGE']/item[@key='LINE_PREFIX_BYTES']" ;
+        xPath = imageObjectPrefix + "/item[@key='LINE_PREFIX_BYTES']" ;
         
         nodeValue = domUtils.getItemValue(node, xPath);
         if (debug) System.out.println("LINE_PREFIX_BYTES <"+nodeValue+"> ");
@@ -1410,7 +1517,7 @@ protected void openInternalLast() {
         	line_prefix_bytes = Integer.parseInt(nodeValue);
         }
         
-        xPath = "//OBJECT[@name='IMAGE']/item[@key='LINE_SUFFIX_BYTES']" ;
+        xPath = imageObjectPrefix + "/item[@key='LINE_SUFFIX_BYTES']" ;
         
         nodeValue = domUtils.getItemValue(node, xPath);
         if (debug) System.out.println("LINE_SUFFIX_BYTES <"+nodeValue+"> ");
@@ -1422,7 +1529,7 @@ protected void openInternalLast() {
         // BAND_STORAGE_TYPE - BAND_SEQUENTIAL LINE_INTERLEAVED SAMPLE_INTERLEAVED
         // BAND_SEQUENCE
         if (nb > 1) {
-            xPath = "//OBJECT[@name='IMAGE']/item[@key='BAND_STORAGE_TYPE']" ;
+            xPath = imageObjectPrefix + "/item[@key='BAND_STORAGE_TYPE']" ;
             nodeValue = domUtils.getItemValue(root, xPath);
             // convert PDS SAMPLE_TYPE to vicar
             if (nodeValue != null ) {
@@ -1440,7 +1547,7 @@ protected void openInternalLast() {
         
         
         if (debug) {
-        	System.out.println("###### end createSystemLabel for ^IMAGE     ###############\n");
+        	System.out.println("###### end createSystemLabel for ^"+imageObjectName+"     ###############\n");
         }
         
         // debug = d;
@@ -1726,12 +1833,22 @@ protected void openInternalLast() {
                  * in it. It may be exacly the same as a ^SPECTRAL_QUBE
                  */
                 if (debug) System.out.println("createSystemLabel for ^QUBE");
-                node = domUtils.getSingleNode(_PDS_document,"//OBJECT[@name='QUBE']");    
+                node = domUtils.getSingleNode(_PDS_document,"//OBJECT[@name='QUBE']");
                 if (node != null) { // ^SPECTRAL_QUBE
                     // serialize the Node returned to see if it's what was expected
                 	if (debug) {
                 		domUtils.serializeNode(node, "QUBE.xml", "xml");
                 	}
+                } else {
+                    // No IMAGE-style OBJECT, no SPECTRAL_QUBE, no QUBE, and the
+                    // heuristic in resolveImageObjectName() didn't find an
+                    // image-shaped OBJECT either. Emit a clear diagnostic so
+                    // users see the available OBJECT names instead of a bare
+                    // NPE later in jConvertIIO.
+                    List<String> available = listObjectNames(doc);
+                    System.out.println("PDSInputFile.createSystemLabel: no readable image OBJECT found in PDS3 label. "
+                        + "Available OBJECTs: " + available
+                        + ". Rerun with PDS_OBJECT=<name> to force a specific OBJECT.");
                 }
             }
         }
@@ -1953,7 +2070,10 @@ protected void openInternalLast() {
     	
         
         // ---------------
-        xPath = "//item[@key='^IMAGE']" ;
+        // Pointer name mirrors the resolved OBJECT name: ^IMAGE, ^RFL_IMAGE, etc.
+        String imageObjectName = resolveImageObjectName(doc);
+        String pointerName = (imageObjectName != null) ? imageObjectName : "IMAGE";
+        xPath = "//item[@key='^" + pointerName + "']" ;
         Node node = domUtils.getSingleNode(_PDS_document,xPath);
         _hasEmbeddedVicarLabel = false;
         if (debug) {
@@ -1993,7 +2113,7 @@ protected void openInternalLast() {
             	if (debug) System.out.println("^IMAGE *********************** look for subitems");
             	// value may be in subitems
             	
-            	xPath = "//item[@key='^IMAGE']/subitem[@key='^IMAGE']";
+            	xPath = "//item[@key='^" + pointerName + "']/subitem[@key='^" + pointerName + "']";
             	  
             	 // xPath = "//subitem[@key='^IMAGE']" ;
             	 String subitemValue = null;

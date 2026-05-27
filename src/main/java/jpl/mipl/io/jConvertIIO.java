@@ -242,6 +242,9 @@ boolean writeTransparency = false; //the output image should have missing/invali
     // will first check to see if the PIRL jar files are available on the system
 
 String pds_ptr = null; // values passed to ther PDSImageWriter for PDS
+// Name of the PDS3 OBJECT to read when the label uses a non-standard name
+// (e.g. "RFL_IMAGE" for Moon Mineralogy Mapper). Null means "use defaults".
+String pds_object = null;
 // automatically rescale the data range when converting data to a new format (data type)
 //but ONLY going to a smaller data type
 boolean rescaleOnFormat = true;
@@ -900,6 +903,10 @@ public void printHelp() {
 	System.out.println(" Will cause a Vicar Label to be embedded in the PDS label.");
 	System.out.println("PDS_FILENAME_IN_LABEL=[true,false] only valid for FORMAT=pds, ");
 	System.out.println(" Will cause output file name to be embedded in the PDS label.");
+	System.out.println("PDS_OBJECT=<name> only used when READING a PDS3 input file. Selects which OBJECT");
+	System.out.println(" block in the label to read (e.g. PDS_OBJECT=RFL_IMAGE for Moon Mineralogy Mapper).");
+	System.out.println(" Defaults to IMAGE / SPECTRAL_QUBE / QUBE; an image-shaped OBJECT is auto-detected");
+	System.out.println(" as a last resort. Use this to disambiguate labels with multiple image-like OBJECTs.");
 	System.out.println("PDS_DETACHED_LABEL=[true,false] default is false, true will create a detached label");
 	System.out.println("PDS_DETACHED_ONLY=[true,false] default is false, only valid if  PDS_DETACHED_LABEL=true");
 	System.out.println(" Will cause the creation of a detached label only. The input image will NOT be");
@@ -1331,6 +1338,9 @@ public IIOImage fullRead(String fileName) {
 				// add something to it
 				if (param instanceof PDSImageReadParam) {
 					((PDSImageReadParam) param).setDirectoryPath(filePath);
+					if (pds_object != null) {
+						((PDSImageReadParam) param).setPdsObjectName(pds_object);
+					}
 				}
 				if (readerFormat.equalsIgnoreCase("pds") && pdsDetachedOnly == true) {
 					renderedImage = reader.readAsRenderedImage(0, param);					
@@ -1830,10 +1840,15 @@ public boolean conv(String argv[]) {
 	    }
 //	    PDS_PTR
 	    else if (key.equalsIgnoreCase("PDS_PTR")) {
-	    	// if (value != null ) 
+	    	// if (value != null )
 	    	{
 	        	pds_ptr = value; // null indicates no value
 	    	}
+	    }
+//	    PDS_OBJECT - selects which PDS3 OBJECT block to read (e.g. RFL_IMAGE).
+//	    Distinct from PDS_PTR (writer-side pointer value).
+	    else if (key.equalsIgnoreCase("PDS_OBJECT")) {
+	        pds_object = value; // null indicates no value
 	    }
 //		  USE_PIRL
 	    else if (key.equalsIgnoreCase("USE_PIRL")) {
@@ -2476,14 +2491,20 @@ public boolean conv(String argv[]) {
 		  if (irp instanceof VicarImageReadParam) {
 			  ((VicarImageReadParam) irp).setTileSizeX(tileSizeX);
 			  ((VicarImageReadParam) irp).setTileSizeY(tileSizeY);
+			  if (pds_object != null) {
+				  ((VicarImageReadParam) irp).setPdsObjectName(pds_object);
+			  }
 		  } else if (irp instanceof PDSImageReadParam) {
 			  ((PDSImageReadParam) irp).setTileSizeX(tileSizeX);
 			  ((PDSImageReadParam) irp).setTileSizeY(tileSizeY);
+			  if (pds_object != null) {
+				  ((PDSImageReadParam) irp).setPdsObjectName(pds_object);
+			  }
 		  }
 	  }
-	  
-	 
-	 
+
+
+
 	 try {
 		imUtil.setImageIndex(imageIndex);
 		imUtil.setOutputFormat(outputFormat);
