@@ -190,7 +190,7 @@ POSSIBILITY OF SUCH DAMAGE.
                - gov.nasa.pds:vicario — a different PDS-internal project that happens
                  to share the name "vicario"; not public
              These are only used on code paths we don't invoke. -->
-        <dependency>
+         <dependency>
             <groupId>gov.nasa.pds</groupId>
             <artifactId>pds4-jparser</artifactId>
             <version>${version.pds4-jparser}</version>
@@ -203,6 +203,11 @@ POSSIBILITY OF SUCH DAMAGE.
                     <groupId>gov.nasa.pds</groupId>
                     <artifactId>vicario</artifactId>
                 </exclusion>
+                <!-- Exclude JBoss-specific slf4j version not in public repos -->
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-jdk14</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <!-- Standard public opencsv replaces the excluded gov.nasa.pds:opencsv rehost -->
@@ -210,6 +215,12 @@ POSSIBILITY OF SUCH DAMAGE.
             <groupId>com.opencsv</groupId>
             <artifactId>opencsv</artifactId>
             <version>${version.opencsv}</version>
+        </dependency>
+        <!-- Standard slf4j implementation replaces the excluded JBoss variant -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+            <version>1.7.36</version>
         </dependency>
 
         <!-- ==================== XML / XSLT ==================== -->
