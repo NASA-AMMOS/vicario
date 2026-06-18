@@ -47,7 +47,7 @@ POSSIBILITY OF SUCH DAMAGE.
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- CI-friendly versioning (values can be overridden via -D on the mvn command line) -->
-        <semver>2.7.0</semver>
+        <semver>2.7.1</semver>
         <buildnum/>
         <sha1/>
         <changelist>-SNAPSHOT</changelist>
