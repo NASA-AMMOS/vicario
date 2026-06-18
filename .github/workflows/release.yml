@@ -1,0 +1,113 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      is_release: ${{ steps.check_release.outputs.is_release }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Get version from pom.xml
+        id: get_version
+        run: |
+          VERSION=$(grep -oP '<semver>\K[^<]+' pom.xml | head -1)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
+      - name: Check if this is a release commit
+        id: check_release
+        run: |
+          IS_RELEASE=false
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            # Check if semver changed in this commit
+            git diff HEAD^ HEAD -- pom.xml > /tmp/pom.diff || true
+            if grep -q '<semver>' /tmp/pom.diff; then
+              echo "Version changed in pom.xml on main branch - triggering release"
+              IS_RELEASE=true
+            fi
+          fi
+          echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
+          echo "Is release: ${IS_RELEASE}"
+
+      - name: Build standard JAR
+        run: mvn -B clean package -DskipTests
+
+      - name: Build FAT JAR
+        run: mvn -B package -Pshade -DskipTests
+
+      - name: List artifacts
+        run: ls -lh target/*.jar target/*.zip 2>/dev/null || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vicario-jars
+          path: |
+            target/vicario-*.jar
+            target/vicario-*-scripts.zip
+            target/vicario-*-xsl.zip
+          retention-days: 90
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: needs.build.outputs.is_release == 'true'
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: vicario-jars
+          path: artifacts/
+
+      - name: Create and push tag
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "Release version ${VERSION}"
+          git push origin "v${VERSION}"
+
+      - name: Create Release
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${VERSION}" \
+            artifacts/vicario-*-FAT.jar \
+            artifacts/vicario-*.jar \
+            artifacts/vicario-*-scripts.zip \
+            artifacts/vicario-*-xsl.zip \
+            --title "Release v${VERSION}" \
+            --generate-notes \
+            ${{ contains(needs.build.outputs.version, 'alpha') || contains(needs.build.outputs.version, 'beta') || contains(needs.build.outputs.version, 'rc') && '--prerelease' || '' }}
