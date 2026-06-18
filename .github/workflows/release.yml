@@ -5,8 +5,6 @@ on:
     branches:
       - main
       - develop
-    tags:
-      - 'v*'
   pull_request:
     branches:
       - main
@@ -16,10 +14,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      is_release: ${{ steps.check_release.outputs.is_release }}
     
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -27,6 +30,28 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
           cache: 'maven'
+
+      - name: Get version from pom.xml
+        id: get_version
+        run: |
+          VERSION=$(grep -oP '<semver>\K[^<]+' pom.xml | head -1)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
+      - name: Check if this is a release commit
+        id: check_release
+        run: |
+          IS_RELEASE=false
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            # Check if semver changed in this commit
+            git diff HEAD^ HEAD -- pom.xml > /tmp/pom.diff || true
+            if grep -q '<semver>' /tmp/pom.diff; then
+              echo "Version changed in pom.xml on main branch - triggering release"
+              IS_RELEASE=true
+            fi
+          fi
+          echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
+          echo "Is release: ${IS_RELEASE}"
 
       - name: Build standard JAR
         run: mvn -B clean package -DskipTests
@@ -50,7 +75,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: needs.build.outputs.is_release == 'true'
     permissions:
       contents: write
     
@@ -64,14 +89,25 @@ jobs:
           name: vicario-jars
           path: artifacts/
 
+      - name: Create and push tag
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION}" -m "Release version ${VERSION}"
+          git push origin "v${VERSION}"
+
       - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            artifacts/vicario-*-FAT.jar
-            artifacts/vicario-*.jar
-            artifacts/vicario-*-scripts.zip
-            artifacts/vicario-*-xsl.zip
-          draft: false
-          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
-          generate_release_notes: true
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${VERSION}" \
+            artifacts/vicario-*-FAT.jar \
+            artifacts/vicario-*.jar \
+            artifacts/vicario-*-scripts.zip \
+            artifacts/vicario-*-xsl.zip \
+            --title "Release v${VERSION}" \
+            --generate-notes \
+            ${{ contains(needs.build.outputs.version, 'alpha') || contains(needs.build.outputs.version, 'beta') || contains(needs.build.outputs.version, 'rc') && '--prerelease' || '' }}
