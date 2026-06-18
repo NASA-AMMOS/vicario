@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (c) 2019-2023, California Institute of Technology ("Caltech").
+U.S. Government sponsorship acknowledged.
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+- Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+- Redistributions must reproduce the above copyright notice, this list of
+  conditions and the following disclaimer in the documentation and/or other
+  materials provided with the distribution.
+- Neither the name of Caltech nor its operating division, the Jet Propulsion
+  Laboratory, nor the names of its contributors may be used to endorse or
+  promote products derived from this software without specific prior written
+  permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <name>JPL - AMMOS - IDS - VicarIO</name>
+    <description>Image Format Translation Tool</description>
+
+    <groupId>gov.nasa.jpl.ammos.ids</groupId>
+    <artifactId>vicario</artifactId>
+    <version>${revision}</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!-- CI-friendly versioning (values can be overridden via -D on the mvn command line) -->
+        <semver>2.7.0</semver>
+        <buildnum/>
+        <sha1/>
+        <changelist>-SNAPSHOT</changelist>
+        <revision>${semver}${buildnum}${sha1}${changelist}</revision>
+
+        <!-- Dependency versions -->
+        <version.jai_codec>1.1.3</version.jai_codec>
+        <version.jai_imageio>1.1</version.jai_imageio>
+        <version.imageio-ext-tiff>1.4.9</version.imageio-ext-tiff>
+        <version.jt-iterators>1.0.3</version.jt-iterators>
+        <version.jt-square-root>1.0.3</version.jt-square-root>
+        <version.jt-stats>1.0.3</version.jt-stats>
+        <version.jt-utilities>1.0.3</version.jt-utilities>
+        <version.jt-utils>1.3.1</version.jt-utils>
+        <version.jai_core>1.1.3</version.jai_core>
+        <version.xalan>2.7.2</version.xalan>
+        <version.nom-tam-fits>1.13.1</version.nom-tam-fits>
+        <version.commons-cli>1.2</version.commons-cli>
+        <version.commons-codec>1.9</version.commons-codec>
+        <version.commons-io>2.0.1</version.commons-io>
+        <version.commons-lang>2.6</version.commons-lang>
+        <version.commons-vfs2>2.0</version.commons-vfs2>
+        <version.pds4-jparser>2.12.1</version.pds4-jparser>
+        <version.opencsv>5.5</version.opencsv>
+        <version.junit>4.13</version.junit>
+        <version.xerces>2.12.2</version.xerces>
+
+        <!-- Plugin versions -->
+        <version.plugin.compiler>3.13.0</version.plugin.compiler>
+        <version.plugin.surefire>3.2.3</version.plugin.surefire>
+        <version.plugin.jar>3.3.0</version.plugin.jar>
+        <version.plugin.source>3.3.0</version.plugin.source>
+        <version.plugin.javadoc>3.6.3</version.plugin.javadoc>
+        <version.plugin.assembly>3.6.0</version.plugin.assembly>
+        <version.plugin.shade>3.5.1</version.plugin.shade>
+        <version.plugin.flatten>1.5.0</version.plugin.flatten>
+    </properties>
+
+    <scm>
+        <connection>scm:git:https://github.com/NASA-AMMOS/vicario.git</connection>
+        <developerConnection>scm:git:https://github.com/NASA-AMMOS/vicario.git</developerConnection>
+        <url>https://github.com/NASA-AMMOS/vicario</url>
+    </scm>
+
+    <repositories>
+        <!-- OSGeo hosts the javax.media JAI artifacts (jai_core, jai_codec, jai_imageio)
+             which are not in Maven Central. -->
+        <repository>
+            <id>osgeo</id>
+            <name>OSGeo Release Repository</name>
+            <url>https://repo.osgeo.org/repository/release/</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <!-- imageio-ext and jaiext artifacts are hosted by GeoSolutions -->
+        <repository>
+            <id>imageio-ext-repository</id>
+            <name>imageio-ext Repository</name>
+            <url>https://maven.geo-solutions.it/</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!-- ==================== Image I/O core ==================== -->
+        <dependency>
+            <groupId>javax.media</groupId>
+            <artifactId>jai_core</artifactId>
+            <version>${version.jai_core}</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.media</groupId>
+            <artifactId>jai_codec</artifactId>
+            <version>${version.jai_codec}</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.media</groupId>
+            <artifactId>jai_imageio</artifactId>
+            <version>${version.jai_imageio}</version>
+        </dependency>
+        <dependency>
+            <groupId>it.geosolutions.imageio-ext</groupId>
+            <artifactId>imageio-ext-tiff</artifactId>
+            <version>${version.imageio-ext-tiff}</version>
+        </dependency>
+
+        <!-- ==================== JAIExt (GeoSolutions) ==================== -->
+        <dependency>
+            <groupId>it.geosolutions.jaiext.iterators</groupId>
+            <artifactId>jt-iterators</artifactId>
+            <version>${version.jt-iterators}</version>
+        </dependency>
+        <dependency>
+            <groupId>it.geosolutions.jaiext.squareroot</groupId>
+            <artifactId>jt-square-root</artifactId>
+            <version>${version.jt-square-root}</version>
+        </dependency>
+        <dependency>
+            <groupId>it.geosolutions.jaiext.stats</groupId>
+            <artifactId>jt-stats</artifactId>
+            <version>${version.jt-stats}</version>
+        </dependency>
+        <dependency>
+            <groupId>it.geosolutions.jaiext.utilities</groupId>
+            <artifactId>jt-utilities</artifactId>
+            <version>${version.jt-utilities}</version>
+        </dependency>
+
+        <!-- ==================== JAITools ==================== -->
+        <dependency>
+            <groupId>org.jaitools</groupId>
+            <artifactId>jt-utils</artifactId>
+            <version>${version.jt-utils}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>xerces</groupId>
+                    <artifactId>xercesImpl</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- ==================== FITS ==================== -->
+        <dependency>
+            <groupId>gov.nasa.gsfc.heasarc</groupId>
+            <artifactId>nom-tam-fits</artifactId>
+            <version>${version.nom-tam-fits}</version>
+        </dependency>
+
+        <!-- ==================== PDS4 (NASA PDS open source) ==================== -->
+        <!-- Replaces the old gov.nasa.jpl.ammos.ids.pds:objectAccess:0.5.0 (JPL-internal
+             rehost). pds4-jparser still publishes the gov.nasa.pds.objectAccess.* classes
+             we use (ObjectAccess, ExporterFactory, TableReader, ObjectProvider), so
+             ExtractTableJPL compiles against it unchanged.
+             We exclude two transitive deps that pds4-jparser's pom declares but which are
+             NOT actually published to Maven Central (they only exist in JPL Artifactory):
+               - gov.nasa.pds:opencsv — a repackaged opencsv, not public
+               - gov.nasa.pds:vicario — a different PDS-internal project that happens
+                 to share the name "vicario"; not public
+             These are only used on code paths we don't invoke. -->
+        <dependency>
+            <groupId>gov.nasa.pds</groupId>
+            <artifactId>pds4-jparser</artifactId>
+            <version>${version.pds4-jparser}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>gov.nasa.pds</groupId>
+                    <artifactId>opencsv</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>gov.nasa.pds</groupId>
+                    <artifactId>vicario</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Standard public opencsv replaces the excluded gov.nasa.pds:opencsv rehost -->
+        <dependency>
+            <groupId>com.opencsv</groupId>
+            <artifactId>opencsv</artifactId>
+            <version>${version.opencsv}</version>
+        </dependency>
+
+        <!-- ==================== XML / XSLT ==================== -->
+        <dependency>
+            <groupId>xalan</groupId>
+            <artifactId>xalan</artifactId>
+            <version>${version.xalan}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>xml-apis</groupId>
+                    <artifactId>xml-apis</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- ==================== Apache Commons ==================== -->
+        <dependency>
+            <groupId>commons-cli</groupId>
+            <artifactId>commons-cli</artifactId>
+            <version>${version.commons-cli}</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>${version.commons-codec}</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${version.commons-io}</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>${version.commons-lang}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-vfs2</artifactId>
+            <version>${version.commons-vfs2}</version>
+        </dependency>
+
+        <!-- ==================== Test ==================== -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${version.junit}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>xerces</groupId>
+            <artifactId>xercesImpl</artifactId>
+            <version>${version.xerces}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- CI-friendly version resolution: flatten ${revision} so downstream consumers see a concrete version -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>${version.plugin.flatten}</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${version.plugin.compiler}</version>
+                <configuration>
+                    <source>8</source>
+                    <target>8</target>
+                    <compilerArgs>
+                        <arg>-Xlint:deprecation</arg>
+                        <arg>-Xlint:unchecked</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${version.plugin.surefire}</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${version.plugin.jar}</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${version.plugin.source}</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${version.plugin.javadoc}</version>
+                <configuration>
+                    <doclint>none</doclint>
+                    <failOnError>false</failOnError>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>${version.plugin.assembly}</version>
+                <executions>
+                    <execution>
+                        <id>make-scripts</id>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/scripts.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>make-xsl</id>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/xsl.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+
+
+        <profile>
+            <id>shade</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <version>${version.plugin.shade}</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>shade</goal>
+                                </goals>
+                                <configuration>
+                                    <createDependencyReducedPom>true</createDependencyReducedPom>
+                                    <transformers>
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                            <manifestEntries>
+                                                <Main-Class>jpl.mipl.io.jConvertIIO</Main-Class>
+                                                <Specification-Vendor>NASA/JPL</Specification-Vendor>
+                                                <Implementation-Vendor>NASA/JPL</Implementation-Vendor>
+                                                <Implementation-Version>1.0</Implementation-Version>
+                                            </manifestEntries>
+                                        </transformer>
+                                    </transformers>
+                                    <artifactSet>
+                                        <excludes>
+                                            <exclude>classworlds:classworlds</exclude>
+                                            <exclude>junit:junit</exclude>
+                                            <exclude>jmock:*</exclude>
+                                            <exclude>*:xml-apis</exclude>
+                                            <exclude>xerces:xercesImpl</exclude>
+                                            <exclude>org.apache.maven:lib:tests</exclude>
+                                            <exclude>commons-io:commons-io</exclude>
+                                        </excludes>
+                                    </artifactSet>
+                                    <shadedClassifierName>FAT</shadedClassifierName>
+                                    <shadedArtifactAttached>true</shadedArtifactAttached>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

@@ -1,0 +1,36 @@
+./mipl/io/vicar/0build.jmake: 
+jar_file = vicario.jar
+
+./mipl/io/util/0build.jmake: 
+jar_file = vicario.jar
+# services_files = (javax.xml.parsers.DocumentBuilderFactory,javax.xml.transform.TransformerFactory,javax.xml.xpath.XPathFactory)
+extra_jar_files = (pds4_namespaces.txt, log4j.properties)
+
+./mipl/io/plugins/0build.jmake: 
+jar_file = vicario.jar
+services_files = (javax.imageio.spi.ImageInputStreamSpi,javax.imageio.spi.ImageTranscoderSpi,javax.imageio.spi.ImageOutputStreamSpi,javax.imageio.spi.ImageWriterSpi,javax.imageio.spi.ImageReaderSpi)
+
+./mipl/io/streams/0build.jmake: 
+jar_file = vicario.jar
+
+./mipl/io/codec/0build.jmake: 
+jar_file = vicario.jar
+services_files = javax.media.jai.OperationRegistrySpi
+
+./mipl/io/scripts/0build.jmake: 
+no_java = 1
+script_files = (*.py,*.csh,Label*)
+
+./mipl/io/templates/0build.jmake: 
+no_java = 1
+template_files = (*.vm,*.vmac,*.json)
+
+./mipl/io/xsl/0build.jmake: 
+jar_file = vicario.jar
+extra_jar_files = *.xsl
+no_java = 1
+xsl_files = *.xsl
+
+./mipl/io/0build.jmake: 
+jar_file = vicario.jar
+

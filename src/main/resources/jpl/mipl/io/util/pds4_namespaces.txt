@@ -1,0 +1,10 @@
+# prefix = namespace
+# as of 9-15-2015
+pds     = http://pds.nasa.gov/pds4/pds/v1 
+dph     = http://pds.nasa.gov/pds4/dph/v01 
+disp    = http://pds.nasa.gov/pds4/disp/v1
+img     = http://pds.nasa.gov/pds4/img/v1
+insight = http://pds.nasa.gov/pds4/mission/insight/v1
+geom    = http://pds.nasa.gov/pds4/geom/v1
+sp      = http://pds.nasa.gov/pds4/sp/v1
+xsi     = http://www.w3.org/2001/XMLSchema-instance

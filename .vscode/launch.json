@@ -1,0 +1,45 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "jConvertIIO",
+            "request": "launch",
+            "mainClass": "jpl.mipl.io.jConvertIIO",
+            "args": "",
+            "cwd": "${workspaceFolder}",
+            "vmArgs": ""
+        },
+        {
+            "type": "java",
+            "name": "jConvertIIO (headless)",
+            "request": "launch",
+            "mainClass": "jpl.mipl.io.jConvertIIO",
+            "args": "",
+            "cwd": "${workspaceFolder}",
+            "vmArgs": "-Djava.awt.headless=true"
+        },
+        {
+            "type": "java",
+            "name": "JFrameJade (GUI)",
+            "request": "launch",
+            "mainClass": "jpl.mipl.io.JFrameJade",
+            "cwd": "${workspaceFolder}",
+            "vmArgs": ""
+        },
+        {
+            "type": "java",
+            "name": "Attach to Remote JVM (5005)",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 5005
+        },
+        {
+            "type": "java",
+            "name": "Attach to Remote JVM (5006)",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 5006
+        }
+    ]
+}

@@ -1,0 +1,199 @@
+name: Build Vicario
+
+on:
+  workflow_dispatch:
+    inputs:
+      shade:
+        description: 'Also build FAT JAR (shade profile)'
+        type: boolean
+        default: false
+      skip_tests:
+        description: 'Skip unit tests'
+        type: boolean
+        default: false
+      deploy:
+        description: 'Deploy snapshot to JPL Artifactory'
+        type: boolean
+        default: false
+
+env:
+  MAVEN_VERSION: '3.9.9'
+
+jobs:
+  build:
+    runs-on: jpl-linux-x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      - name: Install Maven ${{ env.MAVEN_VERSION }}
+        run: |
+          set -euo pipefail
+          MVN_DIR="${RUNNER_TOOL_CACHE}/maven/${MAVEN_VERSION}"
+          if [ ! -x "${MVN_DIR}/bin/mvn" ]; then
+            mkdir -p "${MVN_DIR}"
+            TARBALL="apache-maven-${MAVEN_VERSION}-bin.tar.gz"
+            curl -fsSL "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/${TARBALL}" -o "/tmp/${TARBALL}"
+            tar -xzf "/tmp/${TARBALL}" -C "${MVN_DIR}" --strip-components=1
+            rm "/tmp/${TARBALL}"
+          fi
+          echo "${MVN_DIR}/bin" >> "${GITHUB_PATH}"
+
+      - name: Show environment
+        run: |
+          java -version
+          mvn --version
+
+      - name: Configure Maven settings for Artifactory
+        if: ${{ inputs.deploy }}
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+            <servers>
+              <server>
+                <id>snapshots</id>
+                <username>jleach</username>
+                <password>${env.ARTIFACTORY_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      - name: Build & test${{ inputs.deploy && ' & deploy' || '' }}
+        env:
+          # Only inject the Artifactory secret on deploy runs; empty otherwise.
+          ARTIFACTORY_TOKEN: ${{ inputs.deploy && secrets.ARTIFACTORY_MVN_JLEACH || '' }}
+          DEPLOY: ${{ inputs.deploy }}
+          SHADE: ${{ inputs.shade }}
+          SKIP_TESTS: ${{ inputs.skip_tests }}
+        run: |
+          set -o pipefail
+          # Default build pulls public-only (Maven Central + OSGeo + GeoSolutions).
+          # Deploying to JPL Artifactory is an opt-in second step via the
+          # jpl-deploy profile, which carries the distributionManagement target.
+          GOAL=install
+          PROFILES=()
+          if [ "$DEPLOY" = "true" ]; then
+            GOAL=deploy
+            PROFILES+=("jpl-deploy")
+          fi
+          [ "$SHADE" = "true" ] && PROFILES+=("shade")
+          PROFILE_ARG=""
+          if [ "${#PROFILES[@]}" -gt 0 ]; then
+            PROFILE_ARG="-P $(IFS=,; echo "${PROFILES[*]}")"
+          fi
+          SKIP_ARG=""
+          [ "$SKIP_TESTS" = "true" ] && SKIP_ARG="-DskipTests"
+          mvn -B -U clean "$GOAL" $PROFILE_ARG -Dmaven.source.skip=false javadoc:jar $SKIP_ARG 2>&1 | tee mvn-build.log
+
+      - name: List build artifacts
+        run: ls -lh target/*.jar target/*.tar.gz target/*.zip 2>/dev/null || true
+
+      - name: Summarize published artifacts
+        if: ${{ inputs.deploy && always() }}
+        run: |
+          set -euo pipefail
+          LOG=mvn-build.log
+          SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+
+          if [ ! -f "$LOG" ]; then
+            echo "## Artifactory Publication" >> "$SUMMARY"
+            echo "_Build log not found; no artifacts to report._" >> "$SUMMARY"
+            exit 0
+          fi
+
+          # Lines look like:
+          #   [INFO] Uploaded to snapshots: https://.../foo-1.0.0-20260101.123456-1.jar (12 MB at 1.2 MB/s)
+          UPLOADS=$(grep -E '^\[INFO\] Uploaded to ' "$LOG" \
+            | grep -Ev '\.(md5|sha1|sha256|sha512)( |$)' \
+            | grep -Ev 'maven-metadata\.xml( |$)' || true)
+
+          {
+            echo "## Artifactory Publication"
+            echo
+            if [ -z "$UPLOADS" ]; then
+              echo "_No artifacts were uploaded._"
+              exit 0
+            fi
+            echo "| Artifact | Size | URL |"
+            echo "| --- | --- | --- |"
+          } >> "$SUMMARY"
+
+          echo "$UPLOADS" | while IFS= read -r line; do
+            URL=$(echo "$line" | sed -E 's/^\[INFO\] Uploaded to [^:]+: ([^ ]+).*/\1/')
+            FILE=$(basename "$URL")
+            SIZE=$(echo "$line" | sed -nE 's/.*\(([^)]*) at [^)]*\).*/\1/p')
+            [ -z "$SIZE" ] && SIZE="—"
+            echo "| \`$FILE\` | $SIZE | [link]($URL) |" >> "$SUMMARY"
+          done
+
+          COUNT=$(echo "$UPLOADS" | wc -l | tr -d ' ')
+          {
+            echo
+            echo "**Total artifacts published:** $COUNT"
+          } >> "$SUMMARY"
+
+      - name: Demo container instructions
+        if: ${{ inputs.shade && inputs.deploy }}
+        run: |
+          set -euo pipefail
+          LOG=mvn-build.log
+          SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+
+          FAT_JAR=$(ls target/vicario-*-FAT.jar 2>/dev/null | head -n1 || true)
+          if [ -z "$FAT_JAR" ]; then
+            {
+              echo
+              echo "## Run the Demo Container"
+              echo "_FAT JAR not found in \`target/\` — skipping demo run instructions._"
+            } >> "$SUMMARY"
+            exit 0
+          fi
+          VERSION=$(basename "$FAT_JAR" | sed -E 's/^vicario-(.+)-FAT\.jar$/\1/')
+          COORDS="gov.nasa.jpl.ammos.ids:vicario:${VERSION}:jar:FAT"
+
+          # Prefer the timestamped FAT URL from the upload log, if present.
+          FAT_URL=$(grep -E '^\[INFO\] Uploaded to ' "$LOG" 2>/dev/null \
+            | sed -E 's/^\[INFO\] Uploaded to [^:]+: ([^ ]+).*/\1/' \
+            | grep -E -- '-FAT\.jar$' \
+            | head -n1 || true)
+
+          {
+            echo
+            echo "## Run the Demo Container"
+            echo
+            echo "The FAT JAR was published to Artifactory. Exercise it locally with the demo container (see \`demo-container/README.md\`):"
+            echo
+            echo '```bash'
+            echo "# Build the demo image once, from the project root:"
+            echo "docker build --platform linux/amd64 -t vicario-demo -f demo-container/Dockerfile ."
+            echo ""
+            echo "# Resolve the published FAT JAR via Maven coords (uses your ~/.m2/settings.xml):"
+            echo "docker run --rm --platform linux/amd64 \\"
+            echo "    -e VICARIO_COORDS=${COORDS} \\"
+            echo "    -v ~/.m2/settings.xml:/root/.m2/settings.xml:ro \\"
+            echo "    -v vicario-demo-out:/opt/vicario/out \\"
+            echo "    vicario-demo"
+            echo '```'
+            if [ -n "$FAT_URL" ]; then
+              echo
+              echo "Or pull the exact timestamped snapshot URL directly (no Maven settings needed):"
+              echo
+              echo '```bash'
+              echo "docker run --rm --platform linux/amd64 \\"
+              echo "    -e VICARIO_JAR_URL=${FAT_URL} \\"
+              echo "    -v vicario-demo-out:/opt/vicario/out \\"
+              echo "    vicario-demo"
+              echo '```'
+            fi
+          } >> "$SUMMARY"

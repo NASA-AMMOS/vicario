@@ -1,0 +1,38 @@
+{
+  "samples": [
+    {
+      "name": "LabelocityDummyImage.VIC",
+      "format": "VICAR",
+      "path": "/opt/vicario/samples/LabelocityDummyImage.VIC",
+      "source": "bundled-from-repo",
+      "origin": "src/main/scripts/LabelocityDummyImage.VIC",
+      "description": "100x100x3 BSQ VICAR image with 400-byte label. Used by the existing reg_test script.",
+      "license": "Part of vicario repository (Caltech/NASA JPL; see pom.xml header).",
+      "network_required": false
+    },
+    {
+      "name": "DPH_Examples_V12400",
+      "format": "PDS4",
+      "path": "/opt/vicario/samples/pds4",
+      "source": "https://pds.nasa.gov/data/pds4/examples/v1/DPH_Examples_V12400.zip",
+      "origin": "NASA Planetary Data System, PDS4 Data Provider's Handbook example bundle (v1.24.0.0, PDS4 Build 15.1, June 2025)",
+      "description": "Official PDS4 example products distributed by NASA PDS. Contains multiple XML labels and associated data files. Demos pick a label dynamically at run time.",
+      "license": "NASA public domain (U.S. Government work, 17 U.S.C. 105).",
+      "network_required": "build-time-only"
+    },
+    {
+      "name": "HorseHead.fits",
+      "format": "FITS",
+      "path": "/opt/vicario/samples/fits/HorseHead.fits",
+      "source": "https://raw.githubusercontent.com/astropy/astropy-data/gh-pages/tutorials/FITS-images/HorseHead.fits",
+      "origin": "Canonical astropy tutorial sample, Horsehead Nebula (Barnard 33).",
+      "description": "Small public FITS image used by the astropy FITS-images tutorial.",
+      "license": "Public — see astropy tutorials for attribution.",
+      "network_required": "build-time-only"
+    }
+  ],
+  "notes": [
+    "All external samples are downloaded at container BUILD time and baked into the image. docker run is offline-safe.",
+    "To reproduce outside the container: curl each source URL and run the commands from demo-container/README.md against the downloaded files."
+  ]
+}
