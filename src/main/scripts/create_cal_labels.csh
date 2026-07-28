@@ -15,7 +15,7 @@
 # needs to call several other subordinate scripts.
 #
 #
-if ($# != 4) then
+if ($#argv != 4) then
    head -16 $0
    exit
 endif

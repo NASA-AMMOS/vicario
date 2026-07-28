@@ -18,20 +18,20 @@ set DOC_LEN = 15
 
 set prop_list = ()
 set version = ""
-if ($# == 2) then
+if ($#argv == 2) then
    set mission = $1
    set infile = $2
    set type = ${infile:e}
-else if ($# == 3) then
+else if ($#argv == 3) then
    set mission = $1
    set infile = $2
    set type = "$3"
-else if ($# == 4) then
+else if ($#argv == 4) then
    set mission = $1
    set infile = $2
    set type = "$3"
    set version = $4
-else if ($# > 4) then
+else if ($#argv > 4) then
    set mission = $1
    set infile = $2
    set type = "$3"

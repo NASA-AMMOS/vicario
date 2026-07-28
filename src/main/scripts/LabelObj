@@ -8,7 +8,7 @@
 # Creates objfile with .xml in addition to existing extension.  Output goes
 # in same dir as input.  There should be a .VIC and .mtl as well as the .obj
 #
-if ($# != 1) then
+if ($#argv != 1) then
   head -10 $0
   exit
 endif

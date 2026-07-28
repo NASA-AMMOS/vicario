@@ -26,7 +26,7 @@
 # with an additional comma.  So for example we might have:
 # "Deen, Robert G., https://orcid.org/0000-0002-5693-641X; Toole, Nicholas"
 
-if ($# != 9 && $# != 10) then
+if ($#argv != 9 && $#argv != 10) then
    head -19 $0
    exit
 endif
@@ -42,7 +42,7 @@ set author = "$6"
 set docstd = "$7"
 set edition = "$8"
 set version = "$9"
-if ($# == 10) then
+if ($#argv == 10) then
   set title = "$10"
 else
   set title = "$descr"

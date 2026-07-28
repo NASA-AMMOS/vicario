@@ -8,7 +8,7 @@
 # where mission is NSYT, MSAM, etc.
 #
 
-if ($# != 3) then
+if ($#argv != 3) then
   head -9 $0
   exit
 endif

@@ -8,7 +8,7 @@
 # Creates pds4file with .xml instead of existing extension.  Output goes
 # in same dir as input
 #
-if ($# != 1) then
+if ($#argv != 1) then
   head -10 $0
   exit
 endif
