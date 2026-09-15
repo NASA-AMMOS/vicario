@@ -12,7 +12,7 @@
 
 set DOC_LEN = 11
 
-if ($# < 1) then
+if ($#argv < 1) then
   head -${DOC_LEN} $0
   exit
 endif
@@ -22,15 +22,15 @@ set out = ${img}.xml
 
 set prop_list = ()
 
-if ($# > 1) then 
+if ($#argv > 1) then 
     set startp = 2
-    while ($startp <= $#)
+    while ($startp <= $#argv )
       if ("$argv[$startp]" == "-prop") then
          @ startp = $startp + 1
-         if ($startp <= $#) then
+         if ($startp <= $#argv ) then
            set prop_key = $argv[$startp]
            @ startp = $startp + 1
-           if ($startp <= $#) then
+           if ($startp <= $#argv ) then
              set prop_val = $argv[$startp]
              set prop_line = \""${prop_key}"\"": "\""${prop_val}"\"
              set prop_list = ( $prop_list:q $prop_line:q )

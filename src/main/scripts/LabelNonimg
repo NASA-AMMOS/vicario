@@ -8,7 +8,7 @@
 # Creates pds4file with .xml instead of existing extension.  Output goes
 # in same dir as input
 #
-if ($# != 1) then
+if ($#argv != 1) then
   head -10 $0
   exit
 endif
@@ -20,7 +20,7 @@ set img = $1
 set out = ${img:r}.xml
 
 ## This may be replaced by a multimission non-imaging VM one day...but not today.
-set templ = $V2TEMPLATES/m2020_non_imaging.vm
+set templ = $V2TEMPLATES/mipl_non_imaging.vm
 
 java -version
 echo "LabelNonimg"

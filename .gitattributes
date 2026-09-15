@@ -1,0 +1,7 @@
+## Preserve LF for 
+*.make text eol=lf
+*.txt text eol=lf
+*.c text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.csh text eol=lf

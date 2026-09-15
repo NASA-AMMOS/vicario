@@ -13,7 +13,7 @@
 #
 
 #
-if ($# != 7) then
+if ($#argv != 7) then
    head -13 $0
    exit
 endif

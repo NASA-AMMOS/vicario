@@ -1,11 +1,11 @@
 #!/bin/csh
 #
-# Create a pds4 label for an image.
+# Create a pds4 label from an non-imaging ODL label, using older M20 template.
 #
 # Usage:
-#   LabelImage imgfile
+#   LabelNonimgM20 odlLabel
 #
-# Creates imgfile with .xml instead of existing extension.  Output goes
+# Creates pds4file with .xml instead of existing extension.  Output goes
 # in same dir as input
 #
 if ($#argv != 1) then
@@ -13,15 +13,17 @@ if ($#argv != 1) then
   exit
 endif
 
-echo "LabelImage CLASSPATH $CLASSPATH"
-# setenv CLASSPATH /home/nsytmipl/magic_jars/a_dev_srl_generate-0.14.0.jar:/home/nsytmipl/magic_jars/a_vicario_msl.jar:"$CLASSPATH"
+echo "LabelNonimgM20 CLASSPATH $CLASSPATH"
+
 
 set img = $1
 set out = ${img:r}.xml
 
-set templ = $V2TEMPLATES/mipl_cameras.vm
+## This may be replaced by a multimission non-imaging VM one day...but not today.
+set templ = $V2TEMPLATES/m2020_non_imaging.vm
+
 java -version
-echo "LabelImage"
+echo "LabelNonimgM20"
 
 echo "java jpl.mipl.io.jConvertIIO inp=$img out=$out ri=true format=pds4 pds_detached_only=true pds_label_type=PDS4 velo_template=$templ"
 java jpl.mipl.io.jConvertIIO inp=$img out=$out ri=true format=pds4 pds_detached_only=true pds_label_type=PDS4 velo_template=$templ

@@ -56,9 +56,6 @@ jobs:
       - name: Build standard JAR
         run: mvn -B clean package -DskipTests
 
-      - name: Build FAT JAR
-        run: mvn -B package -Pshade -DskipTests
-
       - name: List artifacts
         run: ls -lh target/*.jar target/*.zip 2>/dev/null || true
 
@@ -68,6 +65,7 @@ jobs:
           name: vicario-jars
           path: |
             target/vicario-*.jar
+            !target/vicario-*-FAT.jar
             target/vicario-*-scripts.zip
             target/vicario-*-xsl.zip
           retention-days: 90
@@ -104,8 +102,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "v${VERSION}" \
-            artifacts/vicario-*-FAT.jar \
-            artifacts/vicario-*.jar \
+            artifacts/vicario-[0-9]*.jar \
+            artifacts/vicario-*-javadoc.jar \
             artifacts/vicario-*-scripts.zip \
             artifacts/vicario-*-xsl.zip \
             --title "Release v${VERSION}" \
