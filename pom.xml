@@ -84,7 +84,27 @@ POSSIBILITY OF SUCH DAMAGE.
         <version.plugin.assembly>3.6.0</version.plugin.assembly>
         <version.plugin.shade>3.5.1</version.plugin.shade>
         <version.plugin.flatten>1.5.0</version.plugin.flatten>
+        <version.plugin.central-publishing>0.9.0</version.plugin.central-publishing>
+        <version.plugin.gpg>3.2.7</version.plugin.gpg>
     </properties>
+
+    <url>https://github.com/NASA-AMMOS/vicario</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>NASA-AMMOS</name>
+            <organization>Jet Propulsion Laboratory, California Institute of Technology</organization>
+            <organizationUrl>https://github.com/NASA-AMMOS</organizationUrl>
+        </developer>
+    </developers>
 
     <scm>
         <connection>scm:git:https://github.com/NASA-AMMOS/vicario.git</connection>
@@ -393,6 +413,34 @@ POSSIBILITY OF SUCH DAMAGE.
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Publishes release artifacts to Maven Central via the Central Publisher Portal -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>${version.plugin.central-publishing}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                </configuration>
+            </plugin>
+
+            <!-- Signs release artifacts with GPG, required by Maven Central -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>${version.plugin.gpg}</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
                         </goals>
                     </execution>
                 </executions>
