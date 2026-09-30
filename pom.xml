@@ -47,7 +47,7 @@ POSSIBILITY OF SUCH DAMAGE.
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- CI-friendly versioning (values can be overridden via -D on the mvn command line) -->
-        <semver>2.7.1</semver>
+        <semver>2.7.2</semver>
         <buildnum/>
         <sha1/>
         <changelist>-SNAPSHOT</changelist>
@@ -418,38 +418,46 @@ POSSIBILITY OF SUCH DAMAGE.
                 </executions>
             </plugin>
 
-            <!-- Publishes release artifacts to Maven Central via the Central Publisher Portal -->
-            <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>${version.plugin.central-publishing}</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                    <autoPublish>true</autoPublish>
-                </configuration>
-            </plugin>
-
-            <!-- Signs release artifacts with GPG, required by Maven Central -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>${version.plugin.gpg}</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
 
     <profiles>
 
+        <!-- Signs and publishes release artifacts to Maven Central (mvn deploy -P central -Dchangelist=) -->
+        <profile>
+            <id>central</id>
+            <build>
+                <plugins>
+                    <!-- Publishes release artifacts to Maven Central via the Central Publisher Portal -->
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>${version.plugin.central-publishing}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                        </configuration>
+                    </plugin>
+
+                    <!-- Signs release artifacts with GPG, required by Maven Central -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${version.plugin.gpg}</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
 
         <profile>
             <id>shade</id>

@@ -54,7 +54,12 @@ jobs:
           echo "Is release: ${IS_RELEASE}"
 
       - name: Build standard JAR
-        run: mvn -B clean package -DskipTests
+        env:
+          IS_RELEASE: ${{ steps.check_release.outputs.is_release }}
+        run: |
+          CHANGELIST_ARG=""
+          [ "$IS_RELEASE" = "true" ] && CHANGELIST_ARG="-Dchangelist="
+          mvn -B clean package -DskipTests $CHANGELIST_ARG
 
       - name: List artifacts
         run: ls -lh target/*.jar target/*.zip 2>/dev/null || true
@@ -108,7 +113,7 @@ jobs:
             artifacts/vicario-*-xsl.zip \
             --title "Release v${VERSION}" \
             --generate-notes \
-            ${{ contains(needs.build.outputs.version, 'alpha') || contains(needs.build.outputs.version, 'beta') || contains(needs.build.outputs.version, 'rc') && '--prerelease' || '' }}
+            ${{ (contains(needs.build.outputs.version, 'alpha') || contains(needs.build.outputs.version, 'beta') || contains(needs.build.outputs.version, 'rc')) && '--prerelease' || '' }}
 
   publish:
     needs: build
@@ -130,11 +135,11 @@ jobs:
           server-username: CENTRAL_TOKEN_USERNAME
           server-password: CENTRAL_TOKEN_PASSWORD
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-          gpg-passphrase: GPG_PASSPHRASE
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
       - name: Publish to Maven Central
         env:
           CENTRAL_TOKEN_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
           CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: mvn -B deploy -DskipTests
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn -B deploy -P central -DskipTests -Dchangelist=
