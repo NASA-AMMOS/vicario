@@ -98,6 +98,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Skip if the tag already exists so a failed release job can be re-run
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null; then
+            echo "Tag v${VERSION} already exists - skipping"
+            exit 0
+          fi
           git tag -a "v${VERSION}" -m "Release version ${VERSION}"
           git push origin "v${VERSION}"
 
@@ -107,7 +112,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "v${VERSION}" \
-            artifacts/vicario-[0-9]*.jar \
+            "artifacts/vicario-${VERSION}.jar" \
             artifacts/vicario-*-javadoc.jar \
             artifacts/vicario-*-scripts.zip \
             artifacts/vicario-*-xsl.zip \
