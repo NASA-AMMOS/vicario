@@ -125,9 +125,6 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.build.outputs.is_release == 'true'
     environment: Maven Publish
-    permissions:
-      contents: read
-      artifact-metadata: write
 
     steps:
       - name: Checkout
@@ -151,21 +148,3 @@ jobs:
           CENTRAL_TOKEN_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: mvn -B deploy -P central -DskipTests -Dchangelist=
-
-      # Register the Maven Central jar with GitHub so it is listed under
-      # Packages > External artifacts (linked artifacts storage record)
-      - name: Register package with GitHub
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.build.outputs.version }}
-        run: |
-          JAR="target/vicario-${VERSION}.jar"
-          DIGEST="sha256:$(sha256sum "$JAR" | cut -d' ' -f1)"
-          gh api -X POST "orgs/${GITHUB_REPOSITORY_OWNER}/artifacts/metadata/storage-record" \
-            -f name="gov.nasa.jpl.ammos.ids:vicario" \
-            -f version="$VERSION" \
-            -f digest="$DIGEST" \
-            -f registry_url="https://repo1.maven.org/maven2/" \
-            -f artifact_url="https://repo1.maven.org/maven2/gov/nasa/jpl/ammos/ids/vicario/${VERSION}/vicario-${VERSION}.jar" \
-            -f github_repository="${GITHUB_REPOSITORY#*/}" \
-            -f status=active
