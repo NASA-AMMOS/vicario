@@ -1,6 +1,26 @@
 # vicario
 
+[![Maven Central](https://img.shields.io/maven-central/v/gov.nasa.jpl.ammos.ids/vicario)](https://central.sonatype.com/artifact/gov.nasa.jpl.ammos.ids/vicario)
+
 Image Format Translation Tool is a software application and libraries to transform from one image data format to another, while preserving meta-data content.
+
+## Using vicario
+
+vicario is published to [Maven Central](https://central.sonatype.com/artifact/gov.nasa.jpl.ammos.ids/vicario). Replace the version below with the latest shown in the badge above.
+
+Maven:
+```xml
+<dependency>
+  <groupId>gov.nasa.jpl.ammos.ids</groupId>
+  <artifactId>vicario</artifactId>
+  <version>2.7.2</version>
+</dependency>
+```
+
+Gradle:
+```kotlin
+implementation("gov.nasa.jpl.ammos.ids:vicario:2.7.2")
+```
 
 ## Building and Installing
 
