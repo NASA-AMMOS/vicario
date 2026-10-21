@@ -83,6 +83,7 @@ import org.apache.xalan.templates.OutputProperties;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException; 
+import javax.xml.XMLConstants;
 
 
 import java.util.Hashtable;
@@ -188,7 +189,38 @@ public class DOMutils
         serializerType = "xml" ;
         xslFile = null;
     }
-    
+
+  /**
+  * Create a DocumentBuilderFactory hardened against XML External Entity (XXE)
+  * attacks. External general/parameter entities, external DTD loading and
+  * XInclude are disabled. Documents with a DOCTYPE are still accepted (labels
+  * written by this library may reference pds_label.dtd etc.), but the DTD is
+  * never fetched. All code that parses XML should get its factory from here.
+  *
+  * @return a namespace-unaware DocumentBuilderFactory with XXE protection
+  * @throws ParserConfigurationException if the parser does not support the
+  * required features
+  **/
+  public static DocumentBuilderFactory newDocumentBuilderFactory()
+      throws ParserConfigurationException {
+    DocumentBuilderFactory dFactory = DocumentBuilderFactory.newInstance();
+    dFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+    dFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+    dFactory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+    dFactory.setXIncludeAware(false);
+    dFactory.setExpandEntityReferences(false);
+    // JAXP 1.5 properties: honored by the JDK parser, rejected by Apache Xerces
+    // (which is already covered by the features above)
+    try {
+      dFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+      dFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+    }
+    catch (IllegalArgumentException iae) {
+      // parser does not support JAXP 1.5 properties
+    }
+    return dFactory;
+  }
+
   /**
   * given an XML file, a Document will be created
   *
@@ -203,7 +235,7 @@ public class DOMutils
      
     try {
       //Instantiate a DocumentBuilderFactory.
-      DocumentBuilderFactory dFactory = DocumentBuilderFactory.newInstance();
+      DocumentBuilderFactory dFactory = newDocumentBuilderFactory();
       
       //Use the DocumentBuilderFactory to create a DocumentBuilder.
       dFactory.setNamespaceAware(true);
@@ -258,7 +290,7 @@ public class DOMutils
       
      try {
        //Instantiate a DocumentBuilderFactory.
-       DocumentBuilderFactory dFactory = DocumentBuilderFactory.newInstance();
+       DocumentBuilderFactory dFactory = newDocumentBuilderFactory();
        
        //Use the DocumentBuilderFactory to create a DocumentBuilder.
        dFactory.setNamespaceAware(true);
@@ -319,7 +351,7 @@ public class DOMutils
        // test the document to see if it the same (or some usable type)
        
        try {
-        DocumentBuilderFactory dFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilderFactory dFactory = newDocumentBuilderFactory();
       
         //Use the DocumentBuilderFactory to create a DocumentBuilder.
         DocumentBuilder dBuilder = dFactory.newDocumentBuilder();
@@ -378,7 +410,7 @@ public class DOMutils
     try {
       //Instantiate a DocumentBuilderFactory.
       // if (debug) System.out.println("DOMUtils.getNewDocument() ** 1 **"); 
-      DocumentBuilderFactory dFactory = DocumentBuilderFactory.newInstance();
+      DocumentBuilderFactory dFactory = newDocumentBuilderFactory();
       
       dFactory.setNamespaceAware(true);
       
@@ -658,7 +690,7 @@ public class DOMutils
      
     try {
       //Instantiate a DocumentBuilderFactory.
-      DocumentBuilderFactory dFactory = DocumentBuilderFactory.newInstance();
+      DocumentBuilderFactory dFactory = newDocumentBuilderFactory();
       
       //Use the DocumentBuilderFactory to create a DocumentBuilder.
       DocumentBuilder dBuilder = dFactory.newDocumentBuilder();

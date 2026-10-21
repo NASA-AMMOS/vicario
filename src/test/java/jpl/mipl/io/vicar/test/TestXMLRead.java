@@ -37,8 +37,8 @@ public class TestXMLRead
 	    System.exit(0);
 	}
 
-	Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder()
-				.parse(new FileInputStream(argv[0]));
+	Document doc = jpl.mipl.io.util.DOMutils.newDocumentBuilderFactory()
+				.newDocumentBuilder().parse(new FileInputStream(argv[0]));
 
 	ArrayList errorList = new ArrayList();
 	try {

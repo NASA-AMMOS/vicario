@@ -85,8 +85,10 @@ class XmlIo:
         
         xml_tree = None
         try:
-            # Use a parser that removes insignificant whitespace for a cleaner tree
-            parser = ET.XMLParser(remove_blank_text=True)
+            # Use a parser that removes insignificant whitespace for a cleaner tree.
+            # Entity resolution and network access are disabled to prevent XXE.
+            parser = ET.XMLParser(remove_blank_text=True, resolve_entities=False,
+                                  no_network=True)
             xml_tree = ET.parse(xml_path, parser)
         except FileNotFoundError:
             logging.error(f"The file '{xml_path}' was not found.")
