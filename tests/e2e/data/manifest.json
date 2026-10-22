@@ -1,0 +1,269 @@
+{
+  "description": "Public test data for the vicario feature tests. Every asset is pinned by SHA-256; scripts/fetch-test-data.mjs refuses unpinned assets and hosts outside its allowlist. Only publicly released data: no JPL-internal paths or products. Run `npm run data:pin` after adding an entry (sha256: null) to record its digest.",
+  "assets": [
+    {
+      "id": "gdal-vicar-byte",
+      "file": "vicar_byte.vic",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "VICAR BYTE",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/vicar_byte.vic",
+      "sha256": "424757bb8668de97abf73a07bc480d8701b81b0ee1fdc1c74416d009fce8013f",
+      "bytes": 492
+    },
+    {
+      "id": "gdal-vicar-int16",
+      "file": "vicar_int16.vic",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "VICAR HALF, little-endian",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/vicar_int16.vic",
+      "sha256": "3a635673be00d23d88035f19844751febc1355ac4aa6fb7ab3d94dab1126a352",
+      "bytes": 512
+    },
+    {
+      "id": "gdal-vicar-bigendian-int16",
+      "file": "vicar_bigendian_int16.vic",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "VICAR HALF, big-endian (INTFMT=HIGH)",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/vicar_bigendian_int16.vic",
+      "sha256": "3986dde4c5f287f6e8ca903f9d0cda504fb4b7803f67289b4524e56edd70ee06",
+      "bytes": 600
+    },
+    {
+      "id": "gdal-vicar-int32",
+      "file": "vicar_int32.vic",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "VICAR FULL",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/vicar_int32.vic",
+      "sha256": "bcb59c4cd6e101a891a4df5aba811bc1e6847c14d26f336abf047f0d036cdc95",
+      "bytes": 544
+    },
+    {
+      "id": "gdal-vicar-float32-bsq",
+      "file": "vicar_float32_bsq.vic",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "VICAR REAL, BSQ",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/vicar_float32_bsq.vic",
+      "sha256": "29908cd6d34c15628557e090e5d38afe3a6a8b675ac85bdcf29af7f0319343d2",
+      "bytes": 592
+    },
+    {
+      "id": "gdal-vicar-float32-bil",
+      "file": "vicar_float32_bil.vic",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "VICAR REAL, BIL",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/vicar_float32_bil.vic",
+      "sha256": "df6cdc7a53c4613de18e57407591d02b04a60bed3b118be532c30cb5a1510b5c",
+      "bytes": 592
+    },
+    {
+      "id": "gdal-vicar-float32-bip",
+      "file": "vicar_float32_bip.vic",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "VICAR REAL, BIP",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/vicar_float32_bip.vic",
+      "sha256": "7b6b8629bedf07b466c33418fac561763b5e4fc4ceae28a50cf42ea3c4a398c5",
+      "bytes": 584
+    },
+    {
+      "id": "gdal-vicar-bigendian-float32",
+      "file": "vicar_bigendian_float32.vic",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "VICAR REAL, big-endian IEEE",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/vicar_bigendian_float32.vic",
+      "sha256": "0ea1d40a9fa425edb33cfd6f6bb1c910e1dfc1548e5225a06c5365d599c6a7e0",
+      "bytes": 624
+    },
+    {
+      "id": "gdal-vicar-vax-float32",
+      "file": "vicar_vax_float32.vic",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "VICAR REAL, VAX float",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/vicar_vax_float32.vic",
+      "sha256": "8aa8ab9c7500a13515e55ccdab321992812d371dc70f8ebdbbf668d9e1b00173",
+      "bytes": 624
+    },
+    {
+      "id": "gdal-vicar-float64",
+      "file": "vicar_float64.vic",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "VICAR DOUB",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/vicar_float64.vic",
+      "sha256": "c63b08f55d6b13327fdb4055f450e295116a193eed51d8e44e35abe9d0a60c4b",
+      "bytes": 576
+    },
+    {
+      "id": "gdal-vicar-binary-prefix",
+      "file": "vicar_binary_prefix.vic",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "VICAR with binary line prefix (stands in for the legacy HRSC h0587 case)",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/vicar_binary_prefix.vic",
+      "sha256": "115d86e07cf713da8000de4aeb30770d22579d7dc6659c8ab5d416e0342e1603",
+      "bytes": 150
+    },
+    {
+      "id": "gdal-vicar-truncated",
+      "file": "test_vicar_truncated.bin",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "Truncated VICAR file (robustness)",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/vicar/test_vicar_truncated.bin",
+      "sha256": "84cfe01f9f96d0badd5ac662c4ea9882584eabc5a094e8ad0a67b1c17ba51712",
+      "bytes": 4170
+    },
+    {
+      "id": "msl-navcam-thumb-img",
+      "file": "NLA_406359343EDR_T0050104NCAM00505M1.IMG",
+      "tier": "fast",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, MSLNAV_0XXX",
+      "description": "MSL Navcam EDR thumbnail, PDS3 + VICAR attached labels",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/msl/MSLNAV_0XXX/DATA/SOL00100/NLA_406359343EDR_T0050104NCAM00505M1.IMG",
+      "sha256": "87bbc95e2c786b095432c065f79178f9abdc400c27b6a2e24174be4c7f125b64",
+      "bytes": 47488
+    },
+    {
+      "id": "msl-navcam-thumb-lbl",
+      "file": "NLA_406359343EDR_T0050104NCAM00505M1.LBL",
+      "tier": "fast",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, MSLNAV_0XXX",
+      "description": "Detached PDS3 label for the MSL thumbnail",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/msl/MSLNAV_0XXX/DATA/SOL00100/NLA_406359343EDR_T0050104NCAM00505M1.LBL",
+      "sha256": "858b61188d665a68e29767610bc8462a174b070b3a682f1310908ab2b1cd10fd",
+      "bytes": 24787
+    },
+    {
+      "id": "m2020-navcam-thumb-img",
+      "file": "NLF_0100_0675828717_276EDR_T0040218NCAM00503_01_600J03.IMG",
+      "tier": "fast",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, mars2020_navcam_ops_raw",
+      "description": "Mars 2020 Navcam EDR thumbnail (VICAR-labelled .IMG)",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/mars2020/mars2020_navcam_ops_raw/data/sol/00100/ids/edr/ncam/NLF_0100_0675828717_276EDR_T0040218NCAM00503_01_600J03.IMG",
+      "sha256": "56ed27eb80b74540b3d51bb808d0c078aaf5e55eab7bd3d7d2510c63f55669ab",
+      "bytes": 75360
+    },
+    {
+      "id": "m2020-navcam-thumb-xml",
+      "file": "NLF_0100_0675828717_276EDR_T0040218NCAM00503_01_600J03.xml",
+      "tier": "fast",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, mars2020_navcam_ops_raw",
+      "description": "PDS4 label for the Mars 2020 thumbnail",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/mars2020/mars2020_navcam_ops_raw/data/sol/00100/ids/edr/ncam/NLF_0100_0675828717_276EDR_T0040218NCAM00503_01_600J03.xml",
+      "sha256": "2d5eabbff686d630e634dcbac6733547dfc4df601d4ca3ff6b52823e25eac8c4",
+      "bytes": 91613
+    },
+    {
+      "id": "astropy-horsehead-fits",
+      "file": "HorseHead.fits",
+      "tier": "fast",
+      "license": "BSD-3-Clause (astropy-data)",
+      "source": "astropy-data tutorials",
+      "description": "FITS image (Horsehead nebula)",
+      "url": "https://raw.githubusercontent.com/astropy/astropy-data/1b964d39b378390b24c58fb5633cef238d22a35a/tutorials/FITS-images/HorseHead.fits",
+      "sha256": "c4bcc0bccbadf1488e4e361c0d8f04255dc344ff401fd4827139b3354eafe863",
+      "bytes": 1650240
+    },
+    {
+      "id": "msl-navcam-edr-img",
+      "file": "NLA_406359343EDR_M0050104NCAM00505M1.IMG",
+      "tier": "full",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, MSLNAV_0XXX",
+      "description": "MSL Navcam full EDR",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/msl/MSLNAV_0XXX/DATA/SOL00100/NLA_406359343EDR_M0050104NCAM00505M1.IMG",
+      "sha256": "f38418fe2ad945ec26110b5a075071d674a5dd09e47277fca6a1c1e9c538b712",
+      "bytes": 564144
+    },
+    {
+      "id": "msl-navcam-edr-lbl",
+      "file": "NLA_406359343EDR_M0050104NCAM00505M1.LBL",
+      "tier": "full",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, MSLNAV_0XXX",
+      "description": "Detached PDS3 label for the MSL EDR",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/msl/MSLNAV_0XXX/DATA/SOL00100/NLA_406359343EDR_M0050104NCAM00505M1.LBL",
+      "sha256": "4d553f1f2000ad624aa43899c8178f0cb327b084644f6a00659d2ed8f3ee21ad",
+      "bytes": 25013
+    },
+    {
+      "id": "m2020-navcam-edr-img",
+      "file": "NLF_0100_0675828717_276EDR_N0040218NCAM00503_01_295J03.IMG",
+      "tier": "full",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, mars2020_navcam_ops_raw",
+      "description": "Mars 2020 Navcam full EDR",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/mars2020/mars2020_navcam_ops_raw/data/sol/00100/ids/edr/ncam/NLF_0100_0675828717_276EDR_N0040218NCAM00503_01_295J03.IMG",
+      "sha256": "818dd63eeaa011ebaca4d90805e08296a1c968f4599f07a85580f814f4dde347",
+      "bytes": 1894400
+    },
+    {
+      "id": "m2020-navcam-edr-xml",
+      "file": "NLF_0100_0675828717_276EDR_N0040218NCAM00503_01_295J03.xml",
+      "tier": "full",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, mars2020_navcam_ops_raw",
+      "description": "PDS4 label for the Mars 2020 EDR",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/mars2020/mars2020_navcam_ops_raw/data/sol/00100/ids/edr/ncam/NLF_0100_0675828717_276EDR_N0040218NCAM00503_01_295J03.xml",
+      "sha256": "ea9e333a6cc3d66134b7a328544ca545ac8125eeb113889efa11ddce3b806481",
+      "bytes": 91577
+    },
+    {
+      "id": "mer1-navcam-edr",
+      "file": "1n128285132edn0000p1500l0m1.img",
+      "tier": "full",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, mer1no_0xxx",
+      "description": "MER Opportunity Navcam EDR (public stand-in for the legacy mer_file.vic)",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/mer/opportunity/mer1no_0xxx/data/sol0001/edr/1n128285132edn0000p1500l0m1.img",
+      "sha256": "265134e15e5bb40aa782c3acfb1facfa2c1f94a65197a339f44b96982bb2395c",
+      "bytes": 559104
+    },
+    {
+      "id": "cassini-iss-img",
+      "file": "114100.img",
+      "tier": "full",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, coiss_0002",
+      "description": "Cassini ISS VICAR image with detached PDS3 label",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/cassini/cassini_orbiter/coiss_0002/data/nacfm/dark_cur/1141/114100.img",
+      "sha256": "90d3d6a4355bb3d41accdeb32e28ebb223786d2d71ddd0adbdebb9fbeab22bfc",
+      "bytes": 2125872
+    },
+    {
+      "id": "cassini-iss-lbl",
+      "file": "114100.lbl",
+      "tier": "full",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, coiss_0002",
+      "description": "Detached PDS3 label for 114100.img",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/cassini/cassini_orbiter/coiss_0002/data/nacfm/dark_cur/1141/114100.lbl",
+      "sha256": "7fe43eca60f6b82809f430dcfe7a887d0ef3dc379dc053d590194b7cf212f9b9",
+      "bytes": 9204
+    }
+  ]
+}

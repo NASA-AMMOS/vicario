@@ -5,14 +5,17 @@ on:
     branches:
       - main
       - develop
-  pull_request:
-    branches:
-      - main
-      - develop
   workflow_dispatch:
 
+# Pull requests are tested by ci.yml; pushes test here before anything is built.
 jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   build:
+    needs: ci
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.get_version.outputs.version }}

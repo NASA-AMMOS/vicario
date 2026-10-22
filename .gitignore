@@ -52,3 +52,12 @@ logs
 /output.vic
 /test.png
 /vicario-demo-out/
+
+# Feature tests (tests/e2e): dependencies, downloaded data, reports
+tests/e2e/node_modules/
+tests/e2e/.cache/
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+tests/e2e/results/
+# Legacy internal test area: never commit (internal paths and data)
+/TESTING/

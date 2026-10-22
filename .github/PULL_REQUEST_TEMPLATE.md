@@ -8,6 +8,10 @@
 - Links to relevant issues
 - Example: issue-XYZ
 ## Testing
-- Provide some proof you've tested your changes 
-- Example: test results available at ...
-- Example: tested on operating system ...
+See [docs/TESTING.md](../docs/TESTING.md) and [criteria.md](project-requirements/criteria.md).
+- [ ] Features touched (from `tests/e2e/features.yml`): F..
+- [ ] Tests added or updated (bug fixes: a test that fails without the fix, tagged with the ticket)
+- [ ] Goldens unchanged, or changed with the reason given here
+- [ ] New test data is public, pinned (sha256) and licensed in `tests/e2e/data/manifest.json`
+- [ ] No internal paths, hosts or data (`data-guard` passes)
+- Playwright report: download `playwright-report-fast` from this PR's CI run

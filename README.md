@@ -33,8 +33,9 @@ implementation("gov.nasa.jpl.ammos.ids:vicario:2.7.2")
 ### Generating and Installing Source JARs:
 - mvn -U -Dmaven.source.skip=false clean install
 
-### Running Unit Tests
-- mvn -U clean test
+### Running Tests
+- Unit tests: `mvn -U clean test`
+- Feature tests (Playwright report, public test data): see [docs/TESTING.md](docs/TESTING.md)
 
 ## Releasing Development and Production Builds
 

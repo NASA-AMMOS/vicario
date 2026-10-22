@@ -1,0 +1,164 @@
+# VICARIO feature registry: the source of truth for what the product does and
+# where each capability is tested. features/registry.spec.ts enforces that
+# every active feature has a spec carrying its tag, every spec belongs to a
+# feature, planned features name a milestone, and excluded ones give a reason.
+# See docs/TESTING.md and .github/project-requirements/criteria.md.
+features:
+  - id: F01
+    name: VICAR read/write
+    tag: "@F01-vicar-io"
+    status: active
+    description: >
+      VICAR BYTE/HALF/FULL/REAL/DOUB in BSQ/BIL/BIP, host byte orders (INTFMT/REALFMT),
+      degenerate shapes (1 x 1024, 1024 x 1), robustness against truncated files.
+    code: [src/main/java/jpl/mipl/io/vicar/**, src/main/java/jpl/mipl/io/plugins/Vicar*]
+    keywords: [FORMAT=vicar]
+    specs: [features/F01-vicar-io.spec.ts]
+    junit: [jpl.mipl.io.vicar.VicarLabelTest]
+
+  - id: F02
+    name: VICAR binary headers and line prefixes
+    tag: "@F02-vicar-binary"
+    status: planned
+    milestone: M3
+    description: NBB/NLB binary prefixes and headers; KEEP_LINE_PREFIX, ADD_BINARY_HEADER, RI.
+    code: [src/main/java/jpl/mipl/io/vicar/**]
+    keywords: [KEEP_LINE_PREFIX, ADD_BINARY_HEADER, RI]
+
+  - id: F03
+    name: PDS3 read/write
+    tag: "@F03-pds3"
+    status: active
+    description: >
+      PDS3 attached labels (including PDS3+VICAR dual labels), writing PDS3 with
+      embedded VICAR label and filename-in-label, OBJECT selection.
+    code: [src/main/java/jpl/mipl/io/plugins/PDS*, src/main/java/jpl/mipl/io/vicar/PDS*]
+    keywords: [FORMAT=pds, EMBED_VICAR_LABEL, PDS_FILENAME_IN_LABEL, PDS_OBJECT, PDS_DETACHED_LABEL, PDS_DETACHED_ONLY]
+    specs: [features/F03-pds3.spec.ts]
+    junit: [jpl.mipl.io.vicar.PDS3ObjectNameTest]
+    tickets: [IDS-10212, IDS-8497]
+
+  - id: F04
+    name: XSL label transcoding
+    tag: "@F04-xsl"
+    status: active
+    description: VICAR-to-PDS label transcoding through the bundled XSL stylesheets (XSL=- default and explicit files).
+    code: [src/main/resources/jpl/mipl/io/xsl/**, src/main/java/jpl/mipl/io/plugins/*Transcoder*]
+    keywords: [XSL, PDS_LABEL_TYPE]
+    specs: [features/F04-xsl.spec.ts]
+    tickets: [IDS-8815, IDS-6405]
+
+  - id: F05
+    name: PDS4 image read
+    tag: "@F05-pds4"
+    status: active
+    description: Reading images through PDS4 XML labels; the PDS4 view must match the attached-label view of the same data.
+    code: [src/main/java/jpl/mipl/io/plugins/PDS4*, src/main/java/jpl/mipl/io/vicar/PDS4*]
+    specs: [features/F05-pds4.spec.ts]
+    tickets: [IDS-8455, IDS-8424, IDS-8562, IDS-8494]
+
+  - id: F06
+    name: PDS4 table read
+    tag: "@F06-pds4-table"
+    status: planned
+    milestone: M3
+    description: PDS4 tables to CSV / fixed-width text.
+    keywords: [PDS4_TABLE_LIST, PDS4_TABLE_INDEX, PDS4_TABLE_FIELDS, PDS4_TABLE_OUPUT_FORMAT]
+    tickets: [IDS-6210]
+
+  - id: F07
+    name: ISIS read
+    tag: "@F07-isis"
+    status: planned
+    milestone: M3
+    description: ISIS cube read (needs a public ISIS2 qube; ISIS3 cubes are not supported).
+
+  - id: F08
+    name: FITS read
+    tag: "@F08-fits"
+    status: active
+    description: FITS images read through nom-tam-fits and converted to other formats.
+    code: [src/main/java/jpl/mipl/io/plugins/FITS*]
+    specs: [features/F08-fits.spec.ts]
+    tickets: [IDS-6383]
+
+  - id: F09
+    name: Magellan read
+    tag: "@F09-magellan"
+    status: planned
+    milestone: M3
+    description: Magellan FBIDR / resampled image read (needs a public sample product).
+
+  - id: F10
+    name: Output formats
+    tag: "@F10-formats"
+    status: active
+    description: >
+      Every FORMAT= name and alias exercised by the legacy tstjConvertIIO.csh loop
+      (TIFF, PNG, JPEG, JPEG 2000, JPEG-LS, BMP, PNM, RAW, PDS, VICAR, ISIS).
+    code: [src/main/java/jpl/mipl/io/jConvertIIO.java]
+    keywords: [FORMAT, OUT]
+    specs: [features/F10-formats.spec.ts]
+
+  - id: F11
+    name: Data type conversion
+    tag: "@F11-data-types"
+    status: active
+    description: OFORM conversions with RESCALE / CLAMP; float data to 8-bit display formats.
+    keywords: [OFORM, RESCALE, RESCALE_CONSTANT, RESCALE_OFFSET, CLAMP, VALID_MINIMUM, VALID_MAXIMUM]
+    specs: [features/F11-data-types.spec.ts]
+    tickets: [IDS-7610]
+
+  - id: F12
+    name: Regions, subsampling and band operations
+    tag: "@F12-region-bands"
+    status: planned
+    milestone: M3
+    description: SOURCE_REGION, SUBSAMPLING, READ_BANDS, BANDS, 2RGB, SCALE, CROP, PNG transparency.
+    keywords: [SOURCE_REGION, SUBSAMPLING, READ_BANDS, BANDS, 2RGB, WRITE_TRANSPARENCY]
+    tickets: [IDS-7098, IDS-7560, IDS-9904]
+
+  - id: F13
+    name: XML / DOM metadata
+    tag: "@F13-xml-dom"
+    status: active
+    description: XML label/DOM utilities, XML=true debug output, and XXE hardening of every XML parser.
+    code: [src/main/java/jpl/mipl/io/util/DOMutils.java, src/main/java/jpl/mipl/io/util/TreeInfo.java]
+    keywords: [XML]
+    specs: [features/F13-xml-dom.spec.ts]
+    junit: [jpl.mipl.io.util.DOMutilsXXETest]
+    tickets: [IDS-10406]
+
+  - id: F14
+    name: Batch, streaming and remote input
+    tag: "@F14-batch"
+    status: planned
+    milestone: M3
+    description: ARGFILE, PARALLEL_BATCH, OUT=- to stdout, files without extensions, http(s) input.
+    keywords: [ARGFILE, PARALLEL_BATCH, SILENT]
+    tickets: [IDS-10067, IDS-8883]
+
+  - id: F15
+    name: Display (JADE viewer)
+    tag: "@F15-gui"
+    status: planned
+    milestone: M3
+    description: DISPLAY=true / JFrameJade under xvfb with a screenshot (nightly only).
+
+  - id: F16
+    name: Python label scripts
+    tag: "@F16-python"
+    status: active
+    description: src/main/scripts Python utilities (xml_swap.py replace/list/show modes and XXE hardening).
+    code: [src/main/scripts/*.py]
+    specs: [features/F16-python.spec.ts]
+    tickets: [IDS-10407]
+
+  - id: X01
+    name: PDS4 label generation (Velocity templates)
+    tag: "@X01-velocity"
+    status: excluded
+    reason: >
+      Needs the non-public label-generation jar (VELO_TEMPLATE / VELO_CONFIG); cannot
+      run in a public workflow. Covered by the internal reg_test scripts.
+    tickets: [IDS-8541, IDS-8624, IDS-8406]
