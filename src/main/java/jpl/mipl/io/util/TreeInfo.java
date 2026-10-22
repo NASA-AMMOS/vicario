@@ -116,8 +116,8 @@ public class TreeInfo {
 		jpl.mipl.io.util.DOMutils domUtils = new jpl.mipl.io.util.DOMutils();
 		try {
 		    // load the document from a file:
-		    DocumentBuilderFactory factory = 
-		      DocumentBuilderFactory.newInstance();
+		    DocumentBuilderFactory factory =
+		      DOMutils.newDocumentBuilderFactory();
 		    DocumentBuilder loader = factory.newDocumentBuilder();
 		    Document document = loader.parse(file);
 
