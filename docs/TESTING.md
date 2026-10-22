@@ -14,7 +14,7 @@ Both run in GitHub Actions. The fast tier and the unit tests are **required chec
 Prerequisites: JDK 17, Maven 3.9+, Node 20+, and Python 3 with `lxml` (for the label-script tests).
 
 ```bash
-mvn -B -P shade -DskipTests package test-compile   # FAT jar + ImageProbe / SyntheticGen
+mvn -B -P shade package test-compile               # FAT jar, unit tests, ImageProbe / SyntheticGen
 cd tests/e2e
 npm ci
 npm run data:fast                                  # or data:full
@@ -32,6 +32,7 @@ npx playwright show-report
 - **Specs.** One spec per feature in `tests/e2e/features/`. Each `test.describe` carries the feature tag and a tier tag (`@fast` or `@full`), so the HTML report groups results by feature.
 - **Running the product.** Specs run the real CLI (`java -cp vicario-*-FAT.jar jpl.mipl.io.jConvertIIO ...`). Command lines and logs are attached to the report. `jConvertIIO` can exit 0 after an error, so `expectConverted()` also requires a non-empty output and a log free of exceptions.
 - **Oracle.** `jpl.mipl.io.testsupport.ImageProbe` (in `src/test/java`) decodes any readable image and reports its dimensions, data type, statistics and a format-independent `pixelSha256`. Lossless conversions must keep the hash; lossy ones are compared by statistics. A contrast-stretched PNG preview of every image is attached to the report.
+- **Unit tests in the report.** `features/junit.spec.ts` imports `target/surefire-reports`, one report entry per JUnit test, grouped under the feature whose `junit:` list names the class (an unlisted class fails).
 - **Synthetic data.** `jpl.mipl.io.testsupport.SyntheticGen` replaces VICAR `gen`: every data type × organization, plus the legacy 1×1024 / 1024×1 / REAL 100×100 cases.
 - **Public data.** [`tests/e2e/data/manifest.json`](../tests/e2e/data/manifest.json) pins every downloaded file by URL, SHA-256 and license. `scripts/fetch-test-data.mjs` refuses any of the following:
   - unpinned files
@@ -73,7 +74,7 @@ See [.github/project-requirements/criteria.md](../.github/project-requirements/c
 | `nightly.yml` | 07:00 UTC daily, release published, manual | `e2e-full` |
 | `release.yml` | push to `main`/`develop` | `ci`, then build, release, publish |
 
-Each run uploads `playwright-report-<tier>` (HTML report, JUnit and JSON results), kept for **5 days**. The job summary shows a pass/fail/known-failure table per feature.
+Each run uploads `playwright-report-<tier>` (HTML report including the JUnit results, plus JUnit/JSON result files), kept for **5 days**. GitHub serves artifacts as zip downloads: unzip and open `playwright-report/index.html`, or run `npx playwright show-report <folder>`. The job summary shows a pass/fail/known-failure table per feature.
 
 ## Branch protection
 
