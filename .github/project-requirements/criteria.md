@@ -26,18 +26,18 @@ The public repository and its workflows build and test anywhere:
 
 ### Area changed → expected test location
 
-| Area changed | Feature | Expected tests |
+| Area changed | Feature (id) | Expected tests in `tests/e2e/features/` |
 |---|---|---|
-| `src/main/java/jpl/mipl/io/vicar/**` (VICAR I/O, labels) | F01, F02 | `tests/e2e/features/F01-vicar-io.spec.ts`; JUnit in `src/test/java/jpl/mipl/io/vicar/` |
-| `plugins/PDS*`, `vicar/PDS*` (PDS3) | F03 | `F03-pds3.spec.ts`; `PDS3ObjectNameTest` |
-| `src/main/resources/jpl/mipl/io/xsl/*.xsl`, `*Transcoder*` | F04 | `F04-xsl.spec.ts` (a new VicarToPDS stylesheet is picked up automatically) |
-| `plugins/PDS4*`, `vicar/PDS4*` | F05, F06 | `F05-pds4.spec.ts` (tables: F06, planned) |
-| `plugins/ISIS*`, `plugins/FITS*`, `plugins/Magellan*` (Mgn) | F07, F08, F09 | `F08-fits.spec.ts` (ISIS / Magellan: planned) |
-| `jConvertIIO.java` FORMAT handling, writer selection | F10 | `F10-formats.spec.ts` |
-| `OFORM` / `RESCALE` / `CLAMP` | F11 | `F11-data-types.spec.ts` |
-| `SOURCE_REGION`, `SUBSAMPLING`, `BANDS`, `2RGB`, transparency | F12 | planned (M3): add `F12-*.spec.ts` with the change |
-| `util/DOMutils*`, `util/TreeInfo*`, any XML parsing | F13 | `F13-xml-dom.spec.ts`; `DOMutilsXXETest` |
-| `ARGFILE`, `PARALLEL_BATCH`, remote input | F14 | planned (M3) |
-| `src/main/scripts/*.py` | F16 | `F16-python.spec.ts` |
-| Velocity PDS4 label generation | X01 | excluded from public CI (non-public jar); use the internal reg_test scripts |
+| `src/main/java/jpl/mipl/io/vicar/**` (VICAR I/O, labels) | `vicar-io`, `vicar-binary` | `vicar-io.spec.ts`; JUnit in `src/test/java/jpl/mipl/io/vicar/` |
+| `plugins/PDS*`, `vicar/PDS*` (PDS3) | `pds3` | `pds3.spec.ts`; `PDS3ObjectNameTest` |
+| `src/main/resources/jpl/mipl/io/xsl/*.xsl`, `*Transcoder*` | `xsl-labels` | `xsl-labels.spec.ts` (a new VicarToPDS stylesheet is picked up automatically) |
+| `plugins/PDS4*`, `vicar/PDS4*` | `pds4-images`, `pds4-tables` | `pds4-images.spec.ts` (tables: planned) |
+| `plugins/ISIS*`, `plugins/FITS*`, `plugins/Mgn*` | `isis`, `fits`, `magellan` | `fits.spec.ts` (ISIS / Magellan: planned) |
+| `jConvertIIO.java` FORMAT handling, writer selection | `output-formats` | `output-formats.spec.ts` |
+| `OFORM` / `RESCALE` / `CLAMP` | `data-types` | `data-types.spec.ts` |
+| `SOURCE_REGION`, `SUBSAMPLING`, `BANDS`, `2RGB`, transparency | `regions-bands` | planned (M3): add `regions-bands.spec.ts` with the change |
+| `util/DOMutils*`, `util/TreeInfo*`, any XML parsing | `xml-security` | `xml-security.spec.ts`; `DOMutilsXXETest` |
+| `ARGFILE`, `PARALLEL_BATCH`, remote input | `batch-remote` | planned (M3) |
+| `src/main/scripts/*.py` | `python-scripts` | `python-scripts.spec.ts` |
+| Velocity PDS4 label generation | `velocity-labels` | excluded from public CI (non-public jar); use the internal reg_test scripts |
 | `.github/workflows/**`, `tests/e2e/data/**` | — | `data-guard` passes; manifest entries pinned and licensed |

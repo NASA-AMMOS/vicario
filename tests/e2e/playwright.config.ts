@@ -13,7 +13,9 @@ export default defineConfig({
   workers: process.env.UPDATE_GOLDENS === '1' ? 1 : process.env.CI ? 4 : undefined,
   reporter: [
     ['list'],
-    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+    ['html', { open: 'never', outputFolder: 'report/playwright', title: 'VICARIO feature tests' }],
+    // landing page report/index.html (feature overview) and report/overview.md
+    ['./support/overview-reporter.ts', { outputFolder: 'report' }],
     ['junit', { outputFile: 'results/junit.xml' }],
     ['json', { outputFile: 'results/results.json' }],
   ],

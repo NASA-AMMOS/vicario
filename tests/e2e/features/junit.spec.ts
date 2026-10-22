@@ -5,7 +5,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { REPO_ROOT } from '../support/env';
-import { features } from '../support/features';
+import { features, tagOf } from '../support/features';
 
 const SUREFIRE = path.join(REPO_ROOT, 'target', 'surefire-reports');
 
@@ -43,8 +43,9 @@ if (!existsSync(SUREFIRE)) {
   const owners = new Map(features().flatMap((f) => (f.junit ?? []).map((cls) => [cls, f] as const)));
   for (const cls of [...new Set(cases.map((c) => c.cls))].sort()) {
     const owner = owners.get(cls);
-    const tag = owner ? [owner.tag, '@fast'] : ['@junit', '@fast'];
-    test.describe(`JUnit ${cls.split('.').pop()}`, { tag }, () => {
+    const tag = owner ? [tagOf(owner), '@fast'] : ['@junit', '@fast'];
+    const annotation = owner ? [{ type: 'feature', description: `${owner.name}: ${owner.description.trim()}` }] : [];
+    test.describe(`Unit tests (JUnit): ${cls.split('.').pop()}`, { tag, annotation }, () => {
       test('class is listed under a feature in features.yml', () => {
         expect(owner, `add ${cls} to a feature's junit: list`).toBeTruthy();
       });

@@ -1,4 +1,4 @@
-// F03 PDS3 read/write: writing PDS3 labels from VICAR, reading public PDS3
+// PDS3 products: writing PDS3 labels from VICAR, reading public PDS3
 // products (attached PDS3+VICAR labels, detached .LBL), PDS-to-PDS conversion.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -10,7 +10,7 @@ import { expectGolden } from '../support/goldens';
 import { expectValidPds3Label, pdsLabel } from '../support/labels';
 import { convert, expectConverted, expectSamePixels, probe, tryProbe } from '../support/run';
 
-test.describe('F03 PDS3 read/write', feature('F03'), () => {
+test.describe('PDS3 products', feature('pds3'), () => {
   const input = synthetic('gen_byte_bsq.vic');
   const dims = { lines: 64, samples: 48, bands: 3 };
 
@@ -76,7 +76,7 @@ test.describe('F03 PDS3 read/write', feature('F03'), () => {
   });
 });
 
-test.describe('F03 PDS3 read/write: full-size products', feature('F03', 'full'), () => {
+test.describe('PDS3 products (full-size products)', feature('pds3', 'full'), () => {
   test('MSL Navcam full EDR reads and round-trips through VICAR', async ({}, testInfo) => {
     const img = asset('msl-navcam-edr-img');
     asset('msl-navcam-edr-lbl');

@@ -1,4 +1,4 @@
-// F05 PDS4 image read: a Mars 2020 Navcam product read through its PDS4 XML
+// PDS4 images: a Mars 2020 Navcam product read through its PDS4 XML
 // label must decode to the same pixels as the attached VICAR/ODL label.
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
@@ -7,7 +7,7 @@ import { feature } from '../support/features';
 import { expectGolden } from '../support/goldens';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 
-test.describe('F05 PDS4 image read', feature('F05'), () => {
+test.describe('PDS4 images', feature('pds4-images'), () => {
   test('PDS4 label and attached label decode the same pixels', async ({}, testInfo) => {
     const img = await probe(testInfo, asset('m2020-navcam-thumb-img'));
     const xml = await probe(testInfo, asset('m2020-navcam-thumb-xml'));
@@ -38,7 +38,7 @@ test.describe('F05 PDS4 image read', feature('F05'), () => {
   });
 });
 
-test.describe('F05 PDS4 image read: full-size products', feature('F05', 'full'), () => {
+test.describe('PDS4 images (full-size products)', feature('pds4-images', 'full'), () => {
   test('Mars 2020 Navcam full EDR via PDS4 label', async ({}, testInfo) => {
     const label = asset('m2020-navcam-edr-xml');
     const img = await probe(testInfo, asset('m2020-navcam-edr-img'));

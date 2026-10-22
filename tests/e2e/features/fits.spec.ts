@@ -1,11 +1,11 @@
-// F08 FITS read: a public FITS image read and converted losslessly.
+// FITS images: a public FITS image read and converted losslessly.
 import { expect, test } from '@playwright/test';
 import { asset } from '../support/data';
 import { feature, issue } from '../support/features';
 import { expectGolden } from '../support/goldens';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 
-test.describe('F08 FITS read', feature('F08'), () => {
+test.describe('FITS images', feature('fits'), () => {
   test('reads HorseHead.fits and converts it to VICAR and TIFF', async ({}, testInfo) => {
     issue('NOTE', 'jConvertIIO flips FITS (bottom-up rows) to top-down display order; the ImageIO reader returns '
       + 'storage order, so outputs are compared with each other and by statistics');

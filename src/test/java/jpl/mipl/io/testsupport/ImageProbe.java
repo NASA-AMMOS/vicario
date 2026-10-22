@@ -106,10 +106,30 @@ public class ImageProbe {
 		}
 	}
 
-	/** Linear stretch min..max to 0..255; 1 band → gray, 3+ bands → RGB of the first three. */
+	/**
+	 * Linear stretch between the 1st and 99th percentiles to 0..255 (so a few hot
+	 * pixels do not leave 12-bit mission images black); 1 band → gray,
+	 * 3+ bands → RGB of the first three.
+	 */
 	static void writePreview(Raster raster, double min, double max, File out) throws Exception {
 		int w = raster.getWidth(), h = raster.getHeight();
 		int nb = raster.getNumBands() >= 3 ? 3 : 1;
+		int step = Math.max(1, (int) Math.sqrt((double) w * h / 250000));
+		double[] sample = new double[((w + step - 1) / step) * ((h + step - 1) / step) * nb];
+		int n = 0;
+		for (int y = 0; y < h; y += step) {
+			for (int x = 0; x < w; x += step) {
+				for (int b = 0; b < nb; b++) {
+					double v = raster.getSampleDouble(raster.getMinX() + x, raster.getMinY() + y, b);
+					if (!Double.isNaN(v)) sample[n++] = v;
+				}
+			}
+		}
+		java.util.Arrays.sort(sample, 0, n);
+		if (n > 0 && sample[(int) (n * 0.99)] > sample[(int) (n * 0.01)]) {
+			min = sample[(int) (n * 0.01)];
+			max = sample[(int) (n * 0.99)];
+		}
 		double scale = max > min ? 255.0 / (max - min) : 0;
 		BufferedImage img = new BufferedImage(w, h,
 			nb == 3 ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_BYTE_GRAY);

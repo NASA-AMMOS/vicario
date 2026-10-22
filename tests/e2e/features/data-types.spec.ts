@@ -1,4 +1,4 @@
-// F11 Data type conversion: OFORM with and without RESCALE, CLAMP, and
+// Data type conversion: OFORM with and without RESCALE, CLAMP, and
 // float data to 8-bit display formats (IDS-7610).
 import { expect, test } from '@playwright/test';
 import { asset } from '../support/data';
@@ -6,7 +6,7 @@ import { synthetic } from '../support/env';
 import { feature, issue, knownFailure } from '../support/features';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 
-test.describe('F11 Data type conversion', feature('F11'), () => {
+test.describe('Data type conversion', feature('data-types'), () => {
   test('REAL to PNG with OFORM=BYTE is stretched, not blank', async ({}, testInfo) => {
     issue('IDS-7610', 'float VICAR to PNG came out blank');
     const r = await convert(testInfo, synthetic('gen_real_100x100.vic'), 'real.png', { format: 'png', OFORM: 'BYTE' });
@@ -68,7 +68,7 @@ test.describe('F11 Data type conversion', feature('F11'), () => {
   });
 });
 
-test.describe('F11 Data type conversion: mission products', feature('F11', 'full'), () => {
+test.describe('Data type conversion (mission products)', feature('data-types', 'full'), () => {
   test('12-bit MER EDR to an 8-bit PNG browse image', async ({}, testInfo) => {
     const r = await convert(testInfo, asset('mer1-navcam-edr'), 'mer_browse.png', { format: 'png', OFORM: 'BYTE' });
     expectConverted(r);

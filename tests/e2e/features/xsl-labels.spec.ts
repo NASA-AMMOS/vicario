@@ -1,4 +1,4 @@
-// F04 XSL label transcoding: the bundled VicarToPDS stylesheets, XSL=- (the
+// PDS label transcoding (XSL): the bundled VicarToPDS stylesheets, XSL=- (the
 // default stylesheet in the jar) and the legacy tstjConvertIIO.csh recipes.
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
@@ -11,7 +11,7 @@ import { convert, expectConverted, expectSamePixels, probe } from '../support/ru
 
 const VICAR_TO_PDS = readdirSync(XSL_DIR).filter((f) => /^VicarToPDS.*\.xsl$/.test(f)).sort();
 
-test.describe('F04 XSL label transcoding', feature('F04'), () => {
+test.describe('PDS label transcoding (XSL)', feature('xsl-labels'), () => {
   const input = synthetic('gen_byte_bsq.vic');
   const dims = { lines: 64, samples: 48, bands: 3 };
 
@@ -42,7 +42,7 @@ test.describe('F04 XSL label transcoding', feature('F04'), () => {
   });
 });
 
-test.describe('F04 XSL label transcoding: mission products', feature('F04', 'full'), () => {
+test.describe('PDS label transcoding (XSL) (mission products)', feature('xsl-labels', 'full'), () => {
   test('legacy normal.pds recipe on a public MER EDR (via VICAR)', async ({}, testInfo) => {
     const mer = asset('mer1-navcam-edr');
     const vic = await convert(testInfo, mer, 'mer.vic', { format: 'vicar' });

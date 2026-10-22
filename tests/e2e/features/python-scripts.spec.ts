@@ -1,4 +1,4 @@
-// F16 Python label scripts: xml_swap.py modes and XXE hardening (IDS-10407).
+// Python label scripts: xml_swap.py modes and XXE hardening (IDS-10407).
 // Needs python3 with lxml; a missing interpreter or module fails the test.
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -18,7 +18,7 @@ async function swap(testInfo: import('@playwright/test').TestInfo, args: string[
   return r;
 }
 
-test.describe('F16 Python label scripts', feature('F16'), () => {
+test.describe('Python label scripts', feature('python-scripts'), () => {
   test.beforeAll(async () => {
     const r = await run([PYTHON, '-I', '-c', 'import lxml']);
     if (r.exitCode !== 0) throw new Error(`${PYTHON} with lxml is required (pip install lxml): ${r.stderr}`);

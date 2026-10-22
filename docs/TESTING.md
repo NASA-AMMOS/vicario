@@ -5,7 +5,7 @@ vicario has two test layers:
 | Layer | Where | Runs |
 |---|---|---|
 | Unit tests (JUnit 4) | `src/test/java` | `mvn test` |
-| Feature tests (Playwright Test driving `jConvertIIO`) | `tests/e2e` | fast tier on every PR; full tier nightly and on release |
+| Feature tests (Playwright Test driving `jConvertIIO`) | `tests/e2e` | fast tier on every PR; full tier on every push to `main`, nightly and on release (published to GitHub Pages) |
 
 Both run in GitHub Actions. The fast tier and the unit tests are **required checks**: a pull request into `main` or `develop` cannot merge until they pass.
 
@@ -19,16 +19,16 @@ cd tests/e2e
 npm ci
 npm run data:fast                                  # or data:full
 npx playwright test --project fast                 # or --project full
-npx playwright show-report
+open report/index.html                             # feature overview; full Playwright report in report/playwright/
 ```
 
 - **Python:** set `VICARIO_PYTHON=/path/to/python` if the default `python3` has no `lxml`.
 - **JDK:** `JAVA_HOME` selects the JDK used for `jConvertIIO`.
-- **Single feature:** `npx playwright test --grep @F03-pds3`.
+- **Single feature:** `npx playwright test --grep @pds3` (each feature's id is its tag).
 
 ## How the feature tests work
 
-- **Feature registry.** [`tests/e2e/features.yml`](../tests/e2e/features.yml) lists every capability (F01 VICAR I/O, F03 PDS3, F05 PDS4, F10 output formats, ...) with its code paths, keywords, tickets and status (`active`, `planned` with a milestone, or `excluded` with a reason). `features/registry.spec.ts` fails if a spec has no feature, an active feature has no spec, or a manifest asset is unpinned or unused.
+- **Feature registry.** [`tests/e2e/features.yml`](../tests/e2e/features.yml) lists every capability (`vicar-io`, `pds3`, `pds4-images`, `output-formats`, ...) with a name and description, its code paths, keywords, tickets and status (`active`, `planned` with a milestone, or `excluded` with a reason). `features/registry.spec.ts` fails if a spec has no feature, an active feature has no spec, or a manifest asset is unpinned or unused.
 - **Specs.** One spec per feature in `tests/e2e/features/`. Each `test.describe` carries the feature tag and a tier tag (`@fast` or `@full`), so the HTML report groups results by feature.
 - **Running the product.** Specs run the real CLI (`java -cp vicario-*-FAT.jar jpl.mipl.io.jConvertIIO ...`). Command lines and logs are attached to the report. `jConvertIIO` can exit 0 after an error, so `expectConverted()` also requires a non-empty output and a log free of exceptions.
 - **Oracle.** `jpl.mipl.io.testsupport.ImageProbe` (in `src/test/java`) decodes any readable image and reports its dimensions, data type, statistics and a format-independent `pixelSha256`. Lossless conversions must keep the hash; lossy ones are compared by statistics. A contrast-stretched PNG preview of every image is attached to the report.
@@ -53,7 +53,7 @@ The public workflow may only use publicly released data and generic paths. `test
 - a tracked `TESTING/` directory
 - a manifest URL outside the allowlist
 
-The legacy `TESTING/` area (internal paths and data) is git-ignored and must never be committed. Its `tstjConvertIIO.csh` cases are ported in F01/F03/F04/F10, using public stand-ins for the internal inputs.
+The legacy `TESTING/` area (internal paths and data) is git-ignored and must never be committed. Its `tstjConvertIIO.csh` cases are ported in the `vicar-io`, `pds3`, `xsl-labels` and `output-formats` specs, using public stand-ins for the internal inputs.
 
 ## Adding tests
 
@@ -71,10 +71,16 @@ See [.github/project-requirements/criteria.md](../.github/project-requirements/c
 | Workflow | Trigger | Jobs |
 |---|---|---|
 | `ci.yml` | pull requests to `main`/`develop`; called by `release.yml` on push | `junit`, `e2e-fast`, `data-guard` |
-| `nightly.yml` | 07:00 UTC daily, release published, manual | `e2e-full` |
+| `publish.yml` | push to `main`, 07:00 UTC daily, release published, manual | `e2e-full`, then `deploy` to GitHub Pages |
 | `release.yml` | push to `main`/`develop` | `ci`, then build, release, publish |
 
-Each run uploads `playwright-report-<tier>` (HTML report including the JUnit results, plus JUnit/JSON result files), kept for **5 days**. GitHub serves artifacts as zip downloads: unzip and open `playwright-report/index.html`, or run `npx playwright show-report <folder>`. The job summary shows a pass/fail/known-failure table per feature.
+The report has two levels:
+- **`report/index.html`**, the feature overview: each feature's description, status and pass/fail/known-issue counts, a gallery of image previews from its tests, the known issues grouped by ticket, and the features not yet automated. Each feature and image links into the full report.
+- **`report/playwright/`**, the Playwright HTML report: every test with its command line, logs, label text and image previews, including the JUnit results.
+
+Where to find it:
+- **Pull requests:** `ci.yml` uploads it as the `feature-report-fast` artifact, kept for **5 days**. GitHub serves artifacts as zip downloads, so unzip it and open `report/index.html`. The job summary also shows the feature table inline.
+- **`main`:** `publish.yml` runs the full tier on every push (and nightly), then publishes a project home page with the latest report to GitHub Pages at <https://nasa-ammos.github.io/vicario/>. The site is published even when tests fail, so it always shows the current state. Pages must be set to "GitHub Actions" as its source (Settings → Pages).
 
 ## Branch protection
 
@@ -97,4 +103,4 @@ JSON
 done
 ```
 
-The nightly full tier is deliberately not required.
+The full tier (`publish.yml`) is deliberately not a required check.

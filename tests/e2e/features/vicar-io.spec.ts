@@ -1,4 +1,4 @@
-// F01 VICAR read/write: data types x organizations, byte orders, degenerate
+// VICAR image read/write: data types x organizations, byte orders, degenerate
 // shapes, truncated input. Synthetic images come from SyntheticGen (global setup).
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
@@ -11,7 +11,7 @@ const TYPES = { byte: 'BYTE', half: 'SHORT', full: 'INT', real: 'FLOAT', doub: '
 const VICAR_FORMAT = { byte: 'BYTE', half: 'HALF', full: 'FULL', real: 'REAL', doub: 'DOUB' } as const;
 const ORGS = ['bsq', 'bil', 'bip'] as const;
 
-test.describe('F01 VICAR read/write', feature('F01'), () => {
+test.describe('VICAR image read/write', feature('vicar-io'), () => {
   for (const [type, dataType] of Object.entries(TYPES) as [keyof typeof TYPES, string][]) {
     test(`${type}: BSQ, BIL and BIP decode to the same pixels`, async ({}, testInfo) => {
       const [bsq, bil, bip] = await Promise.all(ORGS.map((org) => probe(testInfo, synthetic(`gen_${type}_${org}.vic`))));

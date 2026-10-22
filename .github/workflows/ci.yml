@@ -95,7 +95,7 @@ jobs:
 
       - name: Feature summary
         if: always()
-        run: node scripts/summary.mjs >> "$GITHUB_STEP_SUMMARY"
+        run: cat report/overview.md >> "$GITHUB_STEP_SUMMARY" || true
 
       # save only after a green run, so a bad download never occupies the key
       - name: Save test data
@@ -109,9 +109,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report-fast
+          name: feature-report-fast
           path: |
-            tests/e2e/playwright-report/
+            tests/e2e/report/
             tests/e2e/results/
           retention-days: 5
           if-no-files-found: warn

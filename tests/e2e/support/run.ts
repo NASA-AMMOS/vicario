@@ -4,7 +4,8 @@ import { execFile } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { expect, type TestInfo } from '@playwright/test';
-import { JAVA, TEST_CLASSES, fatJar } from './env';
+import { manifestAssets } from './data';
+import { DATA_DIR, JAVA, TEST_CLASSES, fatJar } from './env';
 
 export interface ProcResult {
   cmd: string[];
@@ -94,7 +95,10 @@ export async function tryProbe(testInfo: TestInfo, file: string, opts: { preview
   const p = JSON.parse(line) as Probe;
   await testInfo.attach(`probe-${base}.json`, { body: JSON.stringify(p, null, 2), contentType: 'application/json' });
   if (opts.preview !== false && existsSync(preview)) {
-    await testInfo.attach(`${base} preview`, { path: preview, contentType: 'image/png' });
+    // "[mission data]" marks previews of real mission products (not GDAL fixtures) for the overview galleries
+    const asset = manifestAssets().find((a) => path.join(DATA_DIR, a.file) === abs);
+    const origin = asset && !/GDAL/.test(asset.source) ? ' [mission data]' : '';
+    await testInfo.attach(`${base} preview${origin}`, { path: preview, contentType: 'image/png' });
   }
   return p;
 }

@@ -1,4 +1,4 @@
-// F13 XML / DOM metadata: XML=true debug output, and the XXE hardening of the
+// XML metadata and parser security: XML=true debug output, and the XXE hardening of the
 // XML parsers (IDS-10406) exercised through the TreeInfo command line.
 // Unit-level XXE coverage, against both the JDK parser and Xerces, is in
 // src/test/java/jpl/mipl/io/util/DOMutilsXXETest.java (run by `mvn test`).
@@ -17,7 +17,7 @@ async function treeInfo(testInfo: import('@playwright/test').TestInfo, file: str
   return `${r.stdout}\n${r.stderr}`;
 }
 
-test.describe('F13 XML / DOM metadata', feature('F13'), () => {
+test.describe('XML metadata and parser security', feature('xml-security'), () => {
   test('XML=true writes the label DOM as XML debug documents', async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_byte_bsq.vic'), 'xml_debug.pds', { format: 'pds', XML: 'true' });
     expectConverted(r);

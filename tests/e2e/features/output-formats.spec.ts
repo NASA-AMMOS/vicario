@@ -1,4 +1,4 @@
-// F10 Output formats: every FORMAT= name the legacy tstjConvertIIO.csh loop
+// Output formats: every FORMAT= name the legacy tstjConvertIIO.csh loop
 // used (29 names/aliases), written from a synthetic 3-band BYTE image, plus
 // 16-bit and float inputs to the formats that can hold them.
 import { statSync } from 'node:fs';
@@ -26,7 +26,7 @@ const FORMATS: [string, Mode, string?][] = [
   ['isis', 'fail', `LEGACY: ${NO_WRITER}`],
 ];
 
-test.describe('F10 Output formats', feature('F10'), () => {
+test.describe('Output formats', feature('output-formats'), () => {
   const input = synthetic('gen_byte_bsq.vic');
 
   FORMATS.forEach(([format, mode, issue], i) => {

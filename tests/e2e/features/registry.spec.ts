@@ -4,20 +4,21 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { manifestAssets } from '../support/data';
 import { E2E_ROOT } from '../support/env';
-import { features } from '../support/features';
+import { features, tagOf } from '../support/features';
 
 const specFiles = readdirSync(path.join(E2E_ROOT, 'features'))
   .filter((f) => f.endsWith('.spec.ts') && !['registry.spec.ts', 'junit.spec.ts'].includes(f))
   .map((f) => `features/${f}`);
 
 test.describe('Feature registry', { tag: ['@registry', '@fast'] }, () => {
-  test('feature ids and tags are unique and well formed', () => {
+  test('feature ids are unique and well formed, with a name and description', () => {
     const fs = features();
     expect(new Set(fs.map((f) => f.id)).size).toBe(fs.length);
-    expect(new Set(fs.map((f) => f.tag)).size).toBe(fs.length);
     for (const f of fs) {
-      expect(f.id).toMatch(/^[FX]\d\d$/);
-      expect(f.tag, f.id).toMatch(new RegExp(`^@${f.id}-[a-z0-9-]+$`));
+      expect(f.id).toMatch(/^[a-z][a-z0-9-]*$/);
+      expect(['registry', 'junit', 'fast', 'full'], `${f.id} is reserved`).not.toContain(f.id);
+      expect(f.name, f.id).toBeTruthy();
+      expect(f.description, f.id).toBeTruthy();
       expect(['active', 'planned', 'excluded'], f.id).toContain(f.status);
     }
   });
@@ -28,7 +29,7 @@ test.describe('Feature registry', { tag: ['@registry', '@fast'] }, () => {
       for (const spec of f.specs!) {
         const file = path.join(E2E_ROOT, spec);
         expect(existsSync(file), `${f.id}: ${spec} exists`).toBe(true);
-        expect(readFileSync(file, 'utf8'), `${spec} uses feature('${f.id}')`).toContain(`feature('${f.id}'`);
+        expect(readFileSync(file, 'utf8'), `${spec} uses feature('${f.id}') (tag ${tagOf(f)})`).toContain(`feature('${f.id}'`);
       }
     }
   });
