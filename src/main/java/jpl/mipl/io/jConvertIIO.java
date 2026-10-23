@@ -397,6 +397,11 @@ String extraFileLabel= "extra"; // The variable name to be used by a velocity te
 
 static final Runtime runtime = Runtime.getRuntime ();
 
+// result of the conversion run by the constructor, false if it failed (main exits non-zero)
+boolean convStatus = true;
+// set by processSave when the ImageWriter fails, so conv can report the failure
+boolean writeFailed = false;
+
 /**
 * jConvertIIO INP=500bx2.vic OUT=DISPLAY FORMAT=BYTE
 **/
@@ -409,7 +414,7 @@ public jConvertIIO(String args[])
     
     // registerCodecs();
     // codecInfo();
-    conv(args);   
+    convStatus = conv(args);   
     // should print args if silent == false
 	if (silent == false) {
 		String key, value;
@@ -551,6 +556,9 @@ static public void main(String args[])
 	
 	if (argFile.equalsIgnoreCase("") ) {
 		jConvertIIO convert = new jConvertIIO(args);
+		if (convert.convStatus == false) {
+			System.exit(1); // 1 is error return
+		}
 		
 	} else {
 		// open the argFile - loop thru
@@ -3390,6 +3398,10 @@ public boolean conv(String argv[]) {
 		System.out.println("jConvertIIO processSave 2875 calling processSave %%% fakeImage "+fakeImage+" %%%%%%%%%%%%%%%%%%%");
 	}
 	    processSave(iioImageOut, inputFileName, outputFileName, outputFormat); 
+	    if (writeFailed) {
+	    	System.out.println("Image write failed: "+outputFileName);
+	    	return false;
+	    }
 	    System.out.println("Image write Done");
 	    
 	  
@@ -3874,6 +3886,7 @@ public void jediTest(String inputFileName, boolean displayImage) {
     ****************/
     public void processSave(IIOImage iioImage, String inputFile, String outputFile, String format) {   
         
+        writeFailed = false;
         if (format == null || format.equals("") || format.equals("-") ) {
         	return;
         }
@@ -4698,10 +4711,12 @@ public void jediTest(String inputFileName, boolean displayImage) {
       catch (IIOException iioe) {
 	    System.out.println("IIOException in Image2File : "+iioe);
 	    iioe.printStackTrace();
+	    writeFailed = true;
 	  } 
 	  catch (IOException ioe) {
 	    System.out.println("IOException in Image2File : "+ioe);
 	    ioe.printStackTrace();
+	    writeFailed = true;
 	  } 
 	  
     } 

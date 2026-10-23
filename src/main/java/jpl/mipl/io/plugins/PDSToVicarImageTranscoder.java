@@ -164,6 +164,7 @@ public class PDSToVicarImageTranscoder implements ImageTranscoder {
             	// String nativeIm = pm.nativeImageMetadataFormatName;
             	Node doc1 =  pm.getAsTree(nativeIm) ;  // getNativeTree();
             	Document doc2 = null;
+            	DOMutils.TransformErrors xslErrors = null; // errors from a user supplied stylesheet
             	if (doc1 == null) {
             		System.out.println("PDSMetadata document returned null, metadata transform failed");
             		return null;
@@ -173,7 +174,8 @@ public class PDSToVicarImageTranscoder implements ImageTranscoder {
             		if (outputXML) domUtil.serializeNode(doc1,xmlFile1,"xml");
             		if (debug) System.out.println("--- transform PDS metadata to Vicar with "+xslFile);
             		if (xslFile != null && xslFile.equals("-") == false) {
-        				doc2 = domUtil.transformDocument(doc1, xslFile);
+        				xslErrors = new DOMutils.TransformErrors();
+        				doc2 = domUtil.transformDocument(doc1, xslFile, xslErrors);
         				if (debug) System.out.println("--- transform succeeded using "+xslFile);
             		}
             		else if (xslInputStream != null) {
@@ -182,6 +184,26 @@ public class PDSToVicarImageTranscoder implements ImageTranscoder {
             			}
             			doc2 = domUtil.transformDocument(doc1, xslInputStream);
         				if (debug) System.out.println("--- transform succeeded using default transform "+xslFromJar);
+            		}
+            		/*
+            		 * A stylesheet written for another label type (e.g. a VICAR to PDS
+            		 * stylesheet given a PDS label) can fail or produce no root element.
+            		 * Ignore it and use the default PDS to VICAR stylesheet instead.
+            		 */
+            		if (xslErrors != null && (doc2 == null || doc2.getDocumentElement() == null)) {
+            			String reason = xslErrors.getFirstError();
+            			System.out.println("WARNING: stylesheet "+xslFile+" produced no label from the input "+
+            					nativeIm+" label"+(reason == null ? "" : " ("+reason+")")+"; using the default stylesheet "+xslFromJar);
+            			xslInputStream = InputStreamFromJar(xslFromJar);
+            			if (xslInputStream != null) {
+            				doc2 = domUtil.transformDocument(doc1, xslInputStream);
+            			}
+            		}
+            		else if (xslErrors != null) {
+            			xslErrors.print();
+            		}
+            		if (doc2 != null && doc2.getDocumentElement() == null) {
+            			doc2 = null;
             		}
             	}
         		if (doc2 != null) {
@@ -260,7 +282,13 @@ public class PDSToVicarImageTranscoder implements ImageTranscoder {
     	URL url;
     	boolean go = true;
     	
-    	url = ClassLoader.getSystemResource(arg);
+    	// use this class's own loader so the resource is found when vicario is used
+    	// as a library (app servers, plugin loaders), not only from the system classpath
+    	url = getClass().getClassLoader().getResource(arg);
+    	if (url == null) {
+    		System.out.println(" InputStreamFromJar: resource not found on classpath: "+arg);
+    		return null;
+    	}
     	try {
     	is = url.openStream();
     	}
