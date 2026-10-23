@@ -4,7 +4,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
 import { synthetic } from '../support/env';
-import { about, feature, issue, knownFailure } from '../support/features';
+import { about, feature, issue, needsReview } from '../support/features';
 import { convert, expectConverted, expectSamePixels, probe, tryProbe } from '../support/run';
 
 const TYPES = { byte: 'BYTE', half: 'SHORT', full: 'INT', real: 'FLOAT', doub: 'DOUBLE' } as const;
@@ -86,7 +86,7 @@ test.describe('VICAR image read/write', feature('vicar-io'), () => {
     `Reads the GDAL little-endian HALF fixture (values 1 to 24) through the Java ImageIO API rather than jConvertIIO, and compares it with the BYTE fixture holding the same values. Passes when the pixel hashes match.`,
     '@nominal',
   ), async ({}, testInfo) => {
-    knownFailure('UNFILED-1', 'VicarImageReader via the ImageIO API returns byte-swapped samples for INTFMT=LOW files '
+    needsReview('REVIEW-1', 'VicarImageReader via the ImageIO API returns byte-swapped samples for INTFMT=LOW files '
       + '(256, 512, ... instead of 1, 2, ...); jConvertIIO output is correct');
     const half = await probe(testInfo, asset('gdal-vicar-int16'));
     const byte = await probe(testInfo, asset('gdal-vicar-byte'));
@@ -98,7 +98,7 @@ test.describe('VICAR image read/write', feature('vicar-io'), () => {
       `Reads the GDAL ${id.replace('gdal-vicar-', '')} fixture, whose system label has \`DAT_TIM\` and \`BINC\` items written by GDAL. Passes when the file decodes.`,
       '@nominal',
     ), async ({}, testInfo) => {
-      knownFailure('UNFILED-2', 'VICAR reader rejects GDAL-written system labels: "DAT_TIM may only go in history label"');
+      needsReview('REVIEW-2', 'VICAR reader rejects GDAL-written system labels: "DAT_TIM may only go in history label"');
       expect(await tryProbe(testInfo, asset(id))).not.toBeNull();
     });
   }

@@ -3,7 +3,7 @@
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
 import { synthetic } from '../support/env';
-import { about, feature, issue, knownFailure } from '../support/features';
+import { about, feature, issue, needsReview } from '../support/features';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 
 test.describe('Data type conversion', feature('data-types'), () => {
@@ -70,7 +70,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
     `Converts the synthetic BYTE image to HALF with the default rescaling. Passes when the output keeps at least half the relative contrast (standard deviation over range) of the input.`,
     '@nominal',
   ), async ({}, testInfo) => {
-    knownFailure('UNFILED-6', 'OFORM=HALF with default RESCALE saturates byte input (mean 254.5, std 9.8; source std 56)');
+    needsReview('REVIEW-6', 'OFORM=HALF with default RESCALE saturates byte input (mean 254.5, std 9.8; source std 56)');
     const src = await probe(testInfo, synthetic('gen_byte_bsq.vic'));
     const r = await convert(testInfo, synthetic('gen_byte_bsq.vic'), 'byte_half_rescale.vic', { format: 'vicar', OFORM: 'HALF' });
     expectConverted(r);

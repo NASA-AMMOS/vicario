@@ -10,7 +10,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSyn
 import path from 'node:path';
 import type { FullConfig, FullResult, Reporter, Suite, TestCase } from '@playwright/test/reporter';
 import { E2E_ROOT, sourceUrl } from './env';
-import { ABOUT, SCOPES, features, tagOf, type Feature, type Scope } from './features';
+import { ABOUT, NEEDS_REVIEW, SCOPES, features, tagOf, type Feature, type Scope } from './features';
 
 interface Row {
   feature?: Feature;
@@ -30,7 +30,7 @@ interface Procedure {
   result: 'passed' | 'failed' | 'known' | 'skipped'; source: string;
 }
 interface Picture { src: string; caption: string; testId: string; synthetic: boolean; hash: string }
-interface Item { title: string; testId: string; feature: string; issue: string; why: string; error?: string }
+interface Item { title: string; testId: string; feature: string; issue: string; why: string; error?: string; review?: string }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const PW = 'playwright/index.html';
@@ -61,7 +61,7 @@ th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(-
 details { border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin:8px 0; background:var(--card); }
 summary { cursor:pointer; } .issue { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; font-weight:600; margin-right:6px; }
 .count { color:var(--muted); font-size:12px; margin-left:6px; } details ul { margin:8px 0 0; padding-left:20px; }
-.fails { padding-left:20px; } .err { color:var(--fail); font-family:ui-monospace,Menlo,monospace; font-size:12px; overflow-wrap:anywhere; }
+.fails { padding-left:20px; } .review { font-size:13px; margin:2px 0; } .err { color:var(--fail); font-family:ui-monospace,Menlo,monospace; font-size:12px; overflow-wrap:anywhere; }
 .gallery { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
 .gallery a { display:flex; flex-direction:column; width:112px; color:var(--muted); font-size:11px; }
 .gallery img { width:112px; height:84px; object-fit:contain; background:#000; border:1px solid var(--line); border-radius:6px; image-rendering:auto; }
@@ -107,7 +107,8 @@ export default class OverviewReporter implements Reporter {
       const outcome = t.outcome();
       const issueNote = [...t.annotations, ...(last?.annotations ?? [])].find((a) => a.type === 'issue')?.description ?? '';
       const [issue, ...why] = issueNote.split(': ');
-      const item = { title: t.titlePath().slice(3).join(' › '), testId: t.id, feature: row.name, issue: issue || '', why: why.join(': ') };
+      const review = [...t.annotations, ...(last?.annotations ?? [])].find((a) => a.type === NEEDS_REVIEW)?.description;
+      const item = { title: t.titlePath().slice(3).join(' › '), testId: t.id, feature: row.name, issue: issue || '', why: why.join(': '), review };
       let result: Procedure['result'] = 'passed';
       if (outcome === 'skipped') { row.skipped++; result = 'skipped'; }
       else if (outcome === 'unexpected' || outcome === 'flaky') {
@@ -124,7 +125,8 @@ export default class OverviewReporter implements Reporter {
       row.procedures.push({
         title: t.title, group: t.parent.title, testId: t.id, scopes, result,
         about: t.annotations.find((a) => a.type === ABOUT)?.description ?? '',
-        issues: [...t.annotations, ...(last?.annotations ?? [])].filter((a) => a.type === 'issue').map((a) => a.description ?? '')
+        issues: [...t.annotations, ...(last?.annotations ?? [])].filter((a) => a.type === 'issue' || a.type === NEEDS_REVIEW)
+          .map((a) => a.type === NEEDS_REVIEW ? `NEEDS REVIEW: ${a.description ?? ''}` : a.description ?? '')
           .filter((v, i, a) => a.indexOf(v) === i),
         source: t.annotations.find((a) => a.type === 'junit source')?.description ?? sourceUrl(t.location.file, t.location.line),
       });
@@ -213,7 +215,7 @@ export default class OverviewReporter implements Reporter {
       return `<tr>
   <td><a class="fname" href="${link}">${esc(r.name)}</a><div class="desc">${esc(r.description)} <a href="procedures.html#${esc(r.key)}">Procedures</a></div>${gallery}</td>
   <td><span class="pill ${state}">${label}</span></td>
-  <td class="num">${r.passed}</td><td class="num ${r.failed ? 'bad' : ''}">${r.failed}</td><td class="num">${r.known}</td>
+  <td class="num">${r.passed}</td><td class="num ${r.failed ? 'bad' : ''}">${r.failed}</td>
 </tr>`;
     }).join('\n');
 
@@ -224,7 +226,7 @@ export default class OverviewReporter implements Reporter {
 <ul>${items.map((i) => `<li>${esc(i.feature)}: ${testLink(i)}</li>`).join('')}</ul></details>`).join('\n');
 
     const failHtml = failures.length ? `<section><h2>Failures</h2><ul class="fails">${failures.map((f) =>
-      `<li><strong>${esc(f.feature)}</strong>: ${testLink(f)}<div class="err">${esc(f.error ?? '')}</div></li>`).join('')}</ul></section>` : '';
+      `<li><strong>${esc(f.feature)}</strong>: ${testLink(f)}${f.review ? `<div class="review">Needs review (bug or intended?): ${esc(f.review)}</div>` : ''}<div class="err">${esc(f.error ?? '')}</div></li>`).join('')}</ul></section>` : '';
 
     const notAutoHtml = notAutomated.length ? `<section><h2>Not yet automated</h2><table>
 <thead><tr><th>Feature</th><th>Status</th></tr></thead><tbody>
@@ -251,11 +253,10 @@ ${CSS}</style></head>
   <div class="stat ${ok ? 'ok' : 'bad'}"><b>${ok ? 'Passed' : 'Failed'}</b><span>overall result</span></div>
   <div class="stat ok"><b>${totals.passed}</b><span>tests passed</span></div>
   <div class="stat ${totals.failed ? 'bad' : 'ok'}"><b>${totals.failed}</b><span>unexpected failures</span></div>
-  <div class="stat warn"><b>${totals.known}</b><span>known issues (expected to fail)</span></div>
 </div>
 ${failHtml}
 <section><h2>Features</h2><div class="scroll"><table>
-<thead><tr><th>Feature</th><th>Status</th><th class="num">Passed</th><th class="num">Failed</th><th class="num">Known issues</th></tr></thead>
+<thead><tr><th>Feature</th><th>Status</th><th class="num">Passed</th><th class="num">Failed</th></tr></thead>
 <tbody>
 ${featureRows}
 </tbody></table></div></section>
@@ -290,7 +291,7 @@ ${[...r.procedures].sort((a, b) => rank(a) - rank(b)).map((p) => {
   <div class="head"><span class="ptitle">${esc(p.title)}</span><span class="pill ${cls}">${label}</span></div>
   <div class="chips">${p.scopes.map(chip).join('')}${group}</div>
   <p>${p.about ? rich(p.about) : '<em>No description.</em>'}</p>
-  ${p.issues.map((i) => `<p class="note">${i.startsWith('NOTE: ') ? `Note: ${rich(i.slice(6))}` : `Issue ${rich(i)}`}</p>`).join('')}
+  ${p.issues.map((i) => `<p class="note">${i.startsWith('NOTE: ') ? `Note: ${rich(i.slice(6))}` : i.startsWith('NEEDS REVIEW: ') ? `Needs review (bug or intended?): ${rich(i.slice(14))}` : `Issue ${rich(i)}`}</p>`).join('')}
   <p class="links"><a href="${PW}#?testId=${encodeURIComponent(p.testId)}">Run details</a> · <a href="${esc(p.source)}">Source</a></p>
 </li>`;
     }).join('\n')}
@@ -347,10 +348,10 @@ buttons.forEach((b) => b.addEventListener('click', () => {
   private markdown(rows: Row[], totals: { passed: number; failed: number; known: number }, failures: Item[], known: Item[],
     notAutomated: Feature[], info: ReturnType<OverviewReporter['runInfo']>, result: FullResult): string {
     const out = [`### VICARIO feature tests: ${result.status === 'passed' ? 'passed' : '**failed**'}`, '',
-      `${totals.passed} passed, ${totals.failed} failed, ${totals.known} known issues (${info.tier} tier, ${info.duration})`, '',
-      '| Feature | Passed | Failed | Known issues |', '|---|---:|---:|---:|',
-      ...rows.map((r) => `| ${r.name} | ${r.passed} | ${r.failed ? `**${r.failed}**` : 0} | ${r.known} |`)];
-    if (failures.length) out.push('', '**Failures**', '', ...failures.map((f) => `- ${f.feature}: ${f.title}: ${f.error ?? ''}`));
+      `${totals.passed} passed, ${totals.failed} failed (${info.tier} tier, ${info.duration})`, '',
+      '| Feature | Passed | Failed |', '|---|---:|---:|',
+      ...rows.map((r) => `| ${r.name} | ${r.passed} | ${r.failed ? `**${r.failed}**` : 0} |`)];
+    if (failures.length) out.push('', '**Failures**', '', ...failures.map((f) => `- ${f.feature}: ${f.title}: ${f.review ? `needs review (${f.review}): ` : ''}${f.error ?? ''}`));
     if (known.length) {
       const issues = [...new Set(known.map((k) => `${k.issue}: ${k.why}`))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
       out.push('', `<details><summary>Known issues (${issues.length})</summary>`, '', ...issues.map((i) => `- ${i}`), '', '</details>');

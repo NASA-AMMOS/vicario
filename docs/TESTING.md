@@ -53,7 +53,8 @@ open report/index.html                             # feature overview; full Play
 
   Missing or altered data fails the run; it is never skipped.
 - **Goldens.** `tests/e2e/goldens/goldens.json` records the pixel hash of each public product. Regenerate with `npm run goldens:update` and say why in the PR.
-- **Known failures.** `knownFailure('UNFILED-3' | 'IDS-8497', why)` marks a test as expected to fail. It shows in the report and the job summary, and turns red once the bug is fixed, so the marker gets removed with the fix.
+- **Known failures.** `knownFailure('IDS-8497', why)` marks a test as expected to fail. Use it only for a bug that has a ticket or other record. It shows in the report and the job summary, and turns red once the bug is fixed, so the marker gets removed with the fix.
+- **Needs review.** `needsReview('REVIEW-3', why)` flags behaviour a test found that looks wrong but has no ticket or other record yet. The test fails as normal and the report marks it "needs review" until someone decides: a bug (ticket it, then fix it, or use `knownFailure` until it is fixed) or intended (correct the test and say why).
 
 ## Data sensitivity
 
@@ -77,7 +78,7 @@ Every code change comes with tests, written in the same pull request. Which spec
 |---|---|
 | New capability, keyword or format | A `@nominal` test that it works, and an `@off-nominal` test for bad or edge-case input. If it is new behaviour, add or extend a feature in `features.yml`. |
 | Bug fix | A test that fails without the fix and passes with it, tagged `@regression`, with `issue('IDS-NNNN', 'what was wrong')`. If the bug had a `knownFailure` test, delete the marker: the test now passes and documents the fix. |
-| Bug found but not fixed | A test that reproduces it, marked `knownFailure('IDS-NNNN', 'what fails')`. It reports "expected to fail" until someone fixes the bug, then turns red so the marker gets removed. |
+| Bug found but not fixed | A test that reproduces it. Without a ticket, mark it `needsReview('REVIEW-N', 'what fails')`: it fails visibly until reviewed. Once ticketed, `knownFailure('IDS-NNNN', 'what fails')`: it reports "expected to fail" until someone fixes the bug, then turns red so the marker gets removed. |
 | Java-level logic | A JUnit test in `src/test/java`. Add its class to the owning feature's `junit:` list in `features.yml`. |
 
 ### Anatomy of a test
@@ -157,7 +158,7 @@ open report/procedures.html                           # check your tests read we
 | `security-scan.yml` | pull requests to `main`/`develop`, push to `main`, manual | CodeQL (Java, Python, workflows) and SonarQube Cloud analysis; see [Security scanning](#security-scanning) |
 
 The report has three parts:
-- **`report/index.html`**, the feature overview: each feature's description, status and pass/fail/known-issue counts, a gallery of image previews from its tests, the known issues grouped by ticket, and the features not yet automated. Each feature and image links into the full report.
+- **`report/index.html`**, the feature overview: each feature's description, status and pass/fail counts, a gallery of image previews from its tests, the failures (with any "needs review" note), ticketed known failures grouped by ticket when there are any, and the features not yet automated. Each feature and image links into the full report.
 - **`report/procedures.html`**, the test procedures: every test grouped by feature, with its description, scope tags, issue notes and latest result, plus links to its run details and its source on GitHub. A scope legend at the top filters the list.
 - **`report/playwright/`**, the Playwright HTML report: every test with its command line, logs, label text and image previews, including the JUnit results.
 

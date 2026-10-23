@@ -3,7 +3,7 @@
 // Expected dimensions come from each label's CORE_ITEMS.
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
-import { about, feature, knownFailure } from '../support/features';
+import { about, feature, needsReview } from '../support/features';
 import { convert, expectConverted, probe } from '../support/run';
 
 const CUBES = [
@@ -19,7 +19,7 @@ test.describe('ISIS cubes', feature('isis'), () => {
       `Converts the ${c.label} to VICAR. Passes when the output has the dimensions and data type given by the label's \`CORE_ITEMS\` (${c.dims.join(' x ')}, ${c.type}).`,
       '@nominal', ...(c.id.startsWith('cassini') ? ['@mission-data' as const] : []),
     ), async ({}, testInfo) => {
-      knownFailure('UNFILED-14', 'ISIS reader does not trim CORE_ITEMS values: NumberFormatException for " 352", '
+      needsReview('REVIEW-14', 'ISIS reader does not trim CORE_ITEMS values: NumberFormatException for " 352", '
         + 'then a NullPointerException (no image); jConvertIIO exits 0 with no output');
       if (c.id === 'cassini-vims-qube') asset('cassini-vims-lbl');
       const r = await convert(testInfo, asset(c.id), `${c.id}.vic`, { format: 'vicar' });

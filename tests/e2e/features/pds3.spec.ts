@@ -5,7 +5,7 @@ import path from 'node:path';
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
 import { XSL_DIR, synthetic } from '../support/env';
-import { about, feature, issue, knownFailure } from '../support/features';
+import { about, feature, issue, needsReview } from '../support/features';
 import { expectGolden } from '../support/goldens';
 import { expectValidPds3Label, pdsLabel } from '../support/labels';
 import { convert, expectConverted, expectSamePixels, probe, tryProbe } from '../support/run';
@@ -39,7 +39,7 @@ test.describe('PDS3 products', feature('pds3'), () => {
     `Converts the synthetic image to PDS3 with \`PDS_FILENAME_IN_LABEL=true\`. Passes when the output file name appears in the label.`,
     '@nominal',
   ), async ({}, testInfo) => {
-    knownFailure('UNFILED-9', 'the documented keyword PDS_FILENAME_IN_LABEL is parsed as PDS_FILENAME, so it is ignored');
+    needsReview('REVIEW-9', 'the documented keyword PDS_FILENAME_IN_LABEL is parsed as PDS_FILENAME, so it is ignored');
     const r = await convert(testInfo, input, 'named.pds', { format: 'pds', PDS_FILENAME_IN_LABEL: 'true' });
     expectConverted(r);
     expect(readFileSync(r.out, 'latin1')).toContain('named.pds');
@@ -70,7 +70,7 @@ test.describe('PDS3 products', feature('pds3'), () => {
     `Converts the same MSL thumbnail by giving jConvertIIO its detached \`.LBL\` label instead of the image file. Passes when the conversion succeeds.`,
     '@mission-data',
   ), async ({}, testInfo) => {
-    knownFailure('UNFILED-7', 'PDSImageReader fails on the detached MSL label: "Error reading header: Negative size"');
+    needsReview('REVIEW-7', 'PDSImageReader fails on the detached MSL label: "Error reading header: Negative size"');
     asset('msl-navcam-thumb-img'); // the label points at this file
     const r = await convert(testInfo, asset('msl-navcam-thumb-lbl'), 'msl_lbl.vic', { format: 'vicar' });
     expectConverted(r);

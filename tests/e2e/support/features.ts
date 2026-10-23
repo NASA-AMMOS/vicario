@@ -54,6 +54,9 @@ export type Scope = keyof typeof SCOPES;
 /** The annotation type that holds a test's description. */
 export const ABOUT = 'what it checks';
 
+/** The annotation type of needsReview notes. */
+export const NEEDS_REVIEW = 'needs review';
+
 /**
  * Details for test(): what the test does and what makes it pass, plus its
  * scope tags. Write the description as plain text; `backticks` mark code and
@@ -71,6 +74,17 @@ export function about(description: string, ...scopes: Scope[]) {
 export function knownFailure(issue: string, why: string) {
   test.info().annotations.push({ type: 'issue', description: `${issue}: ${why}` });
   test.fail(true, `${issue}: ${why}`);
+}
+
+/**
+ * Mark behaviour the suite found that looks wrong but has no ticket or other
+ * record yet. The test is not expected to fail: it fails as normal and the
+ * report flags it "needs review" until someone decides whether the behaviour is
+ * a bug (ticket it, then fix it or use knownFailure) or intended (correct the
+ * test and say why).
+ */
+export function needsReview(id: string, why: string) {
+  test.info().annotations.push({ type: NEEDS_REVIEW, description: `${id}: ${why}` });
 }
 
 export function issue(id: string, what: string) {

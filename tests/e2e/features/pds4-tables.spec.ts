@@ -6,7 +6,7 @@ import path from 'node:path';
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
 import { PRODUCT_JAVA, fatJar } from '../support/env';
-import { about, feature, knownFailure } from '../support/features';
+import { about, feature, needsReview } from '../support/features';
 import { convert, run } from '../support/run';
 
 async function extractTable(testInfo: import('@playwright/test').TestInfo, label: string, args: string[]) {
@@ -64,7 +64,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
     `Runs \`ExtractTableJPL -c\` without \`-o\`. Passes when the table (header plus 5 records) is written to stdout.`,
     '@off-nominal',
   ), async ({}, testInfo) => {
-    knownFailure('UNFILED-15', 'ExtractTableJPL prints nothing (exit 0) when no output file is given, and --list-tables prints nothing');
+    needsReview('REVIEW-15', 'ExtractTableJPL prints nothing (exit 0) when no output file is given, and --list-tables prints nothing');
     const r = await extractTable(testInfo, characterTable().label, ['-c']);
     expect(r.stdout.split(/\r?\n/).filter(Boolean).length).toBe(1 + 5);
   });
@@ -73,7 +73,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
     `Exports a PDS4 delimited (CSV) table (GDAL fixture) with \`ExtractTableJPL -c\`. Passes when the output has a header and records.`,
     '@nominal',
   ), async ({}, testInfo) => {
-    knownFailure('UNFILED-16', 'pds4-jparser needs a newer opencsv than the 5.5 pinned in pom.xml: '
+    needsReview('REVIEW-16', 'pds4-jparser needs a newer opencsv than the 5.5 pinned in pom.xml: '
       + 'NoSuchMethodError CSVParserBuilder.withKeepQuotations');
     const label = asset('gdal-pds4-table-delimited-xml');
     asset('gdal-pds4-table-delimited');
@@ -87,7 +87,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
     `Exports the character table through jConvertIIO with \`PDS4_TABLE_OUPUT_FORMAT=csv\` (the keyword's spelling). Passes when the CSV has a header plus 5 records.`,
     '@nominal',
   ), async ({}, testInfo) => {
-    knownFailure('UNFILED-17', 'jConvertIIO never passes the label to the PDS4 table reader (the PDS4TableReadParam '
+    needsReview('REVIEW-17', 'jConvertIIO never passes the label to the PDS4 table reader (the PDS4TableReadParam '
       + 'setup is commented out); "Cannot read label file", no output');
     const { label } = characterTable();
     const r = await convert(testInfo, label, 'jconvert.csv', { PDS4_TABLE_OUPUT_FORMAT: 'csv' });
