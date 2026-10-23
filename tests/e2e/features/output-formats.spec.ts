@@ -4,11 +4,11 @@
 import { statSync } from 'node:fs';
 import { expect, test } from '../support/test';
 import { synthetic } from '../support/env';
-import { about, feature, issue, knownFailure, type Scope } from '../support/features';
+import { about, feature, issue, needsReview, type Scope } from '../support/features';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 
 type Mode = 'lossless' | 'lossy' | 'raw' | 'fail';
-const NO_WRITER = 'no ImageIO writer for this format name on 64-bit JVMs (long-standing failure in the ST2-4.1 interactive test)';
+const NO_WRITER = 'REVIEW-19: no ImageIO writer for this format name, though the legacy tstjConvertIIO.csh lists it';
 const FORMATS: [string, Mode, string?][] = [
   ['tif', 'lossless'], ['tiff', 'lossless'], ['TIF', 'lossless'], ['TIFF', 'lossless'],
   ['png', 'lossless'], ['PNG', 'lossless'],
@@ -16,14 +16,14 @@ const FORMATS: [string, Mode, string?][] = [
   ['pds', 'lossless'], ['vicar', 'lossless'],
   ['jpg', 'lossy'], ['JPG', 'lossy'], ['jpeg', 'lossy'], ['JPEG', 'lossy'],
   ['raw', 'raw'], ['RAW', 'raw'],
-  ['bmp', 'fail', 'UNFILED-4: BMP writer throws ArrayIndexOutOfBoundsException for 3-band input'],
-  ['BMP', 'fail', 'UNFILED-4: BMP writer throws ArrayIndexOutOfBoundsException for 3-band input'],
-  ['pnm', 'fail', 'UNFILED-4: PNM writer (jai-imageio) fails to initialise on JDK 17+'],
-  ['PNM', 'fail', 'UNFILED-4: PNM writer (jai-imageio) fails to initialise on JDK 17+'],
-  ['jfif', 'fail', `LEGACY: ${NO_WRITER}`], ['JFIF', 'fail', `LEGACY: ${NO_WRITER}`],
-  ['jpeg-ls', 'fail', `LEGACY: ${NO_WRITER}`], ['JPEG-LS', 'fail', `LEGACY: ${NO_WRITER}`],
-  ['jpeg-lossless', 'fail', `LEGACY: ${NO_WRITER}`], ['JPEG-LOSSLESS', 'fail', `LEGACY: ${NO_WRITER}`],
-  ['isis', 'fail', `LEGACY: ${NO_WRITER}`],
+  ['bmp', 'fail', 'REVIEW-4: BMP writer throws ArrayIndexOutOfBoundsException for 3-band input'],
+  ['BMP', 'fail', 'REVIEW-4: BMP writer throws ArrayIndexOutOfBoundsException for 3-band input'],
+  ['pnm', 'fail', 'REVIEW-4: PNM writer (jai-imageio) fails to initialise on JDK 17+'],
+  ['PNM', 'fail', 'REVIEW-4: PNM writer (jai-imageio) fails to initialise on JDK 17+'],
+  ['jfif', 'fail', NO_WRITER], ['JFIF', 'fail', NO_WRITER],
+  ['jpeg-ls', 'fail', NO_WRITER], ['JPEG-LS', 'fail', NO_WRITER],
+  ['jpeg-lossless', 'fail', NO_WRITER], ['JPEG-LOSSLESS', 'fail', NO_WRITER],
+  ['isis', 'fail', NO_WRITER],
 ];
 
 /** What a FORMAT test checks, and its scope, by mode (failing modes get the lossy check). */
@@ -45,12 +45,12 @@ test.describe('Output formats', feature('output-formats'), () => {
       `Converts the synthetic 3-band BYTE image with \`FORMAT=${format}\`, one of the 29 format names and aliases in the legacy test. ${CHECKS[mode]}`,
       '@legacy', ...SCOPES_FOR[mode],
     ), async ({}, testInfo) => {
-      if (mode === 'fail') knownFailure(issue!.split(':')[0], issue!.split(': ').slice(1).join(': '));
+      if (mode === 'fail') needsReview(issue!.split(':')[0], issue!.split(': ').slice(1).join(': '));
       const src = await probe(testInfo, input);
       const r = await convert(testInfo, input, `out.${format.replace(/ /g, '_').toLowerCase()}`, { format });
       expectConverted(r);
       if (mode === 'raw') {
-        knownFailure('UNFILED-3', 'RAW output is padded to 256 x 256 tiles unless OFORM is given');
+        needsReview('REVIEW-3', 'RAW output is padded to 256 x 256 tiles unless OFORM is given');
         expect(statSync(r.out).size, 'raw size = width x height x bands').toBe(src.width * src.height * src.bands);
         return;
       }

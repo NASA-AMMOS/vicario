@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '../support/test';
 import { synthetic } from '../support/env';
-import { about, feature, issue, knownFailure } from '../support/features';
+import { about, feature, issue, needsReview } from '../support/features';
 import { attachOverlay } from '../support/overlay';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 import { BYTE_3BAND, BYTE_GRAY, BYTE_RGBA, expectedHash, range } from '../support/synthetic';
@@ -67,7 +67,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
     `Crops a gray image with \`CROP=(1,5,7,11)\`, documented as (x, y, height, width). Passes when the output is 11 wide by 7 high with exactly those pixels.`,
     '@nominal',
   ), async ({}, testInfo) => {
-    knownFailure('UNFILED-11', 'CROP uses cropX for the y offset (jConvertIIO.java:4816) and reads the last two values '
+    needsReview('REVIEW-11', 'CROP uses cropX for the y offset (jConvertIIO.java:4816) and reads the last two values '
       + 'as width,height although the help text says height,width; CROP to VICAR also fails (raster bounds)');
     const r = await convert(testInfo, synthetic('gen_byte_gray.vic'), 'crop.png', { format: 'png', CROP: '(1,5,7,11)' });
     expectConverted(r);

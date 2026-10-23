@@ -5,7 +5,7 @@ import { copyFileSync, existsSync, writeFileSync } from 'node:fs';
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
 import { PRODUCT_JAVA, fatJar, synthetic } from '../support/env';
-import { about, feature, issue, knownFailure } from '../support/features';
+import { about, feature, issue, needsReview } from '../support/features';
 import { convert, expectConverted, expectSamePixels, probe, run } from '../support/run';
 
 /** Three conversions of different inputs and formats for the batch tests. */
@@ -62,7 +62,7 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
     `Converts to PNG with \`OUT=-\` and \`SILENT\`, which should stream the image to stdout. Passes when the exit code is 0 and stdout starts with the PNG signature.`,
     '@nominal',
   ), async ({}, testInfo) => {
-    knownFailure('UNFILED-12', 'OUT=- fails with IllegalArgumentException "image == null!" and writes nothing');
+    needsReview('REVIEW-12', 'OUT=- fails with IllegalArgumentException "image == null!" and writes nothing');
     const r = await run([...PRODUCT_JAVA, '-Djava.awt.headless=true', '-cp', fatJar(), 'jpl.mipl.io.jConvertIIO',
       `inp=${synthetic('gen_byte_bsq.vic')}`, 'out=-', 'format=png', 'SILENT'], { cwd: testInfo.outputDir });
     await testInfo.attach('stdout.log', { body: `exit ${r.exitCode}\n${r.stderr}`, contentType: 'text/plain' });

@@ -24,7 +24,7 @@ Read [docs/TESTING.md](docs/TESTING.md) ("Adding tests") before writing tests. R
 - **Every bug fix gets a regression test.**
   - It fails without the fix and passes with it, tagged `@regression`, with `issue('IDS-NNNN', ...)`.
   - Confirm it fails before the fix. If a `knownFailure` covered the bug, remove the marker.
-- **Bugs found but not fixed** get a reproducing test marked `knownFailure('IDS-NNNN' or 'UNFILED-N', why)`. Never delete or skip a failing test to make the suite pass.
+- **Bugs found but not fixed** get a reproducing test. Without a ticket or other record, mark it `needsReview('REVIEW-N', why)`; it fails visibly until someone decides whether it is a bug or intended. Use `knownFailure('IDS-NNNN', why)` only once a ticket exists. Never delete or skip a failing test to make the suite pass.
 - **Every test has `about(description, ...scopes)`.**
   - The description says what it does and what makes it pass ("Does X. Passes when Y.").
   - Scope tags come from `SCOPES` in `tests/e2e/support/features.ts`.

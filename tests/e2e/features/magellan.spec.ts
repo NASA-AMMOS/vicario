@@ -3,7 +3,7 @@
 // MgnResampImageReader has no public sample and is not tested.
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
-import { about, feature, knownFailure } from '../support/features';
+import { about, feature, needsReview } from '../support/features';
 import { expectGolden } from '../support/goldens';
 import { convert, expectConverted, probe } from '../support/run';
 
@@ -24,7 +24,7 @@ test.describe('Magellan products', feature('magellan', 'full'), () => {
     `Converts the same F-BIDR to VICAR with jConvertIIO. Passes when the output decodes with all 14672 lines.`,
     '@mission-data',
   ), async ({}, testInfo) => {
-    knownFailure('UNFILED-18', 'F-BIDR read fails in jConvertIIO ("must be read from a stream allowing random access"): '
+    needsReview('REVIEW-18', 'F-BIDR read fails in jConvertIIO ("must be read from a stream allowing random access"): '
       + 'VicarInputFile only treats javax FileImageInputStream as random access, but the FAT jar\'s ImageIO returns '
       + 'imageio-ext FileImageInputStreamExtImpl; exits 0 with no output');
     const r = await convert(testInfo, asset('magellan-fbidr'), 'fbidr.vic', { format: 'vicar' });
