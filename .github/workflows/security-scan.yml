@@ -107,18 +107,54 @@ jobs:
 
       # A clean build so CodeQL sees every Java source, plus what SonarQube's
       # Java analysis needs (see sonar-project.properties): the classes and
-      # dependency jars, and the JUnit run with JaCoCo (-P coverage) for the
-      # coverage report. Test failures do not stop the scan; the ci.yml junit
-      # job is the gate for those.
+      # dependency jars, and the JUnit run with JaCoCo (-P coverage). The FAT
+      # jar, test classes and JaCoCo agent jar (-P coverage,shade) are for the
+      # feature tests below. Test failures do not stop the scan; the ci.yml
+      # junit and e2e jobs are the gates for those.
       - name: Build and unit tests with coverage (traced by CodeQL)
         run: >-
-          mvn -B -P coverage -Dmaven.test.failure.ignore=true
-          clean test dependency:copy-dependencies -DoutputDirectory=target/dependency
+          mvn -B -P coverage,shade -Dmaven.test.failure.ignore=true
+          clean package test-compile dependency:copy-dependencies -DoutputDirectory=target/dependency
 
       # No `category` here: the action sets one per language when several are
       # analyzed together.
       - name: CodeQL Scan
         uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+
+      # Feature-test coverage: the full tier again, with the JaCoCo agent on
+      # every jConvertIIO process it starts (docs/TESTING.md, "Coverage"). Runs
+      # after the CodeQL scan so the tests are not traced. Its pass/fail is
+      # gated in ci.yml and nightly.yml, not here.
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+
+      - name: Restore test data
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tests/e2e/.cache/data
+          key: testdata-full-${{ hashFiles('tests/e2e/data/manifest.json') }}
+
+      - name: Feature tests with coverage
+        continue-on-error: true
+        working-directory: tests/e2e
+        env:
+          VICARIO_PYTHON: python
+          VICARIO_JACOCO_AGENT: ../../target/jacoco-agent/jacocoagent.jar
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check lxml==6.1.3
+          npm ci
+          node scripts/fetch-test-data.mjs --tier full
+          npx playwright test --project full --reporter=dot
+
+      # JUnit + feature-test coverage into target/site/jacoco/jacoco.xml, the
+      # report sonar-project.properties points at.
+      - name: Merge coverage
+        run: mvn -B -P coverage jacoco:merge@merge-all jacoco:report@report-all
 
       - name: Post-Process Output
         run: |

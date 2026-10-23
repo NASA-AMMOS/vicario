@@ -4,7 +4,7 @@
 import { copyFileSync, existsSync, writeFileSync } from 'node:fs';
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
-import { JAVA, fatJar, synthetic } from '../support/env';
+import { PRODUCT_JAVA, fatJar, synthetic } from '../support/env';
 import { about, feature, issue, knownFailure } from '../support/features';
 import { convert, expectConverted, expectSamePixels, probe, run } from '../support/run';
 
@@ -21,7 +21,7 @@ function writeArgFile(testInfo: import('@playwright/test').TestInfo) {
 }
 
 async function jConvert(testInfo: import('@playwright/test').TestInfo, args: string[], name: string) {
-  const r = await run([JAVA, '-Djava.awt.headless=true', '-Dcom.sun.media.jai.disableMediaLib=true', '-cp', fatJar(),
+  const r = await run([...PRODUCT_JAVA, '-Djava.awt.headless=true', '-Dcom.sun.media.jai.disableMediaLib=true', '-cp', fatJar(),
     'jpl.mipl.io.jConvertIIO', ...args], { cwd: testInfo.outputDir });
   await testInfo.attach(`${name}.log`, { body: `$ jConvertIIO ${args.join(' ')}\nexit ${r.exitCode}\n${r.stdout}\n${r.stderr}`,
     contentType: 'text/plain' });
@@ -63,7 +63,7 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
     '@nominal',
   ), async ({}, testInfo) => {
     knownFailure('UNFILED-12', 'OUT=- fails with IllegalArgumentException "image == null!" and writes nothing');
-    const r = await run([JAVA, '-Djava.awt.headless=true', '-cp', fatJar(), 'jpl.mipl.io.jConvertIIO',
+    const r = await run([...PRODUCT_JAVA, '-Djava.awt.headless=true', '-cp', fatJar(), 'jpl.mipl.io.jConvertIIO',
       `inp=${synthetic('gen_byte_bsq.vic')}`, 'out=-', 'format=png', 'SILENT'], { cwd: testInfo.outputDir });
     await testInfo.attach('stdout.log', { body: `exit ${r.exitCode}\n${r.stderr}`, contentType: 'text/plain' });
     expect(r.exitCode).toBe(0);

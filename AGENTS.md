@@ -29,6 +29,7 @@ Read [docs/TESTING.md](docs/TESTING.md) ("Adding tests") before writing tests. R
   - The description says what it does and what makes it pass ("Does X. Passes when Y.").
   - Scope tags come from `SCOPES` in `tests/e2e/support/features.ts`.
   - The description becomes the test procedure in the published report, so keep it accurate when you change a test.
+- **Start vicario with `PRODUCT_JAVA`** (from `support/env.ts`), or through `convert()`, so the run counts toward coverage. Use `JAVA` only for test oracles.
 - **Check content, not just exit codes.** `jConvertIIO` can exit 0 after an error. Compare pixels (`expectSamePixels`, `support/synthetic.ts`, goldens) and labels (`support/labels.ts`).
 - **JUnit classes** go under the owning feature's `junit:` list in `features.yml`.
 - **Goldens** (`tests/e2e/goldens/goldens.json`) change only with a stated reason.

@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { manifestAssets } from './support/data';
-import { DATA_DIR, JAVA, SYNTH_DIR, TEST_CLASSES, fatJar } from './support/env';
+import { DATA_DIR, JACOCO_AGENT, JACOCO_E2E_EXEC, JAVA, SYNTH_DIR, TEST_CLASSES, fatJar } from './support/env';
 
 export default function globalSetup() {
   const jar = fatJar();
@@ -40,6 +40,12 @@ export default function globalSetup() {
   if (problems.length) {
     problems.splice(0, problems.length, ...new Set(problems));
     throw new Error(`test data not ready (run npm run data:${full ? 'full' : 'fast'}):\n  ${problems.join('\n  ')}`);
+  }
+
+  // Coverage runs start from an empty file; the agent appends to it.
+  if (JACOCO_AGENT) {
+    if (!existsSync(JACOCO_AGENT)) throw new Error(`VICARIO_JACOCO_AGENT=${JACOCO_AGENT} does not exist; run: mvn -B -P coverage,shade package test-compile`);
+    rmSync(JACOCO_E2E_EXEC, { force: true });
   }
 
   rmSync(SYNTH_DIR, { recursive: true, force: true });

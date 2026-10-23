@@ -5,14 +5,14 @@
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { expect, test } from '../support/test';
-import { JAVA, fatJar, synthetic } from '../support/env';
+import { PRODUCT_JAVA, fatJar, synthetic } from '../support/env';
 import { about, feature, issue } from '../support/features';
 import { convert, expectConverted, run } from '../support/run';
 
 const SECRET = 'XXE-SECRET-CONTENT';
 
 async function treeInfo(testInfo: import('@playwright/test').TestInfo, file: string) {
-  const r = await run([JAVA, '-cp', fatJar(), 'jpl.mipl.io.util.TreeInfo', file, '-'], { cwd: testInfo.outputDir });
+  const r = await run([...PRODUCT_JAVA, '-cp', fatJar(), 'jpl.mipl.io.util.TreeInfo', file, '-'], { cwd: testInfo.outputDir });
   await testInfo.attach('TreeInfo.log', { body: `${r.stdout}\n${r.stderr}`, contentType: 'text/plain' });
   return `${r.stdout}\n${r.stderr}`;
 }

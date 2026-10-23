@@ -17,6 +17,19 @@ export const JAVA = process.env.JAVA_HOME
   ? path.join(process.env.JAVA_HOME, 'bin', 'java')
   : 'java';
 
+/**
+ * The java command for running vicario itself (jConvertIIO and its tools),
+ * as opposed to the test oracles (ImageProbe, SyntheticGen). With
+ * $VICARIO_JACOCO_AGENT set to the JaCoCo agent jar (`mvn -P coverage`), each
+ * run appends its coverage to target/jacoco-e2e.exec; the agent locks the file,
+ * so parallel workers can share it. See docs/TESTING.md, "Coverage".
+ */
+export const JACOCO_AGENT = process.env.VICARIO_JACOCO_AGENT ? path.resolve(process.env.VICARIO_JACOCO_AGENT) : undefined;
+export const JACOCO_E2E_EXEC = path.join(REPO_ROOT, 'target', 'jacoco-e2e.exec');
+export const PRODUCT_JAVA: string[] = JACOCO_AGENT
+  ? [JAVA, `-javaagent:${JACOCO_AGENT}=destfile=${JACOCO_E2E_EXEC},append=true,includes=jpl.mipl.*`]
+  : [JAVA];
+
 export const PYTHON = process.env.VICARIO_PYTHON || 'python3';
 
 /** The shaded jar from `mvn -P shade package`, or $VICARIO_FAT_JAR. */

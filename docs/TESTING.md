@@ -173,7 +173,22 @@ Where to find it:
 3. **`.github/scripts/fix_sarif_paths.py`** repairs the file paths and rule severities that scrub degrades.
 4. **The SonarQube Cloud scanner** imports the repaired reports along with its own Java and Python analysis (`sonar-project.properties`).
 
-The scan also runs the JUnit suite with JaCoCo (`mvn -P coverage test`, report in `target/site/jacoco/`), so SonarQube shows unit-test coverage. The feature tests are not included in the coverage numbers yet.
+### Coverage
+
+SonarQube's coverage figure counts both suites, measured by JaCoCo (the `coverage` Maven profile):
+- **JUnit tests** run with the JaCoCo agent through Maven, writing `target/jacoco.exec`.
+- **Feature tests** run with the agent attached to every vicario process they start (jConvertIIO, ExtractTableJPL, TreeInfo). When `VICARIO_JACOCO_AGENT` is set, `support/env.ts` adds the agent to `PRODUCT_JAVA` and each run appends to `target/jacoco-e2e.exec`. The test oracles (ImageProbe, SyntheticGen) run without it, so only code the product itself executes counts.
+
+Both are merged into `target/site/jacoco/` (`jacoco.xml` for SonarQube, `index.html` to browse). To produce the same report locally:
+
+```bash
+mvn -B -P coverage,shade -Dmaven.test.failure.ignore=true package test-compile
+cd tests/e2e && VICARIO_JACOCO_AGENT=../../target/jacoco-agent/jacocoagent.jar npx playwright test --project full
+cd ../.. && mvn -B -P coverage jacoco:merge@merge-all jacoco:report@report-all
+open target/site/jacoco/index.html
+```
+
+A new spec that starts vicario directly, rather than through `convert()`, should use `PRODUCT_JAVA` instead of `JAVA` so its coverage counts.
 
 Results appear on the [SonarQube Cloud project](https://sonarcloud.io/project/overview?id=NASA-AMMOS_vicario). The raw and repaired reports are kept as the `codeql-artifacts` artifact for 14 days.
 

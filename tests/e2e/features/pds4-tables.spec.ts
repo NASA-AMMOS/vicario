@@ -5,12 +5,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
-import { JAVA, fatJar } from '../support/env';
+import { PRODUCT_JAVA, fatJar } from '../support/env';
 import { about, feature, knownFailure } from '../support/features';
 import { convert, run } from '../support/run';
 
 async function extractTable(testInfo: import('@playwright/test').TestInfo, label: string, args: string[]) {
-  const r = await run([JAVA, '-cp', fatJar(), 'jpl.mipl.io.util.ExtractTableJPL', ...args, path.basename(label)],
+  const r = await run([...PRODUCT_JAVA, '-cp', fatJar(), 'jpl.mipl.io.util.ExtractTableJPL', ...args, path.basename(label)],
     { cwd: path.dirname(label) });
   await testInfo.attach('ExtractTableJPL.log', {
     body: `$ ExtractTableJPL ${args.join(' ')} ${path.basename(label)}\nexit ${r.exitCode}\n${r.stdout}\n${r.stderr}`,
