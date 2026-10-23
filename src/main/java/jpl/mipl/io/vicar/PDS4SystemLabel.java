@@ -291,30 +291,30 @@ private void initHashMaps() {
     data_type2intFormat.put("UnsignedMSB8", "HIGH");
     
     
-    data_type2unsignedFlag.put("ComplexLSB16", new Boolean("false")); 	
-	data_type2unsignedFlag.put("ComplexLSB8", new Boolean("false")); 
-	data_type2unsignedFlag.put("ComplexMSB16", new Boolean("false"));
-	data_type2unsignedFlag.put("ComplexMSB8", new Boolean("false"));
-	data_type2unsignedFlag.put("IEEE754LSBDouble", new Boolean("false"));
-    data_type2unsignedFlag.put("IEEE754LSBSingle", new Boolean("false"));
-    data_type2unsignedFlag.put("IEEE754MSBDouble", new Boolean("false")); 
-    data_type2unsignedFlag.put("IEEE754MSBSingle", new Boolean("false")); 
-    data_type2unsignedFlag.put("SignedBitString", new Boolean("false"));
-    data_type2unsignedFlag.put("SignedByte", new Boolean("false"));
-    data_type2unsignedFlag.put("SignedLSB2", new Boolean("false"));
-    data_type2unsignedFlag.put("SignedLSB4", new Boolean("false"));
-    data_type2unsignedFlag.put("SignedLSB8", new Boolean("false"));
-    data_type2unsignedFlag.put("SignedMSB2", new Boolean("false"));
-    data_type2unsignedFlag.put("SignedMSB4", new Boolean("false")); 
-    data_type2unsignedFlag.put("SignedMSB8", new Boolean("false")); 
-    data_type2unsignedFlag.put("UnsignedBitString", new Boolean("true")); 
-    data_type2unsignedFlag.put("UnsignedByte", new Boolean("true"));
-    data_type2unsignedFlag.put("UnsignedLSB2", new Boolean("true"));
-    data_type2unsignedFlag.put("UnsignedLSB4", new Boolean("true"));
-    data_type2unsignedFlag.put("UnsignedLSB8", new Boolean("true"));
-    data_type2unsignedFlag.put("UnsignedMSB2", new Boolean("true"));
-    data_type2unsignedFlag.put("UnsignedMSB4", new Boolean("true"));
-    data_type2unsignedFlag.put("UnsignedMSB8", new Boolean("true"));
+    data_type2unsignedFlag.put("ComplexLSB16", Boolean.valueOf("false")); 	
+	data_type2unsignedFlag.put("ComplexLSB8", Boolean.valueOf("false")); 
+	data_type2unsignedFlag.put("ComplexMSB16", Boolean.valueOf("false"));
+	data_type2unsignedFlag.put("ComplexMSB8", Boolean.valueOf("false"));
+	data_type2unsignedFlag.put("IEEE754LSBDouble", Boolean.valueOf("false"));
+    data_type2unsignedFlag.put("IEEE754LSBSingle", Boolean.valueOf("false"));
+    data_type2unsignedFlag.put("IEEE754MSBDouble", Boolean.valueOf("false")); 
+    data_type2unsignedFlag.put("IEEE754MSBSingle", Boolean.valueOf("false")); 
+    data_type2unsignedFlag.put("SignedBitString", Boolean.valueOf("false"));
+    data_type2unsignedFlag.put("SignedByte", Boolean.valueOf("false"));
+    data_type2unsignedFlag.put("SignedLSB2", Boolean.valueOf("false"));
+    data_type2unsignedFlag.put("SignedLSB4", Boolean.valueOf("false"));
+    data_type2unsignedFlag.put("SignedLSB8", Boolean.valueOf("false"));
+    data_type2unsignedFlag.put("SignedMSB2", Boolean.valueOf("false"));
+    data_type2unsignedFlag.put("SignedMSB4", Boolean.valueOf("false")); 
+    data_type2unsignedFlag.put("SignedMSB8", Boolean.valueOf("false")); 
+    data_type2unsignedFlag.put("UnsignedBitString", Boolean.valueOf("true")); 
+    data_type2unsignedFlag.put("UnsignedByte", Boolean.valueOf("true"));
+    data_type2unsignedFlag.put("UnsignedLSB2", Boolean.valueOf("true"));
+    data_type2unsignedFlag.put("UnsignedLSB4", Boolean.valueOf("true"));
+    data_type2unsignedFlag.put("UnsignedLSB8", Boolean.valueOf("true"));
+    data_type2unsignedFlag.put("UnsignedMSB2", Boolean.valueOf("true"));
+    data_type2unsignedFlag.put("UnsignedMSB4", Boolean.valueOf("true"));
+    data_type2unsignedFlag.put("UnsignedMSB8", Boolean.valueOf("true"));
 		
 
 }

@@ -49,8 +49,8 @@ import java.net.*;
  */
 public class PDSToPDSImageTranscoder implements ImageTranscoder {
 
-	String xslFromJar = ""; // name of the default xsl script stored in the same jar as this class
-	// there is NO default jar. default is to do nothing
+	String xslFromJar = "jpl/mipl/io/xsl/CopyEverything.xsl"; // name of the default xsl script stored in the same jar as this class
+	// the default stylesheet copies the input label unchanged
 	
 	boolean debug = false; // controls debug printing 
 	
@@ -168,6 +168,7 @@ public class PDSToPDSImageTranscoder implements ImageTranscoder {
 				String nativeIm = inpm.getNativeMetadataFormatName();
             	Node doc1 =  inpm.getAsTree(nativeIm) ;  // getNativeTree();
             	Document doc2 = null;
+            	DOMutils.TransformErrors xslErrors = null; // errors from a user supplied stylesheet
             	if (doc1 == null) {
             		System.out.println("PDSMetadata document returned null, metadata transform failed");
             		return null;
@@ -177,7 +178,8 @@ public class PDSToPDSImageTranscoder implements ImageTranscoder {
             		if (outputXML) domUtil.serializeNode(doc1,xmlFile1,"xml");
             		if (debug) System.out.println("--- transform PDS metadata to PDS with "+xslFile);
             		if (xslFile != null && xslFile.equals("-") == false && xslFile.equals("") == false) {
-        				doc2 = domUtil.transformDocument(doc1, xslFile);
+        				xslErrors = new DOMutils.TransformErrors();
+        				doc2 = domUtil.transformDocument(doc1, xslFile, xslErrors);
         				if (debug) System.out.println("--- transform succeeded using "+xslFile);
             		}
             		else if (xslInputStream != null) {
@@ -191,6 +193,26 @@ public class PDSToPDSImageTranscoder implements ImageTranscoder {
             			// doc2 = doc1;
             			// shouldn't get here. DFon't even call the transcoder if we have a null stylesheet?
             			// else create a style sheet5 that just copies stuff, no changes made at all
+            		}
+            		/*
+            		 * A stylesheet written for another label type (e.g. a VICAR to PDS
+            		 * stylesheet given a PDS label) can fail or produce no root element.
+            		 * Fall back to copying the input label rather than writing an empty file.
+            		 */
+            		if (xslErrors != null && (doc2 == null || doc2.getDocumentElement() == null)) {
+            			String reason = xslErrors.getFirstError();
+            			System.out.println("WARNING: stylesheet "+xslFile+" produced no label from the input "+
+            					nativeIm+" label"+(reason == null ? "" : " ("+reason+")")+"; copying the input label unchanged ("+xslFromJar+")");
+            			xslInputStream = InputStreamFromJar(xslFromJar);
+            			if (xslInputStream != null) {
+            				doc2 = domUtil.transformDocument(doc1, xslInputStream);
+            			}
+            		}
+            		else if (xslErrors != null) {
+            			xslErrors.print();
+            		}
+            		if (doc2 != null && doc2.getDocumentElement() == null) {
+            			doc2 = null;
             		}
             	}
         		if (doc2 != null) {
@@ -289,7 +311,13 @@ public class PDSToPDSImageTranscoder implements ImageTranscoder {
     	URL url;
     	boolean go = true;
     	
-    	url = ClassLoader.getSystemResource(arg);
+    	// use this class's own loader so the resource is found when vicario is used
+    	// as a library (app servers, plugin loaders), not only from the system classpath
+    	url = getClass().getClassLoader().getResource(arg);
+    	if (url == null) {
+    		System.out.println(" InputStreamFromJar: resource not found on classpath: "+arg);
+    		return null;
+    	}
     	try {
     	is = url.openStream();
     	}

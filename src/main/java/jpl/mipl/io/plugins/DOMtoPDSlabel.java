@@ -836,10 +836,10 @@ public class DOMtoPDSlabel {
      * @param value The String to be chopped up
      * @return A Vector of all the words
      */
-    Vector chopValueString(String value) {
+    Vector<String> chopValueString(String value) {
     String token, subToken;
     String s;
-    Vector v = new Vector();;
+    Vector<String> v = new Vector<>();;
     int len = 0;
     int tokLen = 0;
     int subTokLen = 0;
@@ -1308,9 +1308,9 @@ public class DOMtoPDSlabel {
      * @param s
      * @return
      */
-    private Hashtable getPds_ptrHash(String s) {
+    private Hashtable<String, String> getPds_ptrHash(String s) {
     	
-    	Hashtable h = new Hashtable();
+    	Hashtable<String, String> h = new Hashtable<>();
     	// remove any parens 
     	s = s.replaceFirst("\\(","");
     	s = s.replaceFirst("\\)","");

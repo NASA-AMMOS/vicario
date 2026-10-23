@@ -40,7 +40,7 @@ public class TestXMLRead
 	Document doc = jpl.mipl.io.util.DOMutils.newDocumentBuilderFactory()
 				.newDocumentBuilder().parse(new FileInputStream(argv[0]));
 
-	ArrayList errorList = new ArrayList();
+	ArrayList<String> errorList = new ArrayList<>();
 	try {
 	    VicarLabel lbl = new VicarLabel(doc.getDocumentElement(),errorList);
 	    System.out.println("VICAR label:");

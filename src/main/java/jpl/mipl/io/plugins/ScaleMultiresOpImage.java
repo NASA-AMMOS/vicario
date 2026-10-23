@@ -102,7 +102,7 @@ public class ScaleMultiresOpImage extends ScaleOpImage {
 			// create a vector of the RenderedImages in the List
 			// didn't we just do this to create the RenderedImageList to begin with ?
 			System.out.println("ril sources Vector ");
-			Vector renderedSources = new Vector();
+			Vector<Object> renderedSources = new Vector<>();
 			for (int i = 0; i<ril.size() ; i++) {
 				System.out.println(i+") "+ril.get(i));
 				renderedSources.add(ril.get(i));
@@ -287,6 +287,14 @@ public class ScaleMultiresOpImage extends ScaleOpImage {
 		System.out.println("ScaleMultiresOpImage mapSourcePoint");
 	     return super.mapSourcePoint(sourcePt, sourceIndex);
 	    }
+	// getSources
+	// JAI 1.1.3 PlanarImage.getSources() returns a raw Vector, which javac flags as an
+	// unchecked implementation of RenderedImage.getSources(). Delegate with the generic
+	// return type so the unchecked conversion is confined to this one method.
+	@SuppressWarnings("unchecked")
+	public Vector<RenderedImage> getSources() {
+		return super.getSources();
+	}
 	// computeRect
 
 }

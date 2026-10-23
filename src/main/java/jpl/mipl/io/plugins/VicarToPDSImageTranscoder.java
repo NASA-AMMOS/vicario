@@ -282,7 +282,13 @@ public class VicarToPDSImageTranscoder implements ImageTranscoder {
     	URL url;
     	boolean go = true;
     	
-    	url = ClassLoader.getSystemResource(arg);
+    	// use this class's own loader so the resource is found when vicario is used
+    	// as a library (app servers, plugin loaders), not only from the system classpath
+    	url = getClass().getClassLoader().getResource(arg);
+    	if (url == null) {
+    		System.out.println(" InputStreamFromJar: resource not found on classpath: "+arg);
+    		return null;
+    	}
     	try {
     	is = url.openStream();
     	}

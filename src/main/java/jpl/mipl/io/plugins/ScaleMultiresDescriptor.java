@@ -265,7 +265,12 @@ class ScaleMultiresPropertyGenerator extends PropertyGeneratorImpl {
  * @see javax.media.jai.BorderExtender
  * @see javax.media.jai.OperationDescriptor
  */
+@SuppressWarnings("deprecation")
 public class ScaleMultiresDescriptor extends OperationDescriptorImpl {
+    // This descriptor is written against the JAI 1.1.3 OperationDescriptorImpl API whose
+    // constructor and overridable hooks used here are deprecated. Migrating to the
+    // registry-mode API would change how the operation registers, so the deprecation
+    // warnings are suppressed for this class only.
 
     /**
      * The resource strings that provide the general documentation
@@ -315,8 +320,8 @@ public class ScaleMultiresDescriptor extends OperationDescriptorImpl {
 
     /** The parameter default value list for this operation. */
     private static final Object[] paramDefaults = {
-        new Float(1.0F), new Float(1.0F),
-        new Float(0.0F), new Float(0.0F),
+        Float.valueOf(1.0F), Float.valueOf(1.0F),
+        Float.valueOf(0.0F), Float.valueOf(0.0F),
         Interpolation.getInstance(Interpolation.INTERP_NEAREST)
     };
 
@@ -378,9 +383,9 @@ public class ScaleMultiresDescriptor extends OperationDescriptorImpl {
      */
     public Number getParamMinValue(int index) {
         if (index == 0 || index == 1) {
-            return new Float(0.0F);
+            return Float.valueOf(0.0F);
         } else if (index == 2 || index == 3) {
-            return new Float(-Float.MAX_VALUE);
+            return Float.valueOf(-Float.MAX_VALUE);
         } else if (index == 4) {
             return null;
         } else {

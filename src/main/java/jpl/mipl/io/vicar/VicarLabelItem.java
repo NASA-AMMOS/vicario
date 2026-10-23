@@ -40,7 +40,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 
     /** Value.
      * @serial */
-    protected List _value;
+    protected List<String> _value;
 
     /** Data type if known.
      * @serial */
@@ -83,7 +83,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem()
     {
 	_key = null;
-	_value = new ArrayList(0);
+	_value = new ArrayList<>(0);
 	_type = TYPE_UNSPECIFIED;
     }
 
@@ -94,7 +94,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem(String key)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(0);
+	_value = new ArrayList<>(0);
 	_type = TYPE_UNSPECIFIED;
     }
 
@@ -104,7 +104,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem(String key, String value)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(1);
+	_value = new ArrayList<>(1);
 	_value.add(value);
 	_type = TYPE_STRING;
     }
@@ -115,7 +115,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem(String key, String[] value)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(value.length);
+	_value = new ArrayList<>(value.length);
 	for (int i=0; i < value.length; i++)
 	    _value.add(value[i]);
 	_type = TYPE_STRING;
@@ -127,7 +127,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem(String key, int value)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(1);
+	_value = new ArrayList<>(1);
 	_value.add(getLabelString(value));
 	_type = TYPE_INTEGER;
     }
@@ -138,7 +138,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem(String key, int[] value)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(value.length);
+	_value = new ArrayList<>(value.length);
 	for (int i=0; i < value.length; i++)
 	    _value.add(getLabelString(value[i]));
 	_type = TYPE_INTEGER;
@@ -150,7 +150,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem(String key, float value)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(1);
+	_value = new ArrayList<>(1);
 	_value.add(getLabelString(value));
 	_type = TYPE_FLOAT;
     }
@@ -161,7 +161,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem(String key, float[] value)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(value.length);
+	_value = new ArrayList<>(value.length);
 	for (int i=0; i < value.length; i++)
 	    _value.add(getLabelString(value[i]));
 	_type = TYPE_FLOAT;
@@ -173,7 +173,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem(String key, double value)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(1);
+	_value = new ArrayList<>(1);
 	_value.add(getLabelString(value));
 	_type = TYPE_DOUBLE;
     }
@@ -184,7 +184,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem(String key, double[] value)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(value.length);
+	_value = new ArrayList<>(value.length);
 	for (int i=0; i < value.length; i++)
 	    _value.add(getLabelString(value[i]));
 	_type = TYPE_DOUBLE;
@@ -200,7 +200,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem(String key, String value, boolean quote)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(1);
+	_value = new ArrayList<>(1);
 	_value.add(value);
 	if (quote)
 	    _type = TYPE_STRING;
@@ -217,7 +217,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     public VicarLabelItem(String key, String[] value, boolean quote)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(value.length);
+	_value = new ArrayList<>(value.length);
 	if (quote)
 	    _type = TYPE_STRING;
 	else
@@ -234,10 +234,10 @@ public class VicarLabelItem implements Cloneable, Serializable
  * Create a label item from a vector of strings, but we don't know the type.
  * @see #VicarLabelItem(String, String, boolean)
  */
-    public VicarLabelItem(String key, List value, boolean quote)
+    public VicarLabelItem(String key, List<String> value, boolean quote)
     {
 	_key = key.toUpperCase();
-	_value = new ArrayList(value.size());
+	_value = new ArrayList<>(value.size());
 	if (quote)
 	    _type = TYPE_STRING;
 	else
@@ -246,7 +246,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 	for (int i=0; i < value.size(); i++) {
 	    _value.add(value.get(i));
 	    if (!quote)
-		guessType((String)value.get(i));
+		guessType(value.get(i));
 	}
     }
 
@@ -255,7 +255,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  * for more information (the arguments are identical).
  * @see #fromXML(Element, List)
  */
-    public VicarLabelItem(Element item, List errorList)
+    public VicarLabelItem(Element item, List<? super String> errorList)
     {
 	this();
 	fromXML(item, errorList);
@@ -323,7 +323,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public String getString()
     {
-	return (String)_value.get(0);
+	return _value.get(0);
     }
 
 /***********************************************************************
@@ -333,7 +333,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public int getInteger()
     {
-	return getIntegerFromString((String)_value.get(0));
+	return getIntegerFromString(_value.get(0));
     }
 
 /***********************************************************************
@@ -344,7 +344,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public float getFloat()
     {
-	return getFloatFromString((String)_value.get(0));
+	return getFloatFromString(_value.get(0));
     }
 
 /***********************************************************************
@@ -355,7 +355,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public double getDouble()
     {
-	return getDoubleFromString((String)_value.get(0));
+	return getDoubleFromString(_value.get(0));
     }
 
 /***********************************************************************
@@ -364,7 +364,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public String getString(int index)
     {
-	return (String)_value.get(index);
+	return _value.get(index);
     }
 
 /***********************************************************************
@@ -374,7 +374,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public int getInteger(int index)
     {
-	return getIntegerFromString((String)_value.get(index));
+	return getIntegerFromString(_value.get(index));
     }
 
 /***********************************************************************
@@ -384,7 +384,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public float getFloat(int index)
     {
-	return getFloatFromString((String)_value.get(index));
+	return getFloatFromString(_value.get(index));
     }
 
 /***********************************************************************
@@ -394,7 +394,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public double getDouble(int index)
     {
-	return getDoubleFromString((String)_value.get(index));
+	return getDoubleFromString(_value.get(index));
     }
 
 /***********************************************************************
@@ -413,7 +413,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     {
 	int[] array = new int[_value.size()];
 	for (int i=0; i < _value.size(); i++)
-	    array[i] = getIntegerFromString((String)_value.get(i));
+	    array[i] = getIntegerFromString(_value.get(i));
 	return array;
     }
 
@@ -425,7 +425,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     {
 	float[] array = new float[_value.size()];
 	for (int i=0; i < _value.size(); i++)
-	    array[i] = getFloatFromString((String)_value.get(i));
+	    array[i] = getFloatFromString(_value.get(i));
 	return array;
     }
 
@@ -437,7 +437,7 @@ public class VicarLabelItem implements Cloneable, Serializable
     {
 	double[] array = new double[_value.size()];
 	for (int i=0; i < _value.size(); i++)
-	    array[i] = getDoubleFromString((String)_value.get(i));
+	    array[i] = getDoubleFromString(_value.get(i));
 	return array;
     }
 
@@ -451,7 +451,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public void setValue(String value)
     {
-	_value = new ArrayList(1);
+	_value = new ArrayList<>(1);
 	_value.add(value);
 	_type = TYPE_STRING;
     }
@@ -462,7 +462,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public void setValue(int value)
     {
-	_value = new ArrayList(1);
+	_value = new ArrayList<>(1);
 	_value.add(getLabelString(value));
 	_type = TYPE_INTEGER;
     }
@@ -473,7 +473,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public void setValue(float value)
     {
-	_value = new ArrayList(1);
+	_value = new ArrayList<>(1);
 	_value.add(getLabelString(value));
 	_type = TYPE_FLOAT;
     }
@@ -484,7 +484,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public void setValue(double value)
     {
-	_value = new ArrayList(1);
+	_value = new ArrayList<>(1);
 	_value.add(getLabelString(value));
 	_type = TYPE_DOUBLE;
     }
@@ -554,7 +554,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public void setValue(String[] value)
     {
-	_value = new ArrayList(value.length);
+	_value = new ArrayList<>(value.length);
 	for (int i=0; i < value.length; i++)
 	    _value.add(value[i]);
 	_type = TYPE_STRING;
@@ -565,7 +565,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public void setValue(int[] value)
     {
-	_value = new ArrayList(value.length);
+	_value = new ArrayList<>(value.length);
 	for (int i=0; i < value.length; i++)
 	    _value.add(getLabelString(value[i]));
 	_type = TYPE_INTEGER;
@@ -576,7 +576,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public void setValue(float[] value)
     {
-	_value = new ArrayList(value.length);
+	_value = new ArrayList<>(value.length);
 	for (int i=0; i < value.length; i++)
 	    _value.add(getLabelString(value[i]));
 	_type = TYPE_FLOAT;
@@ -587,7 +587,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  */
     public void setValue(double[] value)
     {
-	_value = new ArrayList(value.length);
+	_value = new ArrayList<>(value.length);
 	for (int i=0; i < value.length; i++)
 	    _value.add(getLabelString(value[i]));
 	_type = TYPE_DOUBLE;
@@ -666,14 +666,14 @@ public class VicarLabelItem implements Cloneable, Serializable
 	buf.append(_key);
 	buf.append("=");
 	if (_value.size() <= 1)
-	    buf.append(getLabelFormattedString((String)_value.get(0)));
+	    buf.append(getLabelFormattedString(_value.get(0)));
 	else {				// multivalued element
 	    buf.append("(");
 	    for (int i=0; i < _value.size(); i++) {
 		if (i != 0)
 		    buf.append(",");
 		    
-		buf.append(getLabelFormattedString((String)_value.get(i)));
+		buf.append(getLabelFormattedString(_value.get(i)));
 		// buf.append(_value.get(i));
 	    }
 	    buf.append(")");
@@ -700,7 +700,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 	else if (_value.size() <= 1) {
 	    if (_type == TYPE_STRING)
 		buf.append("'");
-		buf.append((String)_value.get(0));
+		buf.append(_value.get(0));
 	    if (_type == TYPE_STRING)
 		buf.append("'");
 	}
@@ -741,7 +741,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 	if (_value.size() <= 1) {
 
 	    //!!!! HANDLE QUOTES !!!!
-	    item.setAttribute("value", (String)_value.get(0));
+	    item.setAttribute("value", _value.get(0));
 	}
 	else {				// multivalued element
 	    int n = _value.size();
@@ -750,7 +750,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 
 		Element sub = doc.createElement("subitem");
 		//!!!! HANDLE QUOTES !!!!
-		sub.setAttribute("value", (String)_value.get(i));
+		sub.setAttribute("value", _value.get(i));
 		item.appendChild(sub);
 	    }
 	}
@@ -780,7 +780,7 @@ public class VicarLabelItem implements Cloneable, Serializable
  * exceptions; parsing continues as long as possible and problems are appended
  * to the <code>errorList</code>.
  */
-    public void fromXML(Element item, List errorList)
+    public void fromXML(Element item, List<? super String> errorList)
     {
 	// Make sure it's an ITEM node
 	DOMutils domUtils = new DOMutils();
@@ -839,7 +839,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 	    // Single value exists
 
 	    String value = item.getAttribute("value");
-	    _value = new ArrayList(1);
+	    _value = new ArrayList<>(1);
 	    _value.add(value);
 	    int old_type = _type;
 	    guessType(value);	// Not only guesses, but makes sure it's valid
@@ -854,7 +854,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 	else {		// Multiple values
 
 	    if (nel == 0) {			// no subitems either!
-		_value = new ArrayList(0);
+		_value = new ArrayList<>(0);
 		
 		// value is NOT in an attribute, try to get it
 		
@@ -867,7 +867,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 		// String getNodeValueString(Node node) 
 		v = domUtils.getNodeValue(item);
 		if (v != null && !v.isEmpty()) {
-			_value = new ArrayList(1);
+			_value = new ArrayList<>(1);
 			_value.add(v);
 			guessType(v);
 		} else {
@@ -879,7 +879,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 	    }
 	    else {
 		int old_type = _type;
-		_value = new ArrayList(nel);
+		_value = new ArrayList<>(nel);
 		for (int i=0; i < nel; i++) {
 		    Node subitem = subitems.item(i);
 		    String v = "";
@@ -895,7 +895,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 //!!!!  the following with the above.
 			v = si.getAttribute("value");	// empty string OK
 			if (v != null && !v.isEmpty()) {
-				_value = new ArrayList(1);
+				_value = new ArrayList<>(1);
 				_value.add(v);
 				guessType(v);
 			} else {
@@ -1130,7 +1130,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 	    return;			// no point in checking further
 
 	for (int i=0; i < _value.size(); i++) {
-	    guessType((String)_value.get(i));
+	    guessType(_value.get(i));
 	}
     }
 
@@ -1147,7 +1147,7 @@ public class VicarLabelItem implements Cloneable, Serializable
 	    return null;
 	}
 
-	item._value = (ArrayList)((ArrayList)(item._value)).clone();
+	item._value = new ArrayList<>(item._value);
 
 	return item;
     }

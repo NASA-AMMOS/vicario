@@ -87,6 +87,8 @@ import javax.xml.XMLConstants;
 
 
 import java.util.Hashtable;
+import java.util.ArrayList;
+import java.util.List;
 import java.awt.image.BufferedImage;
 
 // Properties
@@ -750,7 +752,9 @@ public class DOMutils
         // add checking to determine duplicates and not add one of them
    
         // check to see that both Documents are compatable
-        if (doc1 != null && doc2 != null) {
+        // (a failed XSL transform can leave a Document with no root element)
+        if (doc1 != null && doc2 != null && 
+        		doc1.getDocumentElement() != null && doc2.getDocumentElement() != null) {
             
             if (debug) {
                 System.out.println("doc1 > " + doc1.getImplementation() );
@@ -1154,6 +1158,26 @@ public class DOMutils
      * 
      */		
     public Document transformDocument(Node doc, StreamSource xslStreamSource) {
+    	return transformDocument(doc, xslStreamSource, null);
+    }
+    
+    /* transform a Document using an XSL file
+     * @param doc - the Node which should be a Document to transform
+     * @param xsl - a String of the filename of the XSL file
+     * @param errorListener - receives the errors reported while transforming
+     * (null keeps the transformer's default listener, which prints them)
+     */
+    public Document transformDocument(Node doc, String xsl, ErrorListener errorListener) {
+    	return transformDocument(doc, new StreamSource(xsl), errorListener);
+    }
+    
+    /* transform a Document using an XSL file
+     * @param doc - the Node which should be a Document to transform
+     * @param xslIS - an input StreamSource for an XSL file<br>
+     * @param errorListener - receives the errors reported while transforming
+     * (null keeps the transformer's default listener, which prints them)
+     */
+    public Document transformDocument(Node doc, StreamSource xslStreamSource, ErrorListener errorListener) {
     	
     TransformerFactory tFactory = TransformerFactory.newInstance();
 
@@ -1170,6 +1194,9 @@ public class DOMutils
       try {
       // Transformer transformer = tFactory.newTransformer(new StreamSource(xsl));
       Transformer transformer = tFactory.newTransformer(xslStreamSource);
+      if (errorListener != null) {
+    	  transformer.setErrorListener(errorListener);
+      }
       if (debug) {
     	  	System.out.println("DOMutils.transformer  Transformer transformer="+transformer );
       }
@@ -1213,10 +1240,16 @@ public class DOMutils
         System.out.println("transformDocument TransformerException "+ tce );
       
       } catch (TransformerException te) {
-        System.out.println("transformDocument TransformerException "+te );
+    	if (errorListener instanceof TransformErrors) {
+    		// the caller reports it
+    		((TransformErrors) errorListener).add(te);
+    	} else {
+    		System.out.println("transformDocument TransformerException "+te );
+    	}
       }
 	  
-	 return (Document) domResult.getNode();
+	  // domResult is still null if the stylesheet could not be compiled
+	 return (domResult == null) ? null : (Document) domResult.getNode();
 	}
     else
     {
@@ -2305,12 +2338,12 @@ public class DOMutils
    * Each hash is an attribute name, value pair
    * 
    **/
-    public Hashtable getNodeAttributesHash(Node node) {
+    public Hashtable<String, String> getNodeAttributesHash(Node node) {
     
     Node n;
     String value;
     String name;
-    Hashtable hash = new Hashtable();
+    Hashtable<String, String> hash = new Hashtable<>();
     
     if (debug) System.out.println("  getNodeAttributesHash -----------");
     NamedNodeMap map = node.getAttributes();
@@ -3221,5 +3254,48 @@ public class DOMutils
     }
     
   } // end of main
+
+   /**
+    * ErrorListener that keeps the errors reported during a transform instead of
+    * printing them, so the caller can decide whether the result is usable.
+    * Fatal errors still stop the transform.
+    */
+   public static class TransformErrors implements ErrorListener {
+   	private List<TransformerException> errors = new ArrayList<TransformerException>();
+   	
+   	public void warning(TransformerException e) {
+   		add(e);
+   	}
+   	
+   	public void error(TransformerException e) {
+   		add(e);
+   	}
+   	
+   	public void fatalError(TransformerException e) throws TransformerException {
+   		add(e);
+   		throw e;
+   	}
+   	
+   	void add(TransformerException e) {
+   		if (!errors.contains(e)) errors.add(e);
+   	}
+   	
+   	/* the first error as "message at line N", or null if there were none */
+   	public String getFirstError() {
+   		if (errors.isEmpty()) return null;
+   		TransformerException e = errors.get(0);
+   		Throwable cause = e.getException();
+   		String msg = (cause != null && cause.getMessage() != null) ? cause.getMessage() : e.getMessage();
+   		SourceLocator loc = e.getLocator();
+   		return (loc == null || loc.getLineNumber() < 0) ? msg : msg+" at line "+loc.getLineNumber();
+   	}
+   	
+   	/* print the errors the way the default listener would have */
+   	public void print() {
+   		for (TransformerException e : errors) {
+   			System.out.println(e.getMessageAndLocation());
+   		}
+   	}
+   }
 } // end of DOMUtils
 

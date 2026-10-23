@@ -74,7 +74,7 @@ public class VicarLabel implements Cloneable, Serializable
  * identical).
  * @see #fromXML(Element, List)
  */
-    public VicarLabel(Element dom, List errorList)
+    public VicarLabel(Element dom, List<? super String> errorList)
     {
 	this();
 	if (_debug) {
@@ -473,7 +473,7 @@ public class VicarLabel implements Cloneable, Serializable
  * @see VicarLabelSet#fromXML(Element, List)
  */
   //   public void fromXML(Element dom, List errorList)
-  public void fromXML(Element dom, List errorList)
+  public void fromXML(Element dom, List<? super String> errorList)
   // public void fromXML(Node dom, List errorList)
     {
 	String tagName = dom.getTagName();
