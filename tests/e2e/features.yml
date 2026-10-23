@@ -140,13 +140,14 @@ features:
     tickets: [IDS-10067, IDS-8883]
 
 
-  - id: viewer
-    name: Image viewer (JADE)
-    status: excluded
-    description: The interactive JADE viewer (DISPLAY=true / JFrameJade).
-    reason: >
-      An interactive display tool rather than part of format translation; out of scope
-      for the automated suite.
+  - id: visual-check
+    name: Visual check (replaces JADE review)
+    status: active
+    description: >
+      Every output a person would look at decodes to an image of the right size that is neither
+      blank nor saturated, with a preview in the report. Replaces opening each output in the JADE
+      viewer in the legacy procedure; the viewer itself is not tested.
+    specs: [features/visual-check.spec.ts]
 
 
   - id: python-scripts
@@ -158,10 +159,12 @@ features:
     tickets: [IDS-10407]
 
   - id: velocity-labels
-    name: PDS4 label generation (Velocity)
-    status: excluded
-    description: Generating PDS4 XML labels for archive products from Velocity templates.
-    reason: >
-      Needs the non-public label-generation jar (VELO_TEMPLATE / VELO_CONFIG); cannot
-      run in a public workflow. Covered by the internal reg_test scripts.
+    name: PDS4 label generation (Labelocity)
+    status: active
+    description: >
+      Generating detached PDS4 labels from Velocity templates with the public Labelocity release
+      (PDS4 writer and mission templates) and the vicario build under test. Generated labels must
+      match the archive label's array structure and read back to the same pixels.
+    keywords: [FORMAT=pds4, PDS_LABEL_TYPE=PDS4, PDS_DETACHED_ONLY, VELO_TEMPLATE, VELO_CONFIG]
+    specs: [features/pds4-labels.spec.ts]
     tickets: [IDS-8541, IDS-8624, IDS-8406]

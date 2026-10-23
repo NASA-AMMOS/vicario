@@ -46,8 +46,9 @@ test.describe('Feature registry', { tag: ['@registry', '@fast'] }, () => {
     for (const spec of specFiles) expect(listed.has(spec), `${spec} is listed in features.yml`).toBe(true);
   });
 
-  test('every manifest asset is pinned, licensed and used by a spec', () => {
-    const sources = specFiles.map((s) => readFileSync(path.join(E2E_ROOT, s), 'utf8')).join('\n');
+  test('every manifest asset is pinned, licensed and used by a spec or helper', () => {
+    const helpers = readdirSync(path.join(E2E_ROOT, 'support')).map((f) => `support/${f}`);
+    const sources = [...specFiles, ...helpers].map((s) => readFileSync(path.join(E2E_ROOT, s), 'utf8')).join('\n');
     for (const a of manifestAssets()) {
       expect(a.sha256, `${a.id} sha256`).toMatch(/^[0-9a-f]{64}$/);
       expect(a.license, `${a.id} license`).toBeTruthy();

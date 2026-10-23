@@ -39,6 +39,6 @@ The public repository and its workflows build and test anywhere:
 | `util/DOMutils*`, `util/TreeInfo*`, any XML parsing | `xml-security` | `xml-security.spec.ts`; `DOMutilsXXETest` |
 | `ARGFILE`, `PARALLEL_BATCH`, `OUT=-`, remote input | `batch-remote` | `batch-remote.spec.ts` |
 | `src/main/scripts/*.py` | `python-scripts` | `python-scripts.spec.ts` |
-| Velocity PDS4 label generation | `velocity-labels` | excluded from public CI (non-public jar); use the internal reg_test scripts |
-| JADE viewer (`DISPLAY`, `JFrameJade`) | `viewer` | excluded: interactive tool, not format translation |
+| PDS4 label output (`FORMAT=pds4`, `VELO_*`), Labelocity compatibility | `velocity-labels` | `pds4-labels.spec.ts` (uses the pinned public Labelocity release) |
+| Anything producing images people view (browse, PNG/JPEG) | `visual-check` | `visual-check.spec.ts` (replaces the JADE review) |
 | `.github/workflows/**`, `tests/e2e/data/**` | — | `data-guard` passes; manifest entries pinned and licensed |

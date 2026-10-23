@@ -363,6 +363,17 @@
       "url": "https://pds-geosciences.wustl.edu/mgn/mgn-v-rdrs-5-bidr-full-res-v1/MG_4001/F0378_3/FILE_13.LBL",
       "sha256": "030b9e4336a0ad36db376d315ebc82c35c790a0fc42aa87e6739aa53161b73ae",
       "bytes": 2640
+    },
+    {
+      "id": "labelocity-1.0",
+      "file": "labelocity-1.0.0-package.tar.gz",
+      "tier": "fast",
+      "license": "Apache-2.0 (NASA-AMMOS/labelocity)",
+      "source": "NASA-AMMOS/labelocity release 1.0",
+      "description": "Labelocity PDS4 label generation package: pds4writer and mi-label jars, Velocity, mission templates",
+      "url": "https://github.com/NASA-AMMOS/labelocity/releases/download/1.0/labelocity-1.0.0-package.tar.gz",
+      "sha256": "8c082bafea77005abcb252c065f2f5a68359c04614d65c51424b8f01ae114110",
+      "bytes": 20783771
     }
   ]
 }

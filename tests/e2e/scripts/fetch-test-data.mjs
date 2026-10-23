@@ -25,6 +25,8 @@ const ALLOWED_HOSTS = new Set([
   'pds-geosciences.wustl.edu', // PDS Geosciences Node public archive
 ]);
 const ALLOWED_GITHUB = /^\/(OSGeo\/gdal|astropy\/astropy-data)\/[0-9a-f]{40}\//;
+// GitHub release assets of these public projects (still pinned by sha256)
+const ALLOWED_RELEASES = /^\/NASA-AMMOS\/labelocity\/releases\/download\/[^/]+\/[^/]+$/;
 
 const args = process.argv.slice(2);
 const opt = (name, dflt) => {
@@ -42,6 +44,9 @@ if (!['fast', 'full'].includes(tier)) {
 export function checkUrl(url) {
   const u = new URL(url);
   if (u.protocol !== 'https:') return `not https: ${url}`;
+  if (u.hostname === 'github.com') {
+    return ALLOWED_RELEASES.test(u.pathname) ? null : `GitHub URL is not an allowed release asset: ${url}`;
+  }
   if (u.hostname === 'raw.githubusercontent.com') {
     return ALLOWED_GITHUB.test(u.pathname) ? null : `GitHub URL not pinned to an allowed repo/commit: ${url}`;
   }

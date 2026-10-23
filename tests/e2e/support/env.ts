@@ -32,4 +32,14 @@ export function fatJar(): string {
   return path.join(target, jars[0]);
 }
 
+/** The plain (non-shaded) jar, as Labelocity and other applications put it on their classpath. */
+export function thinJar(): string {
+  const target = path.join(REPO_ROOT, 'target');
+  const jars = existsSync(target)
+    ? readdirSync(target).filter((f) => /^vicario-.*\.jar$/.test(f) && !/-(FAT|javadoc|sources)\.jar$/.test(f))
+    : [];
+  if (jars.length === 0) throw new Error('No target/vicario-*.jar; run: mvn -B -P shade package test-compile');
+  return path.join(target, jars[0]);
+}
+
 export const synthetic = (name: string) => path.join(SYNTH_DIR, name);
