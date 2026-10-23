@@ -7,6 +7,11 @@ on:
       - develop
   workflow_dispatch:
 
+# Default for jobs without their own block (build, publish); the ci and release
+# jobs set what they need.
+permissions:
+  contents: read
+
 # Pull requests are tested by ci.yml; pushes test here before anything is built.
 jobs:
   ci:
