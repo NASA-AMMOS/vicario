@@ -215,7 +215,7 @@ export default class OverviewReporter implements Reporter {
       return `<tr>
   <td><a class="fname" href="${link}">${esc(r.name)}</a><div class="desc">${esc(r.description)} <a href="procedures.html#${esc(r.key)}">Procedures</a></div>${gallery}</td>
   <td><span class="pill ${state}">${label}</span></td>
-  <td class="num">${r.passed}</td><td class="num ${r.failed ? 'bad' : ''}">${r.failed}</td><td class="num">${r.known}</td>
+  <td class="num">${r.passed}</td><td class="num ${r.failed ? 'bad' : ''}">${r.failed}</td>
 </tr>`;
     }).join('\n');
 
@@ -253,11 +253,10 @@ ${CSS}</style></head>
   <div class="stat ${ok ? 'ok' : 'bad'}"><b>${ok ? 'Passed' : 'Failed'}</b><span>overall result</span></div>
   <div class="stat ok"><b>${totals.passed}</b><span>tests passed</span></div>
   <div class="stat ${totals.failed ? 'bad' : 'ok'}"><b>${totals.failed}</b><span>unexpected failures</span></div>
-  <div class="stat warn"><b>${totals.known}</b><span>known issues (expected to fail)</span></div>
 </div>
 ${failHtml}
 <section><h2>Features</h2><div class="scroll"><table>
-<thead><tr><th>Feature</th><th>Status</th><th class="num">Passed</th><th class="num">Failed</th><th class="num">Known issues</th></tr></thead>
+<thead><tr><th>Feature</th><th>Status</th><th class="num">Passed</th><th class="num">Failed</th></tr></thead>
 <tbody>
 ${featureRows}
 </tbody></table></div></section>
@@ -349,9 +348,9 @@ buttons.forEach((b) => b.addEventListener('click', () => {
   private markdown(rows: Row[], totals: { passed: number; failed: number; known: number }, failures: Item[], known: Item[],
     notAutomated: Feature[], info: ReturnType<OverviewReporter['runInfo']>, result: FullResult): string {
     const out = [`### VICARIO feature tests: ${result.status === 'passed' ? 'passed' : '**failed**'}`, '',
-      `${totals.passed} passed, ${totals.failed} failed, ${totals.known} known issues (${info.tier} tier, ${info.duration})`, '',
-      '| Feature | Passed | Failed | Known issues |', '|---|---:|---:|---:|',
-      ...rows.map((r) => `| ${r.name} | ${r.passed} | ${r.failed ? `**${r.failed}**` : 0} | ${r.known} |`)];
+      `${totals.passed} passed, ${totals.failed} failed (${info.tier} tier, ${info.duration})`, '',
+      '| Feature | Passed | Failed |', '|---|---:|---:|',
+      ...rows.map((r) => `| ${r.name} | ${r.passed} | ${r.failed ? `**${r.failed}**` : 0} |`)];
     if (failures.length) out.push('', '**Failures**', '', ...failures.map((f) => `- ${f.feature}: ${f.title}: ${f.review ? `needs review (${f.review}): ` : ''}${f.error ?? ''}`));
     if (known.length) {
       const issues = [...new Set(known.map((k) => `${k.issue}: ${k.why}`))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));

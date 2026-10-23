@@ -158,7 +158,7 @@ open report/procedures.html                           # check your tests read we
 | `security-scan.yml` | pull requests to `main`/`develop`, push to `main`, manual | CodeQL (Java, Python, workflows) and SonarQube Cloud analysis; see [Security scanning](#security-scanning) |
 
 The report has three parts:
-- **`report/index.html`**, the feature overview: each feature's description, status and pass/fail/known-issue counts, a gallery of image previews from its tests, the known issues grouped by ticket, and the features not yet automated. Each feature and image links into the full report.
+- **`report/index.html`**, the feature overview: each feature's description, status and pass/fail counts, a gallery of image previews from its tests, the failures (with any "needs review" note), ticketed known failures grouped by ticket when there are any, and the features not yet automated. Each feature and image links into the full report.
 - **`report/procedures.html`**, the test procedures: every test grouped by feature, with its description, scope tags, issue notes and latest result, plus links to its run details and its source on GitHub. A scope legend at the top filters the list.
 - **`report/playwright/`**, the Playwright HTML report: every test with its command line, logs, label text and image previews, including the JUnit results.
 
