@@ -657,7 +657,7 @@ public class PDS4ImageReader extends ImageReader {
         return imageType;
     }
     
-    public Iterator getImageTypes(int imageIndex) throws IIOException 
+    public Iterator<ImageTypeSpecifier> getImageTypes(int imageIndex) throws IIOException 
     {
         if (debug) 
             System.out.println("PDS4ImageReader.getImageTypes");
@@ -671,7 +671,7 @@ public class PDS4ImageReader extends ImageReader {
             readHeader();
         }
         
-        ArrayList list = new ArrayList();
+        ArrayList<ImageTypeSpecifier> list = new ArrayList<>();
         if (imageType == null)
         {
             

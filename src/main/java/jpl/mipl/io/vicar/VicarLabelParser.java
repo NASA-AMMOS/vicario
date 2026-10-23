@@ -108,7 +108,7 @@ public class VicarLabelParser
 
 	// Must be multivalued
 
-	List values_vec = new ArrayList();
+	List<String> values_vec = new ArrayList<>();
 	boolean quote = false;
 
 	while (ttype != ')') {

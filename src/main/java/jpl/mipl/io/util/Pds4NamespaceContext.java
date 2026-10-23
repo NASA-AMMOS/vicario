@@ -43,10 +43,10 @@ public class Pds4NamespaceContext implements NamespaceContext {
 	
 	// new constructor which takes in a filename
 	// prefix is the key, namespace is the value
-	HashMap<String, String> namespaceMap = new HashMap();
+	HashMap<String, String> namespaceMap = new HashMap<>();
 	
 	// namespace is the key, prefix is the value
-	HashMap<String, String> prefixMap = new HashMap();
+	HashMap<String, String> prefixMap = new HashMap<>();
 						//   "pds4_namespaces.txt"
 	String PDS4_NAMESPACES = "pds4_namespaces.txt";
 	String PDS4_NAMESPACES_FULLPATH = "jpl/mipl/io/util/pds4_namespaces.txt";
@@ -115,7 +115,7 @@ public class Pds4NamespaceContext implements NamespaceContext {
     
 	
 
-    public Iterator getPrefixes(String namespace)
+    public Iterator<String> getPrefixes(String namespace)
     {
         return null;
     }
@@ -131,7 +131,7 @@ public class Pds4NamespaceContext implements NamespaceContext {
         
     	if (debug) System.out.println("Pds4NamespaceContext.setPrefixAndNamespaceFromXMLInputStream >"+is+"< ");
     	BufferedReader bfReader;
-    	List<String> list = new ArrayList();
+    	List<String> list = new ArrayList<>();
     	int lineNo = 0;
     	int kvAddCt  = 0;
     	if (is == null) return; // throw an exception or print something??
@@ -236,7 +236,7 @@ public class Pds4NamespaceContext implements NamespaceContext {
     			"xsi = http://www.w3.org/2001/XMLSchema-instance" };
     			***/
     	String sCurrentLine;
-    	List<String> list = new ArrayList();
+    	List<String> list = new ArrayList<>();
     	if (br != null) {
     		if (debug) System.out.println("Pds4NamespaceContext read from file");
     		// allocate an array to store the strings

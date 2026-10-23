@@ -50,7 +50,7 @@ public class DOMtoHashtable  {
     private IIOMetadataNode _rootIioNode  = null;
     
     
-    Hashtable rootHashtable = null;
+    Hashtable<String, Object> rootHashtable = null;
     
     // string to hold the output
     boolean outputToString = false;
@@ -102,8 +102,8 @@ public class DOMtoHashtable  {
             // strip off the documnet node??
             // check if there is onlt one child??
             // child the name of the root??
-            rootHashtable = new Hashtable();
-            Hashtable childHashtable = new Hashtable();
+            rootHashtable = new Hashtable<>();
+            Hashtable<String, Object> childHashtable = new Hashtable<>();
             
             
             convertMetadata(root, rootHashtable);
@@ -128,7 +128,7 @@ public class DOMtoHashtable  {
     /**
     * converts a document to an Hashtable tree
     **/
-    void convertMetadata(Node root, Hashtable inHash) {
+    void convertMetadata(Node root, Hashtable<String, Object> inHash) {
         if (root == null) {
             System.out.print("DOMtoHashtable.convertMetadata() null metadata");
         }
@@ -142,7 +142,7 @@ public class DOMtoHashtable  {
     
     /* 
      * forces creation of the hashtable     */
-    public Hashtable getHashtable() {
+    public Hashtable<String, Object> getHashtable() {
     	if (rootHashtable == null) {
     		convert();
     	}
@@ -181,7 +181,7 @@ public class DOMtoHashtable  {
    /**
     * Convert an XML Node to a Hashtable. Each subnode which is not a value will become
     * a new hashtable with the name of the subnode as the key.    * @param node node Node, usually the roor Node from a Document Object    * @param rootHash Hashtable to put data into, sub Hashtables will be created as needed    * @param level keep track of the level of subnode, used for pretty printing    */
-   private void convertMetadata(Node node, Hashtable rootHash, int level) {
+   private void convertMetadata(Node node, Hashtable<String, Object> rootHash, int level) {
         // Print node name and attribute names and values
         // indent(level);
         // System.out.print("<" + node.getNodeName());
@@ -199,16 +199,16 @@ public class DOMtoHashtable  {
         
         String objectName = null;
         
-        Hashtable nodeHash = null;
-        Hashtable childHash = null;
+        Hashtable<String, Object> nodeHash = null;
+        Hashtable<String, Object> childHash = null;
         // IIOMetadataNode iioNode;
         
         int type = node.getNodeType();
          
         
           
-          nodeHash = new Hashtable();        
-          childHash = new Hashtable();
+          nodeHash = new Hashtable<>();        
+          childHash = new Hashtable<>();
           
           String nValue = getNodeValueString(node);
           

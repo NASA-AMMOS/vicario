@@ -399,7 +399,7 @@ public class FITSImageReader extends ImageReader {
         
         BasicHDU hdu = null;
         
-        Vector hduVector = new Vector();
+        Vector<BasicHDU> hduVector = new Vector<>();
         int i=0;
         // get all the HDU's from the file, later we'll get metadata and images
         try {
@@ -798,7 +798,7 @@ public class FITSImageReader extends ImageReader {
         return imageType;
     }
     
-    public Iterator getImageTypes(int imageIndex)
+    public Iterator<ImageTypeSpecifier> getImageTypes(int imageIndex)
         throws IIOException {
     	if (imageIndex >= hduCount) {
             throw new IndexOutOfBoundsException();
@@ -806,7 +806,7 @@ public class FITSImageReader extends ImageReader {
         if (haveReadHeader == false) {
             readHeader();
         }
-        ArrayList list = new ArrayList();
+        ArrayList<ImageTypeSpecifier> list = new ArrayList<>();
         list.add(imageType);
         return list.iterator();
     }
@@ -1024,7 +1024,7 @@ public class FITSImageReader extends ImageReader {
 	 			int afSize = 0;
 	 			
 	 			if (debug) System.out.println("actualData: "+ArrayFuncs.arrayDescription(actualData) );
-	 			afSize = ArrayFuncs.computeSize(actualData);
+	 			afSize = (int) ArrayFuncs.computeLSize(actualData);
 	 			
 	 			int[] dim = ArrayFuncs.getDimensions(actualData);
 	 			if (debug) {

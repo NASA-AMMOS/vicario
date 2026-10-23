@@ -59,7 +59,7 @@ public class VicarMetadata extends IIOMetadata implements Cloneable {
         boolean debug = false;
 		// boolean debug = true ;
         
-        Vector fromXmlErrorList = null;
+        Vector<String> fromXmlErrorList = null;
         
     public static final String 
         nativeImageMetadataFormatName = "VICAR_LABEL";  
@@ -188,7 +188,7 @@ public class VicarMetadata extends IIOMetadata implements Cloneable {
         
 		if (debug) { System.out.println("**** VicarMetadata Document *************"); }
 		
-        fromXmlErrorList = new Vector();
+        fromXmlErrorList = new Vector<>();
         vicarLabel = new VicarLabel();
         
         Element el = doc.getDocumentElement();

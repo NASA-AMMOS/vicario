@@ -1395,7 +1395,7 @@ public class VicarOutputFile implements VicarOutput
 						  System.out.print("WRITE "+band+" "+line+" "+y+" "+(line+y)+" "+start+" "+nbb+" >");
 						  for (int i =0 ; i< nbb ; i++) {
 							b = prefix[i] ;
-							Byte by = new Byte(b);
+							Byte by = Byte.valueOf(b);
 							System.out.print(" "+Byte.toString(b));
 							}
 						  System.out.println(" <*");

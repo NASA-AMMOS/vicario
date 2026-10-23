@@ -877,12 +877,12 @@ public class VicarSystemDOM2PDS4_DOM  {
     	vicar_format2bytes.put("DOUB", 8);
     	vicar_format2bytes.put("COMP", 8);
     	
-    	vicar_format2unsignedFlag.put("BYTE", new Boolean("true"));
-    	vicar_format2unsignedFlag.put("HALF", new Boolean("false"));
-    	vicar_format2unsignedFlag.put("FULL", new Boolean("false"));
-    	vicar_format2unsignedFlag.put("REAL", new Boolean("true"));
-    	vicar_format2unsignedFlag.put("DOUB", new Boolean("true"));
-    	vicar_format2unsignedFlag.put("COMP", new Boolean("true"));
+    	vicar_format2unsignedFlag.put("BYTE", Boolean.valueOf("true"));
+    	vicar_format2unsignedFlag.put("HALF", Boolean.valueOf("false"));
+    	vicar_format2unsignedFlag.put("FULL", Boolean.valueOf("false"));
+    	vicar_format2unsignedFlag.put("REAL", Boolean.valueOf("true"));
+    	vicar_format2unsignedFlag.put("DOUB", Boolean.valueOf("true"));
+    	vicar_format2unsignedFlag.put("COMP", Boolean.valueOf("true"));
     
     }
 

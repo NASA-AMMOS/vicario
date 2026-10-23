@@ -895,7 +895,7 @@ public class PDSImageWriter extends ImageWriter {
             }
             
             if (detachedLabelOnly == true && readerFormat.equalsIgnoreCase("pds")) {
-            	ArrayList xpathDeleteArrayList = new ArrayList();
+            	ArrayList<String> xpathDeleteArrayList = new ArrayList<>();
     			 
     			 // find all items whose name start with ^ - these are pointers
     			//  xPath = "//OBJECT/item[starts-with(@name,'^')]" ;
@@ -1041,7 +1041,7 @@ public class PDSImageWriter extends ImageWriter {
     			 * They should exist if the image read is not vicar
     			 **********/
     			// xpath to get all the OBJECTS that contain an item of PDS_OBJECT__TYPE
-            	ArrayList xpathDeleteArrayList = new ArrayList();
+            	ArrayList<String> xpathDeleteArrayList = new ArrayList<>();
     			    			
     			xPath = "//OBJECT/item[@name='PDS_OBJECT__TYPE']" ;
     			if (debug)  {

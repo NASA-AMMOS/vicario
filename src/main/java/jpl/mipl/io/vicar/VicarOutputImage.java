@@ -158,7 +158,7 @@ public class VicarOutputImage implements VicarOutput
  */
     public synchronized void open(String fn) throws IOException
     {
-	List name_list = new ArrayList();
+	List<String> name_list = new ArrayList<>();
 	String last_name = null;
 
 	StringTokenizer st = new StringTokenizer(fn, ", ");

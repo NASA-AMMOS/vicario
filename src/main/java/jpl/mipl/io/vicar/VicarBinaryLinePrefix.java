@@ -310,7 +310,7 @@ public class VicarBinaryLinePrefix {
 			  System.out.print(band+" "+line+" "+start+" "+_nbb+" >");
 			  for (int i =0 ; i< _nbb ; i++) {
 				b = _data[band][start + i] ;
-				Byte by = new Byte(b);
+				Byte by = Byte.valueOf(b);
 				System.out.print(" "+Byte.toString(b));
 				}
 			  System.out.println(" <*");

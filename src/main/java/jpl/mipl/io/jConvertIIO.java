@@ -1640,7 +1640,7 @@ public boolean conv(String argv[]) {
     // System.out.println(" ConvertImageJAI.conv "); 
     IIOImage iioImage = null;
     IIOMetadata im = null;
-    List thumbnailList = null;
+    List<? extends BufferedImage> thumbnailList = null;
     
     boolean INPfound = false;
     String key, value;
@@ -3104,7 +3104,7 @@ public boolean conv(String argv[]) {
 	    		jfImageS = new JFrameJade(sTitle);
 	    		jfImageS.setImage(cim) ;
 	    		jfImageS.pack();
-	    		jfImageS.show();
+	    		jfImageS.setVisible(true);
 	    
 	    if (debug) System.out.println(" imageHasBeenProcessed "+imageHasBeenProcessed);
 	    if (imageHasBeenProcessed) {
@@ -3112,7 +3112,7 @@ public boolean conv(String argv[]) {
 	    		jfImageF = new JFrameJade(sTitle);
 	    		jfImageF.setImage(filteredImage) ;
 	    		jfImageF.pack();
-	    		jfImageF.show();
+	    		jfImageF.setVisible(true);
 	    	}
 	    
 	    // this test stuff only, normally display only one window
@@ -3121,7 +3121,7 @@ public boolean conv(String argv[]) {
 	    		jfImageP = new JFrameJade(sTitle);
 	    		jfImageP.setImage(processedImage) ;
 	    		jfImageP.pack();
-	    		jfImageP.show();
+	    		jfImageP.setVisible(true);
 	    	}
 	  	}
 	   
@@ -3148,7 +3148,7 @@ public boolean conv(String argv[]) {
 	    	jfImageP = new JFrameJade(sTitle);
 	    	jfImageP.setImage(bandImage, bandList) ;
 	    	jfImageP.pack();
-	    	jfImageP.show();
+	    	jfImageP.setVisible(true);
 	    }
 	   }
 	    /**

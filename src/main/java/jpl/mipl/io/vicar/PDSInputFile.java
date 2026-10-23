@@ -490,7 +490,7 @@ public class PDSInputFile extends VicarInputFile
         // value may be in the attributes also -- above method finds the value in either spot
         if (value == null || value.isEmpty()) {
         	// value may be in subitems
-        	Vector imageSubitemVec = new Vector();
+        	Vector<String> imageSubitemVec = new Vector<>();
         	String xPath = "//item[@key='^IMAGE_HEADER']/subitem[@key='^IMAGE_HEADER']";
         	  
         	 // xPath = "//subitem[@key='^IMAGE']" ;
@@ -1080,7 +1080,7 @@ protected void openInternalLast() {
     * Some Objects seem to go out os scope and become null.
     * PropertyGenerator is the probable answer.
     *************/
-    public void setToProperties(Hashtable properties) {
+    public void setToProperties(Hashtable<String, Object> properties) {
         
         if (debug) System.out.println("PDSInputFile.setToProperties $$$$$$$$$$$$$$$$$$$$$$");
         
@@ -1928,7 +1928,7 @@ protected void openInternalLast() {
         int[] intArray = new int[st.countTokens()];
     
         while ( st.hasMoreTokens()  )  {
-            intArray[i] = new Integer ( st.nextToken() ).intValue();
+            intArray[i] = Integer.parseInt ( st.nextToken() );
             i++;
         }
         return intArray;
@@ -1952,7 +1952,7 @@ protected void openInternalLast() {
         double[] doubleArray = new double[st.countTokens()];
     
         while ( st.hasMoreTokens()  )  {
-            doubleArray[i] = new Double ( st.nextToken() ).doubleValue();
+            doubleArray[i] = Double.parseDouble ( st.nextToken() );
             // float version would use
             // intArray[i] = new Double ( st.nextToken() ).floatValue();
             i++;
@@ -2121,7 +2121,7 @@ protected void openInternalLast() {
             	 int ii=0;
             	 
             	 // test nodeList 
-            	 Vector imageSubitemVec = new Vector();
+            	 Vector<String> imageSubitemVec = new Vector<>();
             	 NodeList inList = domUtils.getNodeList(root, xPath);
             	 ii=0;
             	 for (int x=0 ;x < inList.getLength() ; x++) {

@@ -441,7 +441,7 @@ public class ImageUtils {
 	    			jFrameJade.setImage(cim) ;
 	    			// jFrameJade.setImage(renderedImage) ;
 	    			jFrameJade.pack();
-	    			jFrameJade.show();
+	    			jFrameJade.setVisible(true);
 	    		}
 	    		else if (bufferedImage != null) {
 	    			if (debug) System.out.println("the image is a BufferedImage");
@@ -452,7 +452,7 @@ public class ImageUtils {
 	    			
 	    			// jFrameJade.setImage(bufferedImage) ;
 	    			jFrameJade.pack();
-	    			jFrameJade.show();
+	    			jFrameJade.setVisible(true);
 	    		} else if (imageRenderedOp != null) {
 	    			if (debug) System.out.println("the image is a renderedImageOp");
 	    			// RenderedImage conditionImageToByte(RenderedImage imageOp_base ) 
@@ -462,7 +462,7 @@ public class ImageUtils {
 	    			
 	    			// jFrameJade.setImage(bufferedImage) ;
 	    			jFrameJade.pack();
-	    			jFrameJade.show();
+	    			jFrameJade.setVisible(true);
 	    			
 	    		} else if (pi != null) {
 	    			if (debug) System.out.println("the image is a PlanarImage");
@@ -474,7 +474,7 @@ public class ImageUtils {
 	    			
 	    			// jFrameJade.setImage(bufferedImage) ;
 	    			jFrameJade.pack();
-	    			jFrameJade.show();
+	    			jFrameJade.setVisible(true);
 	    			
 	    		}
 		return jFrameJade;
@@ -499,7 +499,7 @@ public class ImageUtils {
 	    		
 	    	jFrameJ.setImage(image) ;
 	    	jFrameJ.pack();
-	    	jFrameJ.show();
+	    	jFrameJ.setVisible(true);
 	  	}
 	    		
 	return jFrameJ;	
@@ -510,8 +510,8 @@ public class ImageUtils {
 
 	public void doHash() {
 		
-		Hashtable vproperties = new Hashtable();
-		Hashtable vtasks = new Hashtable();
+		Hashtable<String, Hashtable<String, String>> vproperties = new Hashtable<>();
+		Hashtable<String, Hashtable<String, String>> vtasks = new Hashtable<>();
 		
 		Hashtable properties = new Hashtable();
 		Hashtable tasks = new Hashtable();
@@ -574,14 +574,14 @@ public class ImageUtils {
 		System.out.println(" hash: "+h);
 	}
 	
-    protected void populateHash ( VicarLabelSet vls, Hashtable which )  {
+    protected void populateHash ( VicarLabelSet vls, Hashtable<String, Hashtable<String, String>> which )  {
         String currHash, currKey;
         StringBuffer currElement;
         currHash = vls.getName();
         if ( currHash == null && vls.getFlavor() == VicarLabelSet.LABEL_SYSTEM )  {
             currHash = "SYSTEM";
         }
-        which.put ( currHash, new Hashtable() );
+        which.put ( currHash, new Hashtable<String, String>() );
         for ( int j = 0; j < vls.size(); j++ )  {
             VicarLabelItem vli = vls.getItem ( j );
             currKey = vli.getKeyword();
@@ -598,7 +598,7 @@ public class ImageUtils {
             }  else  {
                 currElement = new StringBuffer ( vli.getString());
             }
-            ((Hashtable) (which).get ( currHash )).put ( currKey, currElement.toString() );
+            which.get ( currHash ).put ( currKey, currElement.toString() );
         }
     }
 
@@ -3247,7 +3247,7 @@ private void displayMetadata(Node node, int level, Hashtable hash) {
             		domUtils.serializeDocument(doc1, xmlFile2, "xml");
         		}
         		
-        		Vector errorList = new Vector();
+        		Vector<String> errorList = new Vector<>();
         		vlFromXml = new VicarLabel();
         		
         		int nodeType = node1.getNodeType();
@@ -3257,7 +3257,7 @@ private void displayMetadata(Node node, int level, Hashtable hash) {
 				nodeType = node3.getNodeType();
         		System.out.println("node3  "+node3.getNodeName()+" type "+nodeType+"  ELEMENT_NODE "+Node.ELEMENT_NODE);
         		// Element el = node1.)
-        		vlFromXml.fromXML((Element) node3, (List) errorList);
+        		vlFromXml.fromXML((Element) node3, errorList);
         		System.out.println("vicarLabel vlFromXml ");
         		System.out.println(vlFromXml.toString());
         		

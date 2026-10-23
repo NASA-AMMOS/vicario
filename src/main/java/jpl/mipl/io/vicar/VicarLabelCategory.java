@@ -40,7 +40,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
 
     /** The sets in the category.
      * @serial */
-    protected List _sets;
+    protected List<VicarLabelSet> _sets;
 
 /***********************************************************************
  * Create an empty category.
@@ -48,7 +48,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
     public VicarLabelCategory()
     {
 	_flavor = 0;
-	_sets = new ArrayList();
+	_sets = new ArrayList<>();
     }
 
 /***********************************************************************
@@ -57,7 +57,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
     public VicarLabelCategory(int flavor)
     {
 	_flavor = flavor;
-	_sets = new ArrayList();
+	_sets = new ArrayList<>();
     }
 
 /***********************************************************************
@@ -67,7 +67,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
  * <code>flavor</code>).
  * @see #fromXML(Element, List)
  */
-    public VicarLabelCategory(int flavor, Element category, List errorList)
+    public VicarLabelCategory(int flavor, Element category, List<? super String> errorList)
     {
 	this(flavor);
 	fromXML(category, errorList);
@@ -330,7 +330,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
  *
  * @see VicarLabelSet#fromXML(Element, List)
  */
-    public void fromXML(Element category, List errorList)
+    public void fromXML(Element category, List<? super String> errorList)
     {
 	NodeList sets;
 	switch (_flavor) {
@@ -479,9 +479,9 @@ public class VicarLabelCategory implements Cloneable, Serializable
 	    return null;
 	}
 
-	cat._sets = (ArrayList)((ArrayList)(cat._sets)).clone();
+	cat._sets = new ArrayList<>(cat._sets);
 	for (int i=0; i < cat._sets.size(); i++) {
-	    cat._sets.set(i, ((VicarLabelSet)(cat._sets.get(i))).clone());
+	    cat._sets.set(i, (VicarLabelSet)((VicarLabelSet)(cat._sets.get(i))).clone());
 	}
 
 	return cat;

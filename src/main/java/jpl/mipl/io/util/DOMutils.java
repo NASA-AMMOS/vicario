@@ -2305,12 +2305,12 @@ public class DOMutils
    * Each hash is an attribute name, value pair
    * 
    **/
-    public Hashtable getNodeAttributesHash(Node node) {
+    public Hashtable<String, String> getNodeAttributesHash(Node node) {
     
     Node n;
     String value;
     String name;
-    Hashtable hash = new Hashtable();
+    Hashtable<String, String> hash = new Hashtable<>();
     
     if (debug) System.out.println("  getNodeAttributesHash -----------");
     NamedNodeMap map = node.getAttributes();
