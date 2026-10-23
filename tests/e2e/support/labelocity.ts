@@ -7,7 +7,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from '
 import path from 'node:path';
 import type { TestInfo } from '@playwright/test';
 import { asset } from './data';
-import { E2E_ROOT, JAVA, thinJar } from './env';
+import { E2E_ROOT, PRODUCT_JAVA, thinJar } from './env';
 import { run } from './run';
 
 const UNPACKED = path.join(E2E_ROOT, '.cache', 'labelocity-1.0');
@@ -46,7 +46,7 @@ export async function generatePds4Label(testInfo: TestInfo, image: string, templ
   const img = path.join(work, path.basename(image));
   cpSync(image, img);
   const out = img.replace(/\.[^.]+$/, '.xml');
-  const args = [JAVA, '-Djava.awt.headless=true', '-cp', classpath, 'jpl.mipl.io.jConvertIIO', `inp=${img}`, `out=${out}`,
+  const args = [...PRODUCT_JAVA, '-Djava.awt.headless=true', '-cp', classpath, 'jpl.mipl.io.jConvertIIO', `inp=${img}`, `out=${out}`,
     'ri=true', 'format=pds4', 'pds_detached_only=true', 'pds_label_type=PDS4', `velo_template=${path.join(templates, template)}`];
   const r = await run(args, { cwd: templates });
   await testInfo.attach('label-generation.log', {

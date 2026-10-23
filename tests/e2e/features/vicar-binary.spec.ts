@@ -3,9 +3,9 @@
 // must decode the same through every read path, and KEEP_LINE_PREFIX must carry
 // the prefix bytes into VICAR and PDS output unchanged.
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/test';
 import { asset } from '../support/data';
-import { feature, knownFailure } from '../support/features';
+import { about, feature, knownFailure } from '../support/features';
 import { expectGolden } from '../support/goldens';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 
@@ -37,7 +37,10 @@ function pdsPrefixes(file: string, n: number): Buffer[] {
 }
 
 test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () => {
-  test('Cassini ISS image (NLB=1, NBB=24) decodes identically with RI=true', async ({}, testInfo) => {
+  test('Cassini ISS image (NLB=1, NBB=24) decodes identically with RI=true', about(
+    `Reads a public Cassini ISS image with a binary label header (\`NLB=1\`) and a 24-byte prefix on every line (\`NBB=24\`), then converts it to VICAR with \`RI=true\` (read as a RenderedImage). Passes when the pixels match the recorded golden hash and the output has the same pixels.`,
+    '@mission-data', '@lossless',
+  ), async ({}, testInfo) => {
     const img = asset('cassini-iss-img');
     const l = vicarLabel(img);
     expect([l.NLB, l.NBB]).toEqual(['1', '24']);
@@ -48,7 +51,10 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
     expectSamePixels(await probe(testInfo, r.out), src);
   });
 
-  test('KEEP_LINE_PREFIX=true carries the prefixes into PDS output', async ({}, testInfo) => {
+  test('KEEP_LINE_PREFIX=true carries the prefixes into PDS output', about(
+    `Converts the Cassini ISS image to PDS3 with \`KEEP_LINE_PREFIX=true\`. Passes when the label declares \`LINE_PREFIX_BYTES = 24\`, the first 8 line prefixes are byte for byte those of the input, and the pixels are unchanged.`,
+    '@mission-data', '@lossless',
+  ), async ({}, testInfo) => {
     const img = asset('cassini-iss-img');
     const r = await convert(testInfo, img, 'cassini.pds', { format: 'pds', KEEP_LINE_PREFIX: 'true' });
     expectConverted(r);
@@ -57,7 +63,10 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
     expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, img));
   });
 
-  test('KEEP_LINE_PREFIX=true carries the prefixes into VICAR output', async ({}, testInfo) => {
+  test('KEEP_LINE_PREFIX=true carries the prefixes into VICAR output', about(
+    `Converts the Cassini ISS image to VICAR with \`KEEP_LINE_PREFIX=true\`. Passes when the output label has \`NBB=24\` and the first 8 line prefixes match the input.`,
+    '@mission-data',
+  ), async ({}, testInfo) => {
     knownFailure('UNFILED-13', 'VICAR output drops the line prefixes (NBB=0) even with KEEP_LINE_PREFIX=true');
     const img = asset('cassini-iss-img');
     const r = await convert(testInfo, img, 'cassini_keep.vic', { format: 'vicar', KEEP_LINE_PREFIX: 'true' });
@@ -66,7 +75,10 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
     expect(vicarPrefixes(r.out, 8)).toEqual(vicarPrefixes(img, 8));
   });
 
-  test('ADD_BINARY_HEADER=true writes the binary header to VICAR output', async ({}, testInfo) => {
+  test('ADD_BINARY_HEADER=true writes the binary header to VICAR output', about(
+    `Converts the Cassini ISS image to VICAR with \`ADD_BINARY_HEADER=true\`. Passes when the output label has \`NLB=1\`, showing the binary header was written.`,
+    '@mission-data',
+  ), async ({}, testInfo) => {
     knownFailure('UNFILED-13', 'VICAR output has no binary header (NLB=0) even with ADD_BINARY_HEADER=true');
     const r = await convert(testInfo, asset('cassini-iss-img'), 'cassini_hdr.vic', { format: 'vicar', ADD_BINARY_HEADER: 'true' });
     expectConverted(r);

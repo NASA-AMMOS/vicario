@@ -95,6 +95,9 @@ jobs:
 
       - name: Feature tests (fast tier)
         run: npx playwright test --project fast
+        env:
+          # source links in the report point at the PR's commit, not the merge commit
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Feature summary
         if: always()

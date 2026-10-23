@@ -4,9 +4,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/test';
 import { PYTHON, SCRIPTS_DIR } from '../support/env';
-import { feature, issue } from '../support/features';
+import { about, feature, issue } from '../support/features';
 import { run } from '../support/run';
 
 const SWAP = path.join(SCRIPTS_DIR, 'xml_swap.py');
@@ -26,7 +26,10 @@ test.describe('Python label scripts', feature('python-scripts'), () => {
     if (r.exitCode !== 0) throw new Error(`${PYTHON} with lxml is required (pip install lxml): ${r.stderr}`);
   });
 
-  test('replace mode swaps one element and keeps the rest', async ({}, testInfo) => {
+  test('replace mode swaps one element and keeps the rest', about(
+    `Runs \`xml_swap.py\` in replace mode: replaces \`//pds:A\` in a target document with the element from a source document. Passes when the output has the new element, keeps the untouched sibling and no longer has the old value.`,
+    '@nominal',
+  ), async ({}, testInfo) => {
     const target = testInfo.outputPath('t.xml');
     const source = testInfo.outputPath('s.xml');
     const out = testInfo.outputPath('out.xml');
@@ -40,7 +43,10 @@ test.describe('Python label scripts', feature('python-scripts'), () => {
     expect(text).not.toContain('old');
   });
 
-  test('list mode prints structural XPaths', async ({}, testInfo) => {
+  test('list mode prints structural XPaths', about(
+    `Runs \`xml_swap.py --list-xpaths\` on a PDS4-namespaced document. Passes when it exits 0 and lists the \`pds:A\` element path.`,
+    '@nominal',
+  ), async ({}, testInfo) => {
     const file = testInfo.outputPath('l.xml');
     writeFileSync(file, `<?xml version="1.0"?>\n<P ${NS}><pds:A>x</pds:A></P>\n`);
     const r = await swap(testInfo, [file, '--list-xpaths']);
@@ -48,7 +54,10 @@ test.describe('Python label scripts', feature('python-scripts'), () => {
     expect(r.stdout).toMatch(/pds:A/);
   });
 
-  test('show mode does not expand external entities', async ({}, testInfo) => {
+  test('show mode does not expand external entities', about(
+    `Runs \`xml_swap.py --show-xpath\` on a document with an external entity that would read a local "secret" file. Passes when the element is printed with the entity unexpanded (\`&xxe;\`) and the secret never appears.`,
+    '@security', '@malformed-input', '@regression',
+  ), async ({}, testInfo) => {
     issue('IDS-10407', 'lxml parser must not resolve entities or use the network');
     const secret = testInfo.outputPath('secret.txt');
     writeFileSync(secret, 'XXE-SECRET-CONTENT');
@@ -61,7 +70,10 @@ test.describe('Python label scripts', feature('python-scripts'), () => {
     expect(r.stdout).toContain('&xxe;');
   });
 
-  test('build_mesh_extras.py writes the mesh extras JSON (LabelObj usage)', async ({}, testInfo) => {
+  test('build_mesh_extras.py writes the mesh extras JSON (LabelObj usage)', about(
+    `Runs \`build_mesh_extras.py\` on a mesh \`.mtl\` file. Passes when the JSON it writes holds the solar longitude and the texture PNG list from the \`.mtl\`.`,
+    '@nominal',
+  ), async ({}, testInfo) => {
     const dir = testInfo.outputPath('work');
     mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, 'mesh.mtl'), '# SOLAR_LONGITUDE 123.4\nnewmtl a\nmap_Kd NLA_411614614RASLF0051986NCAM00346M1.png\n');
@@ -73,7 +85,10 @@ test.describe('Python label scripts', feature('python-scripts'), () => {
       SOLAR_LONGITUDE: '123.4', PNGS: '(NLA_411614614RASLF0051986NCAM00346M1.png)' });
   });
 
-  test('build_mesh_extras.py refuses paths outside its folders or of the wrong type', async ({}, testInfo) => {
+  test('build_mesh_extras.py refuses paths outside its folders or of the wrong type', about(
+    `Runs \`build_mesh_extras.py\` with four bad paths: an output outside its folders (\`../escaped.json\`), an output that is not \`.json\`, and \`/etc/hosts\` as the \`.mtl\` and as the base JSON. Passes when each run exits non-zero with a \`build_mesh_extras:\` error and writes nothing.`,
+    '@security', '@off-nominal', '@regression',
+  ), async ({}, testInfo) => {
     issue('S8707', 'SonarCloud pythonsecurity:S8707 path traversal via command-line arguments');
     const dir = testInfo.outputPath('work');
     mkdirSync(dir, { recursive: true });

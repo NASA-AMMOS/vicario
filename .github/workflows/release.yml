@@ -7,6 +7,11 @@ on:
       - develop
   workflow_dispatch:
 
+# Default for jobs without their own block (build, publish); the ci and release
+# jobs set what they need.
+permissions:
+  contents: read
+
 # Pull requests are tested by ci.yml; pushes test here before anything is built.
 jobs:
   ci:
@@ -47,11 +52,18 @@ jobs:
         run: |
           IS_RELEASE=false
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            # Check if semver changed in this commit
-            git diff HEAD^ HEAD -- pom.xml > /tmp/pom.diff || true
-            if grep -q '<semver>' /tmp/pom.diff; then
-              echo "Version changed in pom.xml on main branch - triggering release"
-              IS_RELEASE=true
+            # A release is a commit that changes the <semver> line itself (-U0:
+            # no context lines, so an edit next to it does not count) to a
+            # version that has no tag yet. Maven Central never accepts the same
+            # version twice, so an existing tag means there is nothing to publish.
+            VERSION="${{ steps.get_version.outputs.version }}"
+            if git diff -U0 HEAD^ HEAD -- pom.xml | grep -q '^+.*<semver>'; then
+              if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null; then
+                echo "::warning::<semver> changed but v${VERSION} is already released - not releasing"
+              else
+                echo "Version changed to ${VERSION} on main branch - triggering release"
+                IS_RELEASE=true
+              fi
             fi
           fi
           echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
