@@ -86,6 +86,8 @@ POSSIBILITY OF SUCH DAMAGE.
         <version.plugin.flatten>1.5.0</version.plugin.flatten>
         <version.plugin.central-publishing>0.9.0</version.plugin.central-publishing>
         <version.plugin.gpg>3.2.7</version.plugin.gpg>
+        <version.plugin.jacoco>0.8.15</version.plugin.jacoco>
+        <version.plugin.dependency>3.9.0</version.plugin.dependency>
     </properties>
 
     <url>https://github.com/NASA-AMMOS/vicario</url>
@@ -422,6 +424,99 @@ POSSIBILITY OF SUCH DAMAGE.
     </build>
 
     <profiles>
+
+        <!--
+            Code coverage for SonarQube Cloud (docs/TESTING.md, "Coverage").
+              mvn -P coverage,shade package test-compile   JUnit coverage (target/jacoco.exec) and
+                                                           target/jacoco-agent/jacocoagent.jar for the feature tests
+              VICARIO_JACOCO_AGENT=... npx playwright test feature-test coverage (target/jacoco-e2e.exec)
+              mvn -P coverage jacoco:merge@merge-all jacoco:report@report-all
+                                                           both merged into target/site/jacoco/jacoco.xml
+        -->
+        <profile>
+            <id>coverage</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>${version.plugin.jacoco}</version>
+                        <executions>
+                            <execution>
+                                <id>prepare-agent</id>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>report</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                            <!-- Not bound to a phase; run by id after the feature tests. -->
+                            <execution>
+                                <id>merge-all</id>
+                                <phase>none</phase>
+                                <goals>
+                                    <goal>merge</goal>
+                                </goals>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <directory>${project.build.directory}</directory>
+                                            <includes>
+                                                <include>jacoco.exec</include>
+                                                <include>jacoco-e2e.exec</include>
+                                            </includes>
+                                        </fileSet>
+                                    </fileSets>
+                                    <destFile>${project.build.directory}/jacoco-all.exec</destFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>report-all</id>
+                                <phase>none</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                                <configuration>
+                                    <dataFile>${project.build.directory}/jacoco-all.exec</dataFile>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- The agent jar the feature tests attach to the jConvertIIO processes they start. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>${version.plugin.dependency}</version>
+                        <executions>
+                            <execution>
+                                <id>jacoco-agent</id>
+                                <phase>process-test-classes</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>org.jacoco</groupId>
+                                            <artifactId>org.jacoco.agent</artifactId>
+                                            <version>${version.plugin.jacoco}</version>
+                                            <classifier>runtime</classifier>
+                                            <destFileName>jacocoagent.jar</destFileName>
+                                        </artifactItem>
+                                    </artifactItems>
+                                    <outputDirectory>${project.build.directory}/jacoco-agent</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
 
         <!-- Signs and publishes release artifacts to Maven Central (mvn deploy -P central -Dchangelist=) -->
         <profile>

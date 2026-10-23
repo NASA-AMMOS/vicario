@@ -36,6 +36,7 @@ implementation("gov.nasa.jpl.ammos.ids:vicario:2.7.2")
 ### Running Tests
 - Unit tests: `mvn -U clean test`
 - Feature tests (Playwright report, public test data): see [docs/TESTING.md](docs/TESTING.md)
+- Adding or changing code? Add tests with it: see "Adding tests" in [docs/TESTING.md](docs/TESTING.md). Instructions for AI coding agents are in [AGENTS.md](AGENTS.md).
 
 ## Releasing Development and Production Builds
 

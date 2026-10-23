@@ -5,7 +5,7 @@ import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { expect, type TestInfo } from '@playwright/test';
 import { manifestAssets } from './data';
-import { DATA_DIR, JAVA, TEST_CLASSES, fatJar } from './env';
+import { DATA_DIR, JAVA, PRODUCT_JAVA, TEST_CLASSES, fatJar } from './env';
 
 export interface ProcResult {
   cmd: string[];
@@ -44,7 +44,7 @@ export async function convert(testInfo: TestInfo, inp: string, outName: string,
   kv: Record<string, string | true> = {}, opts: { cwd?: string } = {}): Promise<ConvertResult> {
   const out = testInfo.outputPath(outName);
   const args = Object.entries(kv).map(([k, v]) => (v === true ? k : `${k}=${v}`));
-  const cmd = [JAVA, '-Djava.awt.headless=true', '-Dcom.sun.media.jai.disableMediaLib=true', '-cp', fatJar(), 'jpl.mipl.io.jConvertIIO',
+  const cmd = [...PRODUCT_JAVA, '-Djava.awt.headless=true', '-Dcom.sun.media.jai.disableMediaLib=true', '-cp', fatJar(), 'jpl.mipl.io.jConvertIIO',
     `inp=${inp}`, `out=${out}`, ...args];
   const r = await run(cmd, { cwd: opts.cwd ?? testInfo.outputDir });
   await attachLogs(testInfo, `jConvertIIO-${outName}`, r);

@@ -29,7 +29,19 @@ open report/index.html                             # feature overview; full Play
 ## How the feature tests work
 
 - **Feature registry.** [`tests/e2e/features.yml`](../tests/e2e/features.yml) lists every capability (`vicar-io`, `pds3`, `pds4-images`, `output-formats`, ...) with a name and description, its code paths, keywords, tickets and status (`active`, `planned` with a milestone, or `excluded` with a reason). `features/registry.spec.ts` fails if a spec has no feature, an active feature has no spec, or a manifest asset is unpinned or unused.
-- **Specs.** One spec per feature in `tests/e2e/features/`. Each `test.describe` carries the feature tag and a tier tag (`@fast` or `@full`), so the HTML report groups results by feature.
+- **Specs.** One spec per feature in `tests/e2e/features/`. Each `test.describe` carries the feature tag and a tier tag (`@fast` or `@full`), so the HTML report groups results by feature. Specs import `test` and `expect` from `support/test.ts`, which adds a `source` annotation linking each test to its line on GitHub.
+- **Describing tests.** Every test passes `about(description, ...scopes)` as its details:
+
+  ```ts
+  test('SOURCE_REGION running past the image edge is clipped, not an error', about(
+    'Asks for a 20 x 20 region at (40,60) of the 48 x 64 image ... Passes when the output is clipped to 8 x 4 ...',
+    '@off-nominal', '@regression',
+  ), async ({}, testInfo) => { ... });
+  ```
+
+  - **The description** says what the test does and what makes it pass. It is plain text; `` `backticks` `` mark code. It appears as the "what it checks" annotation in the Playwright report and on the procedures page.
+  - **The scope tags** say what kind of testing it is. They are defined in `SCOPES` in `support/features.ts`: `@nominal`, `@off-nominal`, `@malformed-input`, `@lossless`, `@mission-data`, `@regression`, `@security`, `@legacy`, `@suite` and `@unit`. Filter by one with `--grep @off-nominal`.
+  - **Enforcement:** `registry.spec.ts` fails if any test lacks a description or a scope tag.
 - **Running the product.** Specs run the real CLI (`java -cp vicario-*-FAT.jar jpl.mipl.io.jConvertIIO ...`). Command lines and logs are attached to the report. `jConvertIIO` can exit 0 after an error, so `expectConverted()` also requires a non-empty output and a log free of exceptions.
 - **Oracle.** `jpl.mipl.io.testsupport.ImageProbe` (in `src/test/java`) decodes any readable image and reports its dimensions, data type, statistics and a format-independent `pixelSha256`. Lossless conversions must keep the hash; lossy ones are compared by statistics. A contrast-stretched PNG preview of every image is attached to the report.
 - **Unit tests in the report.** `features/junit.spec.ts` imports `target/surefire-reports`, one report entry per JUnit test, grouped under the feature whose `junit:` list names the class (an unlisted class fails).
@@ -57,14 +69,83 @@ The legacy `TESTING/` area (internal paths and data) is git-ignored and must nev
 
 ## Adding tests
 
-- **New capability or keyword:** add or extend a feature in `features.yml`, then add tests to its spec (nominal and off-nominal).
-- **Bug fix:** add a test that fails without the fix, with `issue('IDS-NNNN', ...)`. If the test documents a bug that is not fixed yet, use `knownFailure`.
-- **New public data:**
-  1. Add a manifest entry with `"sha256": null` and the license.
-  2. Run `npm run data:pin`.
-  3. Review the diff and commit `manifest.json` and `manifest.sha256`.
+Every code change comes with tests, written in the same pull request. Which spec a change belongs in is listed in [criteria.md](../.github/project-requirements/criteria.md) ("Area changed → expected test location").
 
-See [.github/project-requirements/criteria.md](../.github/project-requirements/criteria.md) for which tests a change is expected to touch.
+### What to write
+
+| Change | Tests to add |
+|---|---|
+| New capability, keyword or format | A `@nominal` test that it works, and an `@off-nominal` test for bad or edge-case input. If it is new behaviour, add or extend a feature in `features.yml`. |
+| Bug fix | A test that fails without the fix and passes with it, tagged `@regression`, with `issue('IDS-NNNN', 'what was wrong')`. If the bug had a `knownFailure` test, delete the marker: the test now passes and documents the fix. |
+| Bug found but not fixed | A test that reproduces it, marked `knownFailure('IDS-NNNN', 'what fails')`. It reports "expected to fail" until someone fixes the bug, then turns red so the marker gets removed. |
+| Java-level logic | A JUnit test in `src/test/java`. Add its class to the owning feature's `junit:` list in `features.yml`. |
+
+### Anatomy of a test
+
+```ts
+import { expect, test } from '../support/test';          // not '@playwright/test': adds the source link
+import { about, feature, issue } from '../support/features';
+import { convert, expectConverted, probe } from '../support/run';
+
+test.describe('Regions, subsampling and bands', feature('regions-bands'), () => {   // feature tag + @fast
+  test('SOURCE_REGION running past the image edge is clipped, not an error', about(
+    'Asks for a 20 x 20 region at (40,60) of the 48 x 64 image, which runs past both edges. '
+      + 'Passes when the output is clipped to 8 x 4 with exactly those pixels, rather than an error.',
+    '@off-nominal', '@regression',
+  ), async ({}, testInfo) => {
+    issue('IDS-7560', 'EOF exception when the region is not fully inside the image');
+    const r = await convert(testInfo, SRC, 'region_edge.png', { format: 'png', SOURCE_REGION: '(40,60,20,20)' });
+    expectConverted(r);                                   // exit 0, non-empty output, no exceptions in the log
+    const p = await probe(testInfo, r.out);               // decode the output; preview attached to the report
+    expect([p.width, p.height]).toEqual([8, 4]);
+  });
+});
+```
+
+- **`feature('<id>')`** on the `describe` tags the tests with their feature, so they are grouped and counted under it. Use `feature('<id>', 'full')` for tests that need the large downloads.
+- **`about(description, ...scopes)`** is required (`registry.spec.ts` fails without it):
+  - **Description:** one or two sentences, in the form "Does X. Passes when Y." It is plain text in the spec; `` `backticks` `` mark code.
+  - **Scope tags:** one or more of the tags defined in `SCOPES` in `support/features.ts`.
+
+  | Tag | Use for |
+  |---|---|
+  | `@nominal` | expected use with valid input |
+  | `@off-nominal` | unsupported options, edge cases, invalid arguments |
+  | `@malformed-input` | truncated, corrupt or hostile files |
+  | `@lossless` | the output must have exactly the input pixels |
+  | `@mission-data` | uses public PDS products |
+  | `@regression` | guards a fixed bug |
+  | `@security` | XXE, path traversal |
+  | `@legacy` | ports a case from the old `tstjConvertIIO.csh` procedure |
+  | `@suite` | checks the test suite itself |
+  | `@unit` | imported JUnit results |
+- **`issue(...)` / `knownFailure(...)`** attach the ticket.
+- **Check content, not exit codes:** `jConvertIIO` can exit 0 after an error, so check the content. Compare pixels with `expectSamePixels` or the generator formula in `support/synthetic.ts`; check labels with `support/labels.ts`; for public products, compare against goldens with `expectGolden`.
+
+### Where the description ends up
+
+The description is plain text in the spec; nothing else feeds it. At the end of a run the reporter (`support/overview-reporter.ts`) reads each test's annotations and tags and writes them out in three places:
+- **Playwright report:** shown as the "what it checks" and "source" annotations (plain text, with links).
+- **`report/procedures.html`:** rendered as HTML, with code formatting, scope chips, the result and links.
+- **Website:** counted in the capabilities table.
+
+Changing the description in the spec changes all three on the next run.
+
+### New public data
+
+1. Add a manifest entry with `"sha256": null` and the license.
+2. Run `npm run data:pin`.
+3. Review the diff and commit `manifest.json` and `manifest.sha256`.
+
+Only publicly released data from the allowlisted archives (see [Data sensitivity](#data-sensitivity)).
+
+### Before opening the pull request
+
+```bash
+mvn -B -P shade package test-compile
+cd tests/e2e && npx playwright test --project fast   # and --project full if you touched full-tier features
+open report/procedures.html                           # check your tests read well
+```
 
 ## CI and reports
 
@@ -73,14 +154,49 @@ See [.github/project-requirements/criteria.md](../.github/project-requirements/c
 | `ci.yml` | pull requests to `main`/`develop`; called by `release.yml` on push | `junit`, `e2e-fast`, `data-guard` |
 | `publish.yml` | push to `main`, 07:00 UTC daily, release published, manual | `e2e-full`, then `deploy` to GitHub Pages |
 | `release.yml` | push to `main`/`develop` | `ci`, then build, release, publish |
+| `security-scan.yml` | pull requests to `main`/`develop`, push to `main`, manual | CodeQL (Java, Python, workflows) and SonarQube Cloud analysis; see [Security scanning](#security-scanning) |
 
-The report has two levels:
+The report has three parts:
 - **`report/index.html`**, the feature overview: each feature's description, status and pass/fail/known-issue counts, a gallery of image previews from its tests, the known issues grouped by ticket, and the features not yet automated. Each feature and image links into the full report.
+- **`report/procedures.html`**, the test procedures: every test grouped by feature, with its description, scope tags, issue notes and latest result, plus links to its run details and its source on GitHub. A scope legend at the top filters the list.
 - **`report/playwright/`**, the Playwright HTML report: every test with its command line, logs, label text and image previews, including the JUnit results.
 
 Where to find it:
 - **Pull requests:** `ci.yml` uploads it as the `feature-report-fast` artifact, kept for **5 days**. GitHub serves artifacts as zip downloads, so unzip it and open `report/index.html`. The job summary also shows the feature table inline.
 - **`main`:** `publish.yml` runs the full tier on every push (and nightly), then publishes a project home page with the latest report to GitHub Pages at <https://nasa-ammos.github.io/vicario/>. The site is published even when tests fail, so it always shows the current state. Pages must be set to "GitHub Actions" as its source (Settings → Pages).
+
+## Security scanning
+
+`.github/workflows/security-scan.yml` follows the AMMOS scanning guide, the same pipeline as tig:
+1. **CodeQL** (`security-extended` queries, configured in `.github/codeql/codeql-config.yml`) analyzes the Java code from a traced Maven build, the Python scripts and the workflows.
+2. **nasa-scrub** reformats the reports.
+3. **`.github/scripts/fix_sarif_paths.py`** repairs the file paths and rule severities that scrub degrades.
+4. **The SonarQube Cloud scanner** imports the repaired reports along with its own Java and Python analysis (`sonar-project.properties`).
+
+### Coverage
+
+SonarQube's coverage figure counts both suites, measured by JaCoCo (the `coverage` Maven profile):
+- **JUnit tests** run with the JaCoCo agent through Maven, writing `target/jacoco.exec`.
+- **Feature tests** run with the agent attached to every vicario process they start (jConvertIIO, ExtractTableJPL, TreeInfo). When `VICARIO_JACOCO_AGENT` is set, `support/env.ts` adds the agent to `PRODUCT_JAVA` and each run appends to `target/jacoco-e2e.exec`. The test oracles (ImageProbe, SyntheticGen) run without it, so only code the product itself executes counts.
+
+Both are merged into `target/site/jacoco/` (`jacoco.xml` for SonarQube, `index.html` to browse). To produce the same report locally:
+
+```bash
+mvn -B -P coverage,shade -Dmaven.test.failure.ignore=true package test-compile
+cd tests/e2e && VICARIO_JACOCO_AGENT=../../target/jacoco-agent/jacocoagent.jar npx playwright test --project full
+cd ../.. && mvn -B -P coverage jacoco:merge@merge-all jacoco:report@report-all
+open target/site/jacoco/index.html
+```
+
+A new spec that starts vicario directly, rather than through `convert()`, should use `PRODUCT_JAVA` instead of `JAVA` so its coverage counts.
+
+Results appear on the [SonarQube Cloud project](https://sonarcloud.io/project/overview?id=NASA-AMMOS_vicario). The raw and repaired reports are kept as the `codeql-artifacts` artifact for 14 days.
+
+Setup, once, by an admin:
+- Add the `SONAR_TOKEN` repository secret.
+- In SonarQube Cloud, set the project's Analysis Method to CI-based, turning off Automatic Analysis. A CI scan is rejected while Automatic Analysis is on.
+
+The `SonarQube` job is not a required check yet.
 
 ## Branch protection
 

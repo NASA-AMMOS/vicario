@@ -1,9 +1,9 @@
 // ISIS cubes: ISIS2 qubes with an SFDU label (the format ISISImageReaderSpi
 // recognizes), a Cassini VIMS spectral cube and the GDAL ISIS2 fixture.
 // Expected dimensions come from each label's CORE_ITEMS.
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/test';
 import { asset } from '../support/data';
-import { feature, knownFailure } from '../support/features';
+import { about, feature, knownFailure } from '../support/features';
 import { convert, expectConverted, probe } from '../support/run';
 
 const CUBES = [
@@ -15,7 +15,10 @@ const CUBES = [
 
 test.describe('ISIS cubes', feature('isis'), () => {
   for (const c of CUBES) {
-    test(`reads the ${c.label} and converts it to VICAR`, async ({}, testInfo) => {
+    test(`reads the ${c.label} and converts it to VICAR`, about(
+      `Converts the ${c.label} to VICAR. Passes when the output has the dimensions and data type given by the label's \`CORE_ITEMS\` (${c.dims.join(' x ')}, ${c.type}).`,
+      '@nominal', ...(c.id.startsWith('cassini') ? ['@mission-data' as const] : []),
+    ), async ({}, testInfo) => {
       knownFailure('UNFILED-14', 'ISIS reader does not trim CORE_ITEMS values: NumberFormatException for " 352", '
         + 'then a NullPointerException (no image); jConvertIIO exits 0 with no output');
       if (c.id === 'cassini-vims-qube') asset('cassini-vims-lbl');

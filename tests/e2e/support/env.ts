@@ -1,5 +1,6 @@
 // Paths and executables shared by the harness. Everything is relative to the
 // repository; nothing here may point at site-specific locations.
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +16,19 @@ export const SCRIPTS_DIR = path.join(REPO_ROOT, 'src', 'main', 'scripts');
 export const JAVA = process.env.JAVA_HOME
   ? path.join(process.env.JAVA_HOME, 'bin', 'java')
   : 'java';
+
+/**
+ * The java command for running vicario itself (jConvertIIO and its tools),
+ * as opposed to the test oracles (ImageProbe, SyntheticGen). With
+ * $VICARIO_JACOCO_AGENT set to the JaCoCo agent jar (`mvn -P coverage`), each
+ * run appends its coverage to target/jacoco-e2e.exec; the agent locks the file,
+ * so parallel workers can share it. See docs/TESTING.md, "Coverage".
+ */
+export const JACOCO_AGENT = process.env.VICARIO_JACOCO_AGENT ? path.resolve(process.env.VICARIO_JACOCO_AGENT) : undefined;
+export const JACOCO_E2E_EXEC = path.join(REPO_ROOT, 'target', 'jacoco-e2e.exec');
+export const PRODUCT_JAVA: string[] = JACOCO_AGENT
+  ? [JAVA, `-javaagent:${JACOCO_AGENT}=destfile=${JACOCO_E2E_EXEC},append=true,includes=jpl.mipl.*`]
+  : [JAVA];
 
 export const PYTHON = process.env.VICARIO_PYTHON || 'python3';
 
@@ -43,3 +57,24 @@ export function thinJar(): string {
 }
 
 export const synthetic = (name: string) => path.join(SYNTH_DIR, name);
+
+let sourceSha: string | undefined;
+
+/**
+ * GitHub link to a line of a test file, at the commit under test
+ * ($SOURCE_SHA in CI, else the local HEAD; falls back to main).
+ */
+export function sourceUrl(file: string, line?: number): string {
+  if (sourceSha === undefined) {
+    sourceSha = process.env.SOURCE_SHA || process.env.GITHUB_SHA || '';
+    if (!sourceSha) {
+      try {
+        sourceSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: E2E_ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+      } catch { /* not a checkout */ }
+    }
+  }
+  const repo = process.env.GITHUB_SERVER_URL && process.env.GITHUB_REPOSITORY
+    ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}` : 'https://github.com/NASA-AMMOS/vicario';
+  const rel = path.relative(REPO_ROOT, file).split(path.sep).join('/');
+  return `${repo}/blob/${sourceSha || 'main'}/${rel}${line ? `#L${line}` : ''}`;
+}
