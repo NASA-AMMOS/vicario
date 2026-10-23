@@ -59,14 +59,13 @@ test.describe('PDS3 products', feature('pds3'), () => {
   });
 
   test('PDS-labelled input to FORMAT=pds with the default stylesheet', async ({}, testInfo) => {
-    knownFailure('IDS-8497', 'PDSToPDSImageTranscoder default stylesheet name is empty: NullPointerException, empty .pds '
-      + '(likely root cause of the empty normal.pds / mer_file.pds outputs)');
+    issue('IDS-8497', 'fixed: the default PDS-to-PDS stylesheet name was empty (NullPointerException, empty .pds)');
     const r = await convert(testInfo, asset('msl-navcam-thumb-img'), 'msl_default.pds', { format: 'pds' });
     expectConverted(r);
   });
 
   test('PDS-labelled input to FORMAT=pds with an explicit copy stylesheet', async ({}, testInfo) => {
-    issue('IDS-8497', 'workaround: pass XSL=CopyEverything.xsl');
+    issue('IDS-8497', 'an explicit copy stylesheet gives the same result as the default');
     const img = asset('msl-navcam-thumb-img');
     const r = await convert(testInfo, img, 'msl_copy.pds',
       { format: 'pds', XSL: path.join(XSL_DIR, 'CopyEverything.xsl') });

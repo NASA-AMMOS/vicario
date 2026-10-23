@@ -4,7 +4,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { asset } from '../support/data';
 import { synthetic } from '../support/env';
-import { feature, knownFailure } from '../support/features';
+import { feature, issue, knownFailure } from '../support/features';
 import { convert, expectConverted, expectSamePixels, probe, tryProbe } from '../support/run';
 
 const TYPES = { byte: 'BYTE', half: 'SHORT', full: 'INT', real: 'FLOAT', doub: 'DOUBLE' } as const;
@@ -97,7 +97,7 @@ test.describe('VICAR image read/write', feature('vicar-io'), () => {
   });
 
   test('truncated VICAR file fails with a non-zero exit', async ({}, testInfo) => {
-    knownFailure('UNFILED-5', 'jConvertIIO exits 0 after a read failure (NullPointerException, no output written)');
+    issue('IDS-8497', 'fixed: jConvertIIO used to exit 0 after a read failure');
     const r = await convert(testInfo, asset('gdal-vicar-truncated'), 'truncated.vic', { format: 'vicar' });
     expect(existsSync(r.out) && statSync(r.out).size > 0).toBe(false);
     expect(r.exitCode).not.toBe(0);

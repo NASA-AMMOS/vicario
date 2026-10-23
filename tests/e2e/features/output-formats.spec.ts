@@ -4,7 +4,7 @@
 import { statSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { synthetic } from '../support/env';
-import { feature, knownFailure } from '../support/features';
+import { feature, issue, knownFailure } from '../support/features';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 
 type Mode = 'lossless' | 'lossy' | 'raw' | 'fail';
@@ -69,7 +69,7 @@ test.describe('Output formats', feature('output-formats'), () => {
   });
 
   test('HALF input to JPEG without OFORM is refused with a non-zero exit', async ({}, testInfo) => {
-    knownFailure('UNFILED-5', 'jConvertIIO exits 0 and leaves an empty file when the writer cannot encode the data type');
+    issue('IDS-8497', 'fixed: jConvertIIO used to exit 0 and leave an empty file when the writer could not encode the data type');
     const r = await convert(testInfo, synthetic('gen_half_bsq.vic'), 'half.jpg', { format: 'jpg' });
     expect(r.exitCode).not.toBe(0);
   });

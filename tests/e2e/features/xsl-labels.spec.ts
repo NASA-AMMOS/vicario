@@ -5,7 +5,7 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { asset } from '../support/data';
 import { XSL_DIR, synthetic } from '../support/env';
-import { feature, knownFailure } from '../support/features';
+import { feature, issue } from '../support/features';
 import { expectValidPds3Label } from '../support/labels';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 
@@ -55,8 +55,8 @@ test.describe('PDS label transcoding (XSL) (mission products)', feature('xsl-lab
   });
 
   test('VICAR-to-PDS stylesheet on a PDS-labelled MER EDR', async ({}, testInfo) => {
-    knownFailure('UNFILED-8', 'VicarToPDSmer1.xsl on a PDS-labelled input: HIERARCHY_REQUEST_ERR then '
-      + 'NullPointerException in DOMutils.mergeDocuments');
+    issue('IDS-8497', 'fixed: a VICAR-to-PDS stylesheet on PDS-labelled input (the legacy mer_file.vic case) crashed; '
+      + 'the input label is now copied with a warning');
     const r = await convert(testInfo, asset('mer1-navcam-edr'), 'mer_direct.pds', {
       format: 'pds', xsl: path.join(XSL_DIR, 'VicarToPDSmer1.xsl'), embed_vicar_label: 'true' });
     expectConverted(r);
