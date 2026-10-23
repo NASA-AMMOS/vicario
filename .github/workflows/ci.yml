@@ -40,6 +40,9 @@ jobs:
   e2e-fast:
     name: e2e-fast
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write   # the feature-report comment
     defaults:
       run:
         working-directory: tests/e2e
@@ -105,7 +108,8 @@ jobs:
           path: tests/e2e/.cache/data
           key: testdata-fast-${{ hashFiles('tests/e2e/data/manifest.json') }}
 
-      - name: Upload Playwright report
+      - name: Upload report
+        id: upload
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -115,6 +119,17 @@ jobs:
             tests/e2e/results/
           retention-days: 5
           if-no-files-found: warn
+
+      # fork PRs get a read-only token, so only same-repository PRs are commented on
+      - name: Comment the feature summary on the pull request
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPORT_URL: ${{ steps.upload.outputs.artifact-url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/pr-comment.mjs
 
   data-guard:
     name: data-guard

@@ -28,16 +28,17 @@ The public repository and its workflows build and test anywhere:
 
 | Area changed | Feature (id) | Expected tests in `tests/e2e/features/` |
 |---|---|---|
-| `src/main/java/jpl/mipl/io/vicar/**` (VICAR I/O, labels) | `vicar-io`, `vicar-binary` | `vicar-io.spec.ts`; JUnit in `src/test/java/jpl/mipl/io/vicar/` |
+| `src/main/java/jpl/mipl/io/vicar/**` (VICAR I/O, labels, prefixes) | `vicar-io`, `vicar-binary` | `vicar-io.spec.ts`, `vicar-binary.spec.ts`; JUnit in `src/test/java/jpl/mipl/io/vicar/` |
 | `plugins/PDS*`, `vicar/PDS*` (PDS3) | `pds3` | `pds3.spec.ts`; `PDS3ObjectNameTest` |
 | `src/main/resources/jpl/mipl/io/xsl/*.xsl`, `*Transcoder*` | `xsl-labels` | `xsl-labels.spec.ts` (a new VicarToPDS stylesheet is picked up automatically) |
-| `plugins/PDS4*`, `vicar/PDS4*` | `pds4-images`, `pds4-tables` | `pds4-images.spec.ts` (tables: planned) |
-| `plugins/ISIS*`, `plugins/FITS*`, `plugins/Mgn*` | `isis`, `fits`, `magellan` | `fits.spec.ts` (ISIS / Magellan: planned) |
+| `plugins/PDS4*`, `vicar/PDS4*`, `util/ExtractTableJPL*` | `pds4-images`, `pds4-tables` | `pds4-images.spec.ts`, `pds4-tables.spec.ts` |
+| `plugins/ISIS*`, `plugins/FITS*`, `plugins/Mgn*` | `isis`, `fits`, `magellan` | `isis.spec.ts`, `fits.spec.ts` (Magellan: planned) |
 | `jConvertIIO.java` FORMAT handling, writer selection | `output-formats` | `output-formats.spec.ts` |
 | `OFORM` / `RESCALE` / `CLAMP` | `data-types` | `data-types.spec.ts` |
-| `SOURCE_REGION`, `SUBSAMPLING`, `BANDS`, `2RGB`, transparency | `regions-bands` | planned (M3): add `regions-bands.spec.ts` with the change |
+| `SOURCE_REGION`, `SUBSAMPLING`, `CROP`, `SCALE`, `BANDS`, `2RGB`, transparency | `regions-bands` | `regions-bands.spec.ts` (expected pixels from `support/synthetic.ts`) |
 | `util/DOMutils*`, `util/TreeInfo*`, any XML parsing | `xml-security` | `xml-security.spec.ts`; `DOMutilsXXETest` |
-| `ARGFILE`, `PARALLEL_BATCH`, remote input | `batch-remote` | planned (M3) |
+| `ARGFILE`, `PARALLEL_BATCH`, `OUT=-`, remote input | `batch-remote` | `batch-remote.spec.ts` |
 | `src/main/scripts/*.py` | `python-scripts` | `python-scripts.spec.ts` |
 | Velocity PDS4 label generation | `velocity-labels` | excluded from public CI (non-public jar); use the internal reg_test scripts |
+| JADE viewer (`DISPLAY`, `JFrameJade`) | `viewer` | excluded: interactive tool, not format translation |
 | `.github/workflows/**`, `tests/e2e/data/**` | — | `data-guard` passes; manifest entries pinned and licensed |

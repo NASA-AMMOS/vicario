@@ -246,7 +246,7 @@
     {
       "id": "cassini-iss-img",
       "file": "114100.img",
-      "tier": "full",
+      "tier": "fast",
       "license": "Public domain (NASA PDS)",
       "source": "PDS Imaging Node, coiss_0002",
       "description": "Cassini ISS VICAR image with detached PDS3 label",
@@ -257,13 +257,90 @@
     {
       "id": "cassini-iss-lbl",
       "file": "114100.lbl",
-      "tier": "full",
+      "tier": "fast",
       "license": "Public domain (NASA PDS)",
       "source": "PDS Imaging Node, coiss_0002",
       "description": "Detached PDS3 label for 114100.img",
       "url": "https://planetarydata.jpl.nasa.gov/img/data/cassini/cassini_orbiter/coiss_0002/data/nacfm/dark_cur/1141/114100.lbl",
       "sha256": "7fe43eca60f6b82809f430dcfe7a887d0ef3dc379dc053d590194b7cf212f9b9",
       "bytes": 9204
+    },
+    {
+      "id": "gdal-isis2-cube",
+      "file": "arvidson_original_truncated.cub",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "ISIS2 cube with SFDU label (truncated GDAL fixture)",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/gdrivers/data/isis2/arvidson_original_truncated.cub",
+      "sha256": "c0ed2aada050338925b39ffa41ff70a7be32161205a4de7ae321976f11db6b3d",
+      "bytes": 3756
+    },
+    {
+      "id": "gdal-pds4-table-char-xml",
+      "file": "ele_evt_12hr_orbit_2011-2012_truncated.xml",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "PDS4 label for a character (fixed-width) table",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/ogr/data/pds4/ele_evt_12hr_orbit_2011-2012_truncated.xml",
+      "sha256": "1523292cacb88c49de2c6106ecd8b6f57e0cb796bb7e870ba52d6f6ab0ace4ab",
+      "bytes": 14866
+    },
+    {
+      "id": "gdal-pds4-table-char",
+      "file": "ele_evt_12hr_orbit_2011-2012_truncated.tab",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "PDS4 character table data",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/ogr/data/pds4/ele_evt_12hr_orbit_2011-2012_truncated.tab",
+      "sha256": "1f61fbe93253a7c347a269c72adb7373e10fac73c02519134473cd29306e9176",
+      "bytes": 2124
+    },
+    {
+      "id": "gdal-pds4-table-delimited-xml",
+      "file": "poly_delimited.xml",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "PDS4 label for a delimited table",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/ogr/data/pds4/poly_delimited.xml",
+      "sha256": "f6f7d88288dcc5c7f6493e29fd19deb23e31f7b425beebbc3aeafe34f60c3265",
+      "bytes": 7063
+    },
+    {
+      "id": "gdal-pds4-table-delimited",
+      "file": "poly_delimited.csv",
+      "tier": "fast",
+      "license": "MIT (GDAL autotest)",
+      "source": "GDAL autotest",
+      "description": "PDS4 delimited table data",
+      "url": "https://raw.githubusercontent.com/OSGeo/gdal/0e24e0288164b5237df0aeb82ab742909e719479/autotest/ogr/data/pds4/poly_delimited.csv",
+      "sha256": "e7b82b7f495ba9d77fc5e32dbbedce6c8e99fc08853bf81111de225d53e1cff0",
+      "bytes": 5800
+    },
+    {
+      "id": "cassini-vims-qube",
+      "file": "v1294638283_1.qub",
+      "tier": "fast",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, covims_0001",
+      "description": "Cassini VIMS spectral cube (ISIS2 qube with SFDU label)",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/cassini/cassini_orbiter/covims_0001/data/1999010T054026_1999010T060958/v1294638283_1.qub",
+      "sha256": "d50046ee4832e415dc821affb75b8518d2aa4707363e8554ca8ebcb7c7513182",
+      "bytes": 160256
+    },
+    {
+      "id": "cassini-vims-lbl",
+      "file": "v1294638283_1.lbl",
+      "tier": "fast",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Imaging Node, covims_0001",
+      "description": "Detached PDS3 label for the VIMS qube",
+      "url": "https://planetarydata.jpl.nasa.gov/img/data/cassini/cassini_orbiter/covims_0001/data/1999010T054026_1999010T060958/v1294638283_1.lbl",
+      "sha256": "dae263f3be4de4e3ad73c249ee82edc95f8586f186cb8b8d06cbd4767f05366c",
+      "bytes": 5763
     }
   ]
 }

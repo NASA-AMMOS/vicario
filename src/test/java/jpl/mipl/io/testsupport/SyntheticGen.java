@@ -14,7 +14,8 @@ import jpl.mipl.io.vicar.test.TestGen;
  * <p>
  * Produces gen_&lt;type&gt;_&lt;org&gt;.vic for every data type x organization
  * (64 lines x 48 samples x 3 bands), plus the legacy shape cases
- * gen_real_100x100.vic, gen_byte_ns1_nl1024.vic and gen_byte_ns1024_nl1.vic.
+ * gen_real_100x100.vic, gen_byte_ns1_nl1024.vic and gen_byte_ns1024_nl1.vic, plus a
+ * single-band gen_byte_gray.vic and a 4-band (RGBA) gen_byte_rgba.vic.
  */
 public class SyntheticGen {
 
@@ -36,6 +37,8 @@ public class SyntheticGen {
 		gen(dir, "gen_real_100x100.vic", 100, 100, 1, "real", "bsq", 0.5, 0.25, 0);
 		gen(dir, "gen_byte_ns1_nl1024.vic", 1024, 1, 1, "byte", "bsq", 1, 1, 0);
 		gen(dir, "gen_byte_ns1024_nl1.vic", 1, 1024, 1, "byte", "bsq", 1, 1, 0);
+		gen(dir, "gen_byte_gray.vic", 64, 48, 1, "byte", "bsq", 1, 3, 0);
+		gen(dir, "gen_byte_rgba.vic", 64, 48, 4, "byte", "bsq", 1, 3, 40);
 	}
 
 	static void gen(File dir, String name, int nl, int ns, int nb, String type, String org,

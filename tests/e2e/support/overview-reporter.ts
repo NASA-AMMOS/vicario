@@ -250,7 +250,7 @@ ${notAutoHtml}
     if (notAutomated.length) {
       out.push('', `Not yet automated: ${notAutomated.map((f) => `${f.name} (${f.status === 'planned' ? f.milestone : 'excluded'})`).join(', ')}.`);
     }
-    out.push('', 'Full report: download the `feature-report` artifact (kept 5 days) and open `index.html`.');
+    out.push('', `Full report: the \`feature-report-${info.tier}\` artifact of this run (kept 5 days); open \`report/index.html\`.`);
     return out.join('\n') + '\n';
   }
 }

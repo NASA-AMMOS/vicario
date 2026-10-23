@@ -19,11 +19,14 @@ features:
 
   - id: vicar-binary
     name: VICAR binary headers and prefixes
-    status: planned
-    milestone: M3
-    description: Binary label headers and per-line prefixes (NBB/NLB), kept or added on conversion.
+    status: active
+    description: >
+      Images with binary label headers and per-line prefixes (NLB/NBB): decoding them, and keeping
+      the prefix bytes when converting to VICAR or PDS (KEEP_LINE_PREFIX, ADD_BINARY_HEADER).
     code: [src/main/java/jpl/mipl/io/vicar/**]
     keywords: [KEEP_LINE_PREFIX, ADD_BINARY_HEADER, RI]
+    specs: [features/vicar-binary.spec.ts]
+
 
   - id: pds3
     name: PDS3 products
@@ -56,17 +59,21 @@ features:
 
   - id: pds4-tables
     name: PDS4 tables
-    status: planned
-    milestone: M3
-    description: Exporting PDS4 tables as CSV or fixed-width text.
+    status: active
+    description: Exporting PDS4 tables (character, delimited) as CSV or fixed-width text, with the bundled ExtractTableJPL tool and jConvertIIO's PDS4_TABLE_* keywords.
+    code: [src/main/java/jpl/mipl/io/plugins/PDS4Table*, src/main/java/jpl/mipl/io/util/ExtractTableJPL.java]
     keywords: [PDS4_TABLE_LIST, PDS4_TABLE_INDEX, PDS4_TABLE_FIELDS, PDS4_TABLE_OUPUT_FORMAT]
+    specs: [features/pds4-tables.spec.ts]
     tickets: [IDS-6210]
+
 
   - id: isis
     name: ISIS cubes
-    status: planned
-    milestone: M3
-    description: Reading ISIS cubes (needs a public sample the reader supports; ISIS3 cubes are not supported).
+    status: active
+    description: Reading ISIS2 cubes with SFDU labels, such as Cassini VIMS spectral cubes (ISIS3 cubes are not supported).
+    code: [src/main/java/jpl/mipl/io/plugins/ISIS*, src/main/java/jpl/mipl/io/vicar/ISIS*]
+    specs: [features/isis.spec.ts]
+
 
   - id: fits
     name: FITS images
@@ -102,11 +109,14 @@ features:
 
   - id: regions-bands
     name: Regions, subsampling and bands
-    status: planned
-    milestone: M3
-    description: Cropping (SOURCE_REGION), subsampling, band selection (READ_BANDS, BANDS), single band to RGB, and PNG transparency.
-    keywords: [SOURCE_REGION, SUBSAMPLING, READ_BANDS, BANDS, 2RGB, WRITE_TRANSPARENCY]
-    tickets: [IDS-7098, IDS-7560, IDS-9904]
+    status: active
+    description: >
+      Cropping (SOURCE_REGION, CROP), subsampling, scaling, band selection and reordering
+      (READ_BANDS, BANDS), single band to RGB (2RGB), and PNG alpha (WRITE_TRANSPARENCY).
+    keywords: [SOURCE_REGION, SUBSAMPLING, CROP, SCALE, READ_BANDS, BANDS, 2RGB, WRITE_TRANSPARENCY]
+    specs: [features/regions-bands.spec.ts]
+    tickets: [IDS-7098, IDS-7560]
+
 
   - id: xml-security
     name: XML metadata and parser security
@@ -120,17 +130,21 @@ features:
 
   - id: batch-remote
     name: Batch, streaming and remote input
-    status: planned
-    milestone: M3
-    description: Batch runs from an argument file, parallel batches, output to stdout, files without extensions, and http(s) input.
-    keywords: [ARGFILE, PARALLEL_BATCH, SILENT]
+    status: active
+    description: Batch runs from an argument file (serial and parallel), files without extensions, output to stdout, and https input from the public PDS archive.
+    keywords: [ARGFILE, PARALLEL_BATCH, SILENT, OUT=-]
+    specs: [features/batch-remote.spec.ts]
     tickets: [IDS-10067, IDS-8883]
+
 
   - id: viewer
     name: Image viewer (JADE)
-    status: planned
-    milestone: M3
-    description: Displaying an image (DISPLAY=true / JFrameJade) under a virtual display, with a screenshot (nightly only).
+    status: excluded
+    description: The interactive JADE viewer (DISPLAY=true / JFrameJade).
+    reason: >
+      An interactive display tool rather than part of format translation; out of scope
+      for the automated suite.
+
 
   - id: python-scripts
     name: Python label scripts
