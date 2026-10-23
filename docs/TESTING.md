@@ -69,14 +69,83 @@ The legacy `TESTING/` area (internal paths and data) is git-ignored and must nev
 
 ## Adding tests
 
-- **New capability or keyword:** add or extend a feature in `features.yml`, then add tests to its spec (nominal and off-nominal).
-- **Bug fix:** add a test that fails without the fix, with `issue('IDS-NNNN', ...)`. If the test documents a bug that is not fixed yet, use `knownFailure`.
-- **New public data:**
-  1. Add a manifest entry with `"sha256": null` and the license.
-  2. Run `npm run data:pin`.
-  3. Review the diff and commit `manifest.json` and `manifest.sha256`.
+Every code change comes with tests, written in the same pull request. Which spec a change belongs in is listed in [criteria.md](../.github/project-requirements/criteria.md) ("Area changed → expected test location").
 
-See [.github/project-requirements/criteria.md](../.github/project-requirements/criteria.md) for which tests a change is expected to touch.
+### What to write
+
+| Change | Tests to add |
+|---|---|
+| New capability, keyword or format | A `@nominal` test that it works, and an `@off-nominal` test for bad or edge-case input. If it is new behaviour, add or extend a feature in `features.yml`. |
+| Bug fix | A test that fails without the fix and passes with it, tagged `@regression`, with `issue('IDS-NNNN', 'what was wrong')`. If the bug had a `knownFailure` test, delete the marker: the test now passes and documents the fix. |
+| Bug found but not fixed | A test that reproduces it, marked `knownFailure('IDS-NNNN', 'what fails')`. It reports "expected to fail" until someone fixes the bug, then turns red so the marker gets removed. |
+| Java-level logic | A JUnit test in `src/test/java`. Add its class to the owning feature's `junit:` list in `features.yml`. |
+
+### Anatomy of a test
+
+```ts
+import { expect, test } from '../support/test';          // not '@playwright/test': adds the source link
+import { about, feature, issue } from '../support/features';
+import { convert, expectConverted, probe } from '../support/run';
+
+test.describe('Regions, subsampling and bands', feature('regions-bands'), () => {   // feature tag + @fast
+  test('SOURCE_REGION running past the image edge is clipped, not an error', about(
+    'Asks for a 20 x 20 region at (40,60) of the 48 x 64 image, which runs past both edges. '
+      + 'Passes when the output is clipped to 8 x 4 with exactly those pixels, rather than an error.',
+    '@off-nominal', '@regression',
+  ), async ({}, testInfo) => {
+    issue('IDS-7560', 'EOF exception when the region is not fully inside the image');
+    const r = await convert(testInfo, SRC, 'region_edge.png', { format: 'png', SOURCE_REGION: '(40,60,20,20)' });
+    expectConverted(r);                                   // exit 0, non-empty output, no exceptions in the log
+    const p = await probe(testInfo, r.out);               // decode the output; preview attached to the report
+    expect([p.width, p.height]).toEqual([8, 4]);
+  });
+});
+```
+
+- **`feature('<id>')`** on the `describe` tags the tests with their feature, so they are grouped and counted under it. Use `feature('<id>', 'full')` for tests that need the large downloads.
+- **`about(description, ...scopes)`** is required (`registry.spec.ts` fails without it):
+  - **Description:** one or two sentences, in the form "Does X. Passes when Y." It is plain text in the spec; `` `backticks` `` mark code.
+  - **Scope tags:** one or more of the tags defined in `SCOPES` in `support/features.ts`.
+
+  | Tag | Use for |
+  |---|---|
+  | `@nominal` | expected use with valid input |
+  | `@off-nominal` | unsupported options, edge cases, invalid arguments |
+  | `@malformed-input` | truncated, corrupt or hostile files |
+  | `@lossless` | the output must have exactly the input pixels |
+  | `@mission-data` | uses public PDS products |
+  | `@regression` | guards a fixed bug |
+  | `@security` | XXE, path traversal |
+  | `@legacy` | ports a case from the old `tstjConvertIIO.csh` procedure |
+  | `@suite` | checks the test suite itself |
+  | `@unit` | imported JUnit results |
+- **`issue(...)` / `knownFailure(...)`** attach the ticket.
+- **Check content, not exit codes:** `jConvertIIO` can exit 0 after an error, so check the content. Compare pixels with `expectSamePixels` or the generator formula in `support/synthetic.ts`; check labels with `support/labels.ts`; for public products, compare against goldens with `expectGolden`.
+
+### Where the description ends up
+
+The description is plain text in the spec; nothing else feeds it. At the end of a run the reporter (`support/overview-reporter.ts`) reads each test's annotations and tags and writes them out in three places:
+- **Playwright report:** shown as the "what it checks" and "source" annotations (plain text, with links).
+- **`report/procedures.html`:** rendered as HTML, with code formatting, scope chips, the result and links.
+- **Website:** counted in the capabilities table.
+
+Changing the description in the spec changes all three on the next run.
+
+### New public data
+
+1. Add a manifest entry with `"sha256": null` and the license.
+2. Run `npm run data:pin`.
+3. Review the diff and commit `manifest.json` and `manifest.sha256`.
+
+Only publicly released data from the allowlisted archives (see [Data sensitivity](#data-sensitivity)).
+
+### Before opening the pull request
+
+```bash
+mvn -B -P shade package test-compile
+cd tests/e2e && npx playwright test --project fast   # and --project full if you touched full-tier features
+open report/procedures.html                           # check your tests read well
+```
 
 ## CI and reports
 

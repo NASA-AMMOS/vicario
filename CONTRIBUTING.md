@@ -114,7 +114,7 @@ Reviewing pull-requests, or any kinds of proposed patch changes, is an art. That
 - **Coding best practices** - are you following best practices in the coding / contribution language being used?
 - **Readability** - is your patch readable, and ultimately maintainable, by others?
 - **Reproducibility** - is your patch reproducible by others?
-- **Tests** - do you have or have conducted meaningful tests?
+- **Tests** - do you have or have conducted meaningful tests? Every change needs tests, and every bug fix a regression test; see "Adding tests" in [docs/TESTING.md](docs/TESTING.md).
 
 ## Ways to Contribute
 
