@@ -3264,7 +3264,7 @@ private void displayMetadata(Node node, int level, Hashtable hash) {
         		int size = errorList.size();
         		System.out.println("errorList "+size);
         		for (int i=0 ; i< size ; i++) {
-        			String s = (String) errorList.get(i);
+        			String s = errorList.get(i);
         			System.out.println(i+")  "+s);
         		}
         		System.out.println("errorList ************************");

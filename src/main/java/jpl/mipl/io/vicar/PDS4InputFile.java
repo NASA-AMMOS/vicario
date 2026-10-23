@@ -2107,10 +2107,10 @@ protected void openInternalLast() {
                  } else if (vLen == 2) {
                  	if (debug) System.out.println("^IMAGE   has 2 subitems !");
                  	// assume filename first, offset 2nd
-                 	detachedFilename = (String)imageSubitemVec.get(0);
+                 	detachedFilename = imageSubitemVec.get(0);
                  	detachedLabel = true;
                  	// offset may contain <BYTES>
-                 	value = (String) imageSubitemVec.get(1);
+                 	value = imageSubitemVec.get(1);
                  	if (debug) System.out.println("^IMAGE  detachedFilename="+detachedFilename+"  value="+value);
                  } else {
                  	if (debug) System.out.println("^IMAGE   has "+vLen+" subitems !");

@@ -531,11 +531,11 @@ public class PDSInputFile extends VicarInputFile
              } else if (vLen == 2) {
              	if (debug) System.out.println("^IMAGE_HEADER   has 2 subitems !");
              	// assume filename first, offset 2nd
-             	detachedFilename = (String)imageSubitemVec.get(0);
+             	detachedFilename = imageSubitemVec.get(0);
              	detachedLabel = true;
              	_hasEmbeddedVicarLabel = true;
              	// offset may contain <BYTES>
-             	value = (String) imageSubitemVec.get(1);
+             	value = imageSubitemVec.get(1);
              	if (debug) System.out.println("^IMAGE_HEADER  detachedFilename="+detachedFilename+"  value="+value);
              } else {
              	if (debug) System.out.println("^IMAGE_HEADER  has "+vLen+" subitems !");
@@ -2140,7 +2140,7 @@ protected void openInternalLast() {
                  } else if (vLen == 1) {
                 	 // The contents of value may be either the offset or the filename.
                 	 // below it will determine how to use the value
-                	 value = (String)imageSubitemVec.get(0);
+                	 value = imageSubitemVec.get(0);
                 	 String vTrim = value.trim();
                 	 int doti = vTrim.indexOf(".");
                  	if (debug) {
@@ -2151,10 +2151,10 @@ protected void openInternalLast() {
                  } else if (vLen == 2) {
                  	if (debug) System.out.println("^IMAGE   has 2 subitems !");
                  	// assume filename first, offset 2nd
-                 	detachedFilename = (String)imageSubitemVec.get(0);
+                 	detachedFilename = imageSubitemVec.get(0);
                  	detachedLabel = true;
                  	// offset may contain <BYTES>
-                 	value = (String) imageSubitemVec.get(1);
+                 	value = imageSubitemVec.get(1);
                  	if (debug) System.out.println("^IMAGE  detachedFilename="+detachedFilename+"  value="+value);
                  } else {
                  	if (debug) System.out.println("^IMAGE   has "+vLen+" subitems !");

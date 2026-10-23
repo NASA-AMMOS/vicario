@@ -108,7 +108,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
     {
 	if (index == -1)
 	    index = getNumSets() - 1;
-	return (VicarLabelSet)_sets.get(index);
+	return _sets.get(index);
     }
 
 /***********************************************************************
@@ -124,7 +124,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
 	VicarLabelSet lastSet = null;
 	for (int index = 0; index < size; index++) {
 	    if (_sets.get(index).equals(name)) {	// found a candidate
-		lastSet = (VicarLabelSet)_sets.get(index);
+		lastSet = _sets.get(index);
 		if (lastSet.getInstance() == instance && instance != 0)
 		    return lastSet;	// it's good
 	    }
@@ -151,7 +151,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
 	int lastIndex = -1;
 	for (int index = 0; index < size; index++) {
 	    if (_sets.get(index).equals(name)) {	// found a candidate
-		VicarLabelSet set = (VicarLabelSet)_sets.get(index);
+		VicarLabelSet set = _sets.get(index);
 		if (set.getInstance() == instance && instance != 0)
 		    return index;	// it's good
 		lastIndex = index;	// save
@@ -183,7 +183,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
     {
 	String[] names = new String[_sets.size()];
 	for (int i=0; i < _sets.size(); i++)
-	    names[i] = ((VicarLabelSet)(_sets.get(i))).getName();
+	    names[i] = _sets.get(i).getName();
 	return names;
     }
 
@@ -197,7 +197,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
     {
 	int[] instances = new int[_sets.size()];
 	for (int i=0; i < _sets.size(); i++)
-	    instances[i] = ((VicarLabelSet)(_sets.get(i))).getInstance();
+	    instances[i] = _sets.get(i).getInstance();
 	return instances;
     }
 
@@ -255,7 +255,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
     {
 	if (index == -1)
 	    return null;
-	VicarLabelSet oldSet = (VicarLabelSet)_sets.remove(index);
+	VicarLabelSet oldSet = _sets.remove(index);
 	if (oldSet != null)
 	    recalculateInstances(oldSet.getName());
 	return oldSet;
@@ -443,7 +443,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
 	int instance = 1;
 	for (int index = 0; index < size; index++) {
 	    if (_sets.get(index).equals(name)) {	// found an instance
-		((VicarLabelSet)(_sets.get(index))).setInstance(instance);
+		_sets.get(index).setInstance(instance);
 		instance++;
 	    }
 	}
@@ -462,7 +462,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
 	int size = _sets.size();
 	for (int index = 0; index < size; index++) {
 	    // inefficiency:  we need to recalc each unique name only once.
-	    recalculateInstances(((VicarLabelSet)(_sets.get(index))).getName());
+	    recalculateInstances(_sets.get(index).getName());
 	}
     }
 
@@ -481,7 +481,7 @@ public class VicarLabelCategory implements Cloneable, Serializable
 
 	cat._sets = new ArrayList<>(cat._sets);
 	for (int i=0; i < cat._sets.size(); i++) {
-	    cat._sets.set(i, (VicarLabelSet)((VicarLabelSet)(cat._sets.get(i))).clone());
+	    cat._sets.set(i, (VicarLabelSet)cat._sets.get(i).clone());
 	}
 
 	return cat;

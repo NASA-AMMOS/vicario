@@ -990,7 +990,7 @@ public class PDSImageWriter extends ImageWriter {
     				System.out.println("xPath "+xPath);
     			}
     			for (int z=0 ; z<dSize; z++) {
-    				String xp = xpathDeleteArrayList.get(z).toString();
+    				String xp = xpathDeleteArrayList.get(z);
     				if (debug) { 
     					System.out.println("PDSImageWriter deleteNode ");
     					System.out.println( z+") xp = "+xp); 
@@ -1235,7 +1235,7 @@ public class PDSImageWriter extends ImageWriter {
     				System.out.println("xpathDeleteArrayList size = "+dSize);
     			}
     			for (int z=0 ; z<dSize; z++) {
-    				String xp = xpathDeleteArrayList.get(z).toString();
+    				String xp = xpathDeleteArrayList.get(z);
     				if (debug) { 
     					System.out.println( "PDSIMageWriter deleteNode"); 
     					System.out.println( z+") xp = "+xp); 

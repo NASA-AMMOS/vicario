@@ -715,7 +715,7 @@ public class SystemLabel implements Cloneable
 	lbl._extraItems = new ArrayList<>(lbl._extraItems);
 	for (int i=0; i < lbl._extraItems.size(); i++) {
 	    lbl._extraItems.set(i,
-			(VicarLabelItem)((VicarLabelItem)(lbl._extraItems.get(i))).clone());
+			(VicarLabelItem)lbl._extraItems.get(i).clone());
 	}
 
 	return lbl;
