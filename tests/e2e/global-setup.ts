@@ -25,7 +25,20 @@ export default function globalSetup() {
       problems.push(`${a.file} does not match its pinned sha256`);
     }
   }
+  // Labels name their data files exactly; macOS forgives a case mismatch, Linux CI does not.
+  const names = manifestAssets().map((a) => a.file);
+  for (const a of manifestAssets().filter((x) => /\.(lbl|lab|xml)$/i.test(x.file))) {
+    const file = path.join(DATA_DIR, a.file);
+    if (!existsSync(file)) continue;
+    const refs = readFileSync(file, 'latin1').matchAll(/\^\w+\s*=\s*\(?\s*"([^"]+)"|<file_name>\s*([^<\s]+)/g);
+    for (const [, p, x] of refs) {
+      const ref = p ?? x;
+      const near = names.find((n) => n !== ref && n.toLowerCase() === ref.toLowerCase());
+      if (near) problems.push(`${a.file} refers to ${ref} but the manifest saves it as ${near}`);
+    }
+  }
   if (problems.length) {
+    problems.splice(0, problems.length, ...new Set(problems));
     throw new Error(`test data not ready (run npm run data:${full ? 'full' : 'fast'}):\n  ${problems.join('\n  ')}`);
   }
 

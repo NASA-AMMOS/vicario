@@ -245,7 +245,7 @@
     },
     {
       "id": "cassini-iss-img",
-      "file": "114100.img",
+      "file": "114100.IMG",
       "tier": "fast",
       "license": "Public domain (NASA PDS)",
       "source": "PDS Imaging Node, coiss_0002",
