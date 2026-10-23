@@ -85,9 +85,12 @@ features:
 
   - id: magellan
     name: Magellan products
-    status: planned
-    milestone: M3
-    description: Reading Magellan FBIDR and resampled images (needs a public sample product).
+    status: active
+    description: >
+      Reading Magellan F-BIDR radar image strips (full-resolution basic image data records).
+      The resampled format (MgnResampImageReader) has no public sample and is not tested.
+    code: [src/main/java/jpl/mipl/io/plugins/Mgn*, src/main/java/jpl/mipl/io/vicar/Mgn*]
+    specs: [features/magellan.spec.ts]
 
   - id: output-formats
     name: Output formats

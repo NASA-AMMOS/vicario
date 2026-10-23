@@ -22,6 +22,7 @@ const ALLOWED_HOSTS = new Set([
   'planetarydata.jpl.nasa.gov', // PDS Imaging Node public archive
   'pds.nasa.gov',
   'pds-smallbodies.astro.umd.edu',
+  'pds-geosciences.wustl.edu', // PDS Geosciences Node public archive
 ]);
 const ALLOWED_GITHUB = /^\/(OSGeo\/gdal|astropy\/astropy-data)\/[0-9a-f]{40}\//;
 

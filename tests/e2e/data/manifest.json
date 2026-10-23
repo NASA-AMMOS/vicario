@@ -341,6 +341,28 @@
       "url": "https://planetarydata.jpl.nasa.gov/img/data/cassini/cassini_orbiter/covims_0001/data/1999010T054026_1999010T060958/v1294638283_1.lbl",
       "sha256": "dae263f3be4de4e3ad73c249ee82edc95f8586f186cb8b8d06cbd4767f05366c",
       "bytes": 5763
+    },
+    {
+      "id": "magellan-fbidr",
+      "file": "F0378_3_FILE_13.BIDR",
+      "tier": "full",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Geosciences Node, MG_4001",
+      "description": "Magellan F-BIDR, orbit 378 (FILE_13, oblique sinusoidal)",
+      "url": "https://pds-geosciences.wustl.edu/mgn/mgn-v-rdrs-5-bidr-full-res-v1/MG_4001/F0378_3/FILE_13",
+      "sha256": "c2930eac1d1b6ed25760159fe7e1ae5b7d27cd3c4e9acdc714b00b2c4893c83c",
+      "bytes": 7605000
+    },
+    {
+      "id": "magellan-fbidr-lbl",
+      "file": "F0378_3_FILE_13.LBL",
+      "tier": "full",
+      "license": "Public domain (NASA PDS)",
+      "source": "PDS Geosciences Node, MG_4001",
+      "description": "PDS3 label for the Magellan F-BIDR",
+      "url": "https://pds-geosciences.wustl.edu/mgn/mgn-v-rdrs-5-bidr-full-res-v1/MG_4001/F0378_3/FILE_13.LBL",
+      "sha256": "030b9e4336a0ad36db376d315ebc82c35c790a0fc42aa87e6739aa53161b73ae",
+      "bytes": 2640
     }
   ]
 }

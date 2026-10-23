@@ -28,20 +28,31 @@ import javax.imageio.stream.ImageInputStream;
  * written for the test report.
  * <p>
  * Usage: java -cp FAT.jar:target/test-classes jpl.mipl.io.testsupport.ImageProbe
- *        file [--png preview.png]
+ *        file [--png preview.png] [--file-stream]
+ * --file-stream reads through a plain javax.imageio FileImageInputStream instead
+ * of the stream ImageIO.createImageInputStream picks (in the FAT jar, the
+ * imageio-ext implementation), to check a reader independently of that choice.
  * Exit 0 on success, 2 when no reader can decode the file.
  */
 public class ImageProbe {
 
 	public static void main(String[] args) throws Exception {
-		if (args.length != 1 && args.length != 3) {
-			System.err.println("Usage: ImageProbe file [--png preview.png]");
+		File file = null;
+		File preview = null;
+		boolean fileStream = false;
+		for (int i = 0; i < args.length; i++) {
+			if (args[i].equals("--png") && i + 1 < args.length) preview = new File(args[++i]);
+			else if (args[i].equals("--file-stream")) fileStream = true;
+			else if (file == null) file = new File(args[i]);
+			else file = null;
+		}
+		if (file == null) {
+			System.err.println("Usage: ImageProbe file [--png preview.png] [--file-stream]");
 			System.exit(1);
 		}
-		File file = new File(args[0]);
-		File preview = args.length == 3 ? new File(args[2]) : null;
 
-		ImageInputStream iis = ImageIO.createImageInputStream(file);
+		ImageInputStream iis = fileStream
+			? new javax.imageio.stream.FileImageInputStream(file) : ImageIO.createImageInputStream(file);
 		Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
 		if (iis == null || !readers.hasNext()) {
 			System.err.println("ImageProbe: no ImageIO reader for " + file);

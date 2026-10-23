@@ -55,6 +55,20 @@
       "java": "temurin-17"
     }
   },
+  "magellan-fbidr-0378": {
+    "width": 1092,
+    "height": 14672,
+    "bands": 1,
+    "dataType": "BYTE",
+    "pixelSha256": "a0fbcdac2eda90c204fd9ff5b9b1ce48328e91608067dcc8c50f5681589feb58",
+    "min": 0,
+    "max": 220,
+    "observed": {
+      "date": "2026-10-23",
+      "os": "darwin-arm64",
+      "java": "unknown"
+    }
+  },
   "mer1-navcam-edr": {
     "width": 512,
     "height": 512,

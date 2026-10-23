@@ -37,7 +37,7 @@ open report/index.html                             # feature overview; full Play
 - **Public data.** [`tests/e2e/data/manifest.json`](../tests/e2e/data/manifest.json) pins every downloaded file by URL, SHA-256 and license. `scripts/fetch-test-data.mjs` refuses any of the following:
   - unpinned files
   - non-HTTPS URLs
-  - hosts outside the public allowlist: the PDS Imaging Node archive, pds.nasa.gov, the PDS Small Bodies Node, and GitHub raw content pinned to a commit of GDAL or astropy-data
+  - hosts outside the public allowlist: the PDS Imaging Node archive, pds.nasa.gov, the PDS Small Bodies and Geosciences Nodes, and GitHub raw content pinned to a commit of GDAL or astropy-data
 
   Missing or altered data fails the run; it is never skipped.
 - **Goldens.** `tests/e2e/goldens/goldens.json` records the pixel hash of each public product. Regenerate with `npm run goldens:update` and say why in the PR.

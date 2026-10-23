@@ -32,7 +32,7 @@ The public repository and its workflows build and test anywhere:
 | `plugins/PDS*`, `vicar/PDS*` (PDS3) | `pds3` | `pds3.spec.ts`; `PDS3ObjectNameTest` |
 | `src/main/resources/jpl/mipl/io/xsl/*.xsl`, `*Transcoder*` | `xsl-labels` | `xsl-labels.spec.ts` (a new VicarToPDS stylesheet is picked up automatically) |
 | `plugins/PDS4*`, `vicar/PDS4*`, `util/ExtractTableJPL*` | `pds4-images`, `pds4-tables` | `pds4-images.spec.ts`, `pds4-tables.spec.ts` |
-| `plugins/ISIS*`, `plugins/FITS*`, `plugins/Mgn*` | `isis`, `fits`, `magellan` | `isis.spec.ts`, `fits.spec.ts` (Magellan: planned) |
+| `plugins/ISIS*`, `plugins/FITS*`, `plugins/Mgn*` | `isis`, `fits`, `magellan` | `isis.spec.ts`, `fits.spec.ts`, `magellan.spec.ts` |
 | `jConvertIIO.java` FORMAT handling, writer selection | `output-formats` | `output-formats.spec.ts` |
 | `OFORM` / `RESCALE` / `CLAMP` | `data-types` | `data-types.spec.ts` |
 | `SOURCE_REGION`, `SUBSAMPLING`, `CROP`, `SCALE`, `BANDS`, `2RGB`, transparency | `regions-bands` | `regions-bands.spec.ts` (expected pixels from `support/synthetic.ts`) |

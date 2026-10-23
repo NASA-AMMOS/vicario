@@ -78,13 +78,15 @@ export interface Probe {
 }
 
 /** Decode any readable image with ImageProbe; returns null (with logs attached) if it cannot. */
-export async function tryProbe(testInfo: TestInfo, file: string, opts: { preview?: boolean } = {}): Promise<Probe | null> {
+export async function tryProbe(testInfo: TestInfo, file: string,
+  opts: { preview?: boolean; fileStream?: boolean } = {}): Promise<Probe | null> {
   const abs = path.resolve(file);
   const base = path.basename(abs);
   const args = [JAVA, '-Djava.awt.headless=true', '-cp', `${fatJar()}${path.delimiter}${TEST_CLASSES}`,
     'jpl.mipl.io.testsupport.ImageProbe', abs];
   const preview = testInfo.outputPath(`${base}.preview.png`);
   if (opts.preview !== false) args.push('--png', preview);
+  if (opts.fileStream) args.push('--file-stream');
   // run from the file's directory: PDS4 labels locate their data file relative to it
   const r = await run(args, { cwd: path.dirname(abs) });
   const line = r.stdout.split('\n').find((l) => l.startsWith('{'));
@@ -103,7 +105,8 @@ export async function tryProbe(testInfo: TestInfo, file: string, opts: { preview
   return p;
 }
 
-export async function probe(testInfo: TestInfo, file: string, opts: { preview?: boolean } = {}): Promise<Probe> {
+export async function probe(testInfo: TestInfo, file: string,
+  opts: { preview?: boolean; fileStream?: boolean } = {}): Promise<Probe> {
   const p = await tryProbe(testInfo, file, opts);
   if (!p) throw new Error(`ImageProbe could not decode ${path.basename(file)} (see attached log)`);
   return p;
