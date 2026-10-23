@@ -154,6 +154,7 @@ open report/procedures.html                           # check your tests read we
 | `ci.yml` | pull requests to `main`/`develop`; called by `release.yml` on push | `junit`, `e2e-fast`, `data-guard` |
 | `publish.yml` | push to `main`, 07:00 UTC daily, release published, manual | `e2e-full`, then `deploy` to GitHub Pages |
 | `release.yml` | push to `main`/`develop` | `ci`, then build, release, publish |
+| `security-scan.yml` | pull requests to `main`/`develop`, push to `main`, manual | CodeQL (Java, Python, workflows) and SonarQube Cloud analysis; see [Security scanning](#security-scanning) |
 
 The report has three parts:
 - **`report/index.html`**, the feature overview: each feature's description, status and pass/fail/known-issue counts, a gallery of image previews from its tests, the known issues grouped by ticket, and the features not yet automated. Each feature and image links into the full report.
@@ -163,6 +164,22 @@ The report has three parts:
 Where to find it:
 - **Pull requests:** `ci.yml` uploads it as the `feature-report-fast` artifact, kept for **5 days**. GitHub serves artifacts as zip downloads, so unzip it and open `report/index.html`. The job summary also shows the feature table inline.
 - **`main`:** `publish.yml` runs the full tier on every push (and nightly), then publishes a project home page with the latest report to GitHub Pages at <https://nasa-ammos.github.io/vicario/>. The site is published even when tests fail, so it always shows the current state. Pages must be set to "GitHub Actions" as its source (Settings → Pages).
+
+## Security scanning
+
+`.github/workflows/security-scan.yml` follows the AMMOS scanning guide, the same pipeline as tig:
+1. **CodeQL** (`security-extended` queries, configured in `.github/codeql/codeql-config.yml`) analyzes the Java code from a traced Maven build, the Python scripts and the workflows.
+2. **nasa-scrub** reformats the reports.
+3. **`.github/scripts/fix_sarif_paths.py`** repairs the file paths and rule severities that scrub degrades.
+4. **The SonarQube Cloud scanner** imports the repaired reports along with its own Java and Python analysis (`sonar-project.properties`).
+
+Results appear on the [SonarQube Cloud project](https://sonarcloud.io/project/overview?id=NASA-AMMOS_vicario). The raw and repaired reports are kept as the `codeql-artifacts` artifact for 14 days.
+
+Setup, once, by an admin:
+- Add the `SONAR_TOKEN` repository secret.
+- In SonarQube Cloud, set the project's Analysis Method to CI-based, turning off Automatic Analysis. A CI scan is rejected while Automatic Analysis is on.
+
+The `SonarQube` job is not a required check yet.
 
 ## Branch protection
 

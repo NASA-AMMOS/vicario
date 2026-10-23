@@ -52,4 +52,5 @@ User-visible changes update the docs in the same change:
 
 - **Run the suites:** `mvn -B test` and `npx playwright test --project fast`. Both must pass, or the only failures are documented known issues.
 - **Read your tests:** open `tests/e2e/report/procedures.html` and check they read well.
+- **Security findings:** the `Security-Scan` workflow reports CodeQL and SonarQube Cloud findings on every PR. Fix new findings in your change rather than suppressing them. If one is a false positive, say why in the PR.
 - **Do not edit** `.github/workflows/*` permissions or the required checks (`junit`, `e2e-fast`, `data-guard`) without being asked.

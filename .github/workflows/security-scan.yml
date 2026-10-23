@@ -1,0 +1,203 @@
+name: Security-Scan
+
+# Static analysis for vicario, following the AMMOS scanning guide
+# ("Code Vulnerability Scanning Set Up for AMMOS Open Source Software"), the
+# same pipeline as the tig repo:
+#
+#   CodeQL scan (java-kotlin + python + actions)
+#     -> nasa-scrub translate_results   (the step the AMMOS guide prescribes)
+#     -> fix_sarif_paths.py             (repairs what scrub degrades)
+#     -> sonarqube-scan-action          (imports into SonarQube Cloud, with
+#                                        SonarQube's own Java/Python analysis)
+#
+# Why the extra repair step: scrub rewrites CodeQL's workspace-relative URIs to
+# absolute paths and writes the absolute source root into uriBaseId, which stops
+# SonarQube mapping findings to files. It also deletes tool.extensions -- where
+# CodeQL keeps its real rule metadata -- and rebuilds tool.driver.rules as
+# id-only stubs, so every finding would otherwise import as MEDIUM regardless of
+# its true severity. fix_sarif_paths.py restores both from the pre-scrub report.
+# The script is shared verbatim with tig and the ASTRIA repos -- fix it in one,
+# copy to all.
+#
+# Requires:
+#   - a SONAR_TOKEN repository secret. Until that exists, every run fails at
+#     the final step.
+#   - Automatic Analysis turned OFF for the project in SonarQube Cloud
+#     (Administration -> Analysis Method). A CI scan is rejected while it is on.
+
+# One run per ref. A PR that gets new pushes supersedes its own in-progress
+# run; pushes to main are never cancelled, so main's analysis history stays
+# complete.
+concurrency:
+  group: security-scan-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+on:
+  workflow_dispatch:
+
+  push:
+    # The default branch only: every long-lived branch that gets pushed becomes
+    # a separate branch in the SonarQube project, and we keep that to one
+    # (main, the project's main branch in SonarQube Cloud).
+    branches:
+      - main
+
+  # Any PR targeting an integration branch. SonarQube Cloud records these as
+  # pull request analyses, which expire with the PR.
+  pull_request:
+    branches:
+      - develop
+      - main
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  sonarqube:
+    name: SonarQube
+    runs-on: ubuntu-24.04
+    # A PR from a fork runs without repository secrets, so SONAR_TOKEN would be
+    # empty and the scan would fail red for a reason the contributor cannot fix.
+    # Skip instead; maintainers still get a scan when the change lands on main.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Shallow clones give SonarQube poorer relevancy on issue dating.
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Pinned interpreter so `pip install nasa-scrub` lands in a clean,
+      # non-externally-managed environment on the runner.
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Extract version from pom.xml
+        run: |
+          set -euo pipefail
+          VERSION=$(sed -n 's:.*<semver>\(.*\)</semver>.*:\1:p' pom.xml | head -1)
+          if [ -z "$VERSION" ]; then
+            echo "ERROR: no <semver> found in pom.xml" >&2
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Extracted version: $VERSION"
+
+      # Three languages in one database build. No build-mode is set: Java is
+      # compiled, so CodeQL traces the Maven build in the next step; python
+      # (src/main/scripts) and actions (this repo's workflows) need no build.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          languages: java-kotlin,python,actions
+          config-file: ./.github/codeql/codeql-config.yml
+
+      # A clean compile so CodeQL sees every Java source, and the classes and
+      # dependency jars that SonarQube's Java analysis needs
+      # (sonar.java.binaries / sonar.java.libraries in sonar-project.properties).
+      - name: Build (traced by CodeQL)
+        run: mvn -B -DskipTests clean test-compile dependency:copy-dependencies -DoutputDirectory=target/dependency
+
+      # No `category` here: the action sets one per language when several are
+      # analyzed together.
+      - name: CodeQL Scan
+        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+
+      - name: Post-Process Output
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check nasa-scrub==3.0.2
+
+          results_dir=$(realpath "${{ github.workspace }}/../results")
+          workspace_path="${{ github.workspace }}"
+
+          echo "SARIF files directory: $results_dir"
+          echo "Workspace path: $workspace_path"
+          echo "Available SARIF files:"
+          ls -lh "$results_dir"/*.sarif
+
+          # Captured before the loop so the files written below are not picked
+          # up as inputs on a later iteration: java.sarif, python.sarif and
+          # actions.sarif.
+          sarif_files=$(find "$results_dir" -name '*.sarif')
+
+          for sarif_file in $sarif_files
+          do
+            base=$(basename "$sarif_file" .sarif)
+            stripped_file="$results_dir/${base}_stripped.sarif"
+            processed_file="$results_dir/${base}_processed.sarif"
+            echo "Processing: $(basename "$sarif_file")"
+
+            # The AMMOS guide's step: reformat CodeQL output for SonarQube.
+            python3 -m scrub.tools.parsers.translate_results \
+              "$sarif_file" "$stripped_file" "$workspace_path" sarifv2.1.0
+
+            # Repair the paths and rule metadata scrub degrades, using the
+            # original CodeQL report as the source of truth.
+            python3 .github/scripts/fix_sarif_paths.py \
+              "$stripped_file" "$processed_file" "$workspace_path" \
+              --reference "$sarif_file"
+          done
+
+          sarif_list=$(find "$results_dir" -name '*_processed.sarif' | paste -sd, -)
+
+          echo "RESULTS_DIR=$results_dir" >> $GITHUB_ENV
+          echo "SARIF_FILES=$sarif_list" >> $GITHUB_ENV
+
+          echo ""
+          echo "SARIF files for SonarQube:"
+          echo "$sarif_list"
+
+      # Makes the raw, scrubbed and repaired reports downloadable, which is how
+      # you check attribution after a run without re-running the scan.
+      - name: Upload Artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: codeql-artifacts
+          path: ${{ env.RESULTS_DIR }}
+          if-no-files-found: warn
+          retention-days: 14
+
+      # Branch attribution. The scanner auto-detects this from the GitHub Actions
+      # environment in every case except a manual dispatch:
+      #   push to main      -> analyzed as main, the project's main branch
+      #   pull_request      -> analyzed as a pull request; no branch is created
+      #   workflow_dispatch -> pinned to main below, so validating a change to
+      #                        the pipeline from a feature branch cannot leave a
+      #                        stray branch behind in the SonarQube project. The
+      #                        tradeoff: dispatching from a branch that carries
+      #                        real code changes publishes those numbers onto
+      #                        main. Dispatch from a branch that matches main,
+      #                        or open a PR instead.
+      - name: Determine SonarQube branch argument
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "SONAR_BRANCH_ARG=-Dsonar.branch.name=main" >> "$GITHUB_ENV"
+          else
+            echo "SONAR_BRANCH_ARG=" >> "$GITHUB_ENV"
+          fi
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.sarifReportPaths=${{ env.SARIF_FILES }}
+            -Dsonar.projectVersion=${{ env.VERSION }}
+            ${{ env.SONAR_BRANCH_ARG }}
