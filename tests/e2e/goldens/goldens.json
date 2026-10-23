@@ -1,0 +1,114 @@
+{
+  "astropy-horsehead": {
+    "width": 891,
+    "height": 893,
+    "bands": 1,
+    "dataType": "SHORT",
+    "pixelSha256": "460cb7f6445776c6f329334fe8348dd7c0cc132333fc3ddde3f00d8ef06354ac",
+    "min": 3759,
+    "max": 22918,
+    "observed": {
+      "date": "2026-10-22",
+      "os": "darwin-arm64",
+      "java": "temurin-17"
+    }
+  },
+  "cassini-iss": {
+    "width": 1024,
+    "height": 1024,
+    "bands": 1,
+    "dataType": "SHORT",
+    "pixelSha256": "7d921aa5cd778eacc79edb1761773c27a0eb7aeb959d2d9b4e4509dc25e2b254",
+    "min": 26,
+    "max": 57,
+    "observed": {
+      "date": "2026-10-22",
+      "os": "darwin-arm64",
+      "java": "temurin-17"
+    }
+  },
+  "m2020-navcam-edr": {
+    "width": 1280,
+    "height": 240,
+    "bands": 3,
+    "dataType": "SHORT",
+    "pixelSha256": "8c2d6a5aa1e2605933d5493e5b3b5777b833782268d50d2b10dec0ccb0603ab4",
+    "min": 158,
+    "max": 3628,
+    "observed": {
+      "date": "2026-10-22",
+      "os": "darwin-arm64",
+      "java": "temurin-17"
+    }
+  },
+  "m2020-navcam-thumb": {
+    "width": 80,
+    "height": 60,
+    "bands": 3,
+    "dataType": "SHORT",
+    "pixelSha256": "2a656705dba6e023c529daf03fce989786cf3a1bfbd2124f2cff16fc75dc6e17",
+    "min": 153,
+    "max": 4095,
+    "observed": {
+      "date": "2026-10-22",
+      "os": "darwin-arm64",
+      "java": "temurin-17"
+    }
+  },
+  "magellan-fbidr-0378": {
+    "width": 1092,
+    "height": 14672,
+    "bands": 1,
+    "dataType": "BYTE",
+    "pixelSha256": "a0fbcdac2eda90c204fd9ff5b9b1ce48328e91608067dcc8c50f5681589feb58",
+    "min": 0,
+    "max": 220,
+    "observed": {
+      "date": "2026-10-23",
+      "os": "darwin-arm64",
+      "java": "unknown"
+    }
+  },
+  "mer1-navcam-edr": {
+    "width": 512,
+    "height": 512,
+    "bands": 1,
+    "dataType": "SHORT",
+    "pixelSha256": "b3193c057eb4ac1d76cea7b08346719410bd1d12e18572582ef7ee0bb1ad8b04",
+    "min": 1,
+    "max": 4042,
+    "observed": {
+      "date": "2026-10-22",
+      "os": "darwin-arm64",
+      "java": "temurin-17"
+    }
+  },
+  "msl-navcam-edr": {
+    "width": 511,
+    "height": 511,
+    "bands": 1,
+    "dataType": "SHORT",
+    "pixelSha256": "f0e0b6f658a901dbaed8fb6b3c2af7d179c15ea8c8ff2ceb4a9629362aa5dad7",
+    "min": 125,
+    "max": 3793,
+    "observed": {
+      "date": "2026-10-22",
+      "os": "darwin-arm64",
+      "java": "temurin-17"
+    }
+  },
+  "msl-navcam-thumb": {
+    "width": 64,
+    "height": 64,
+    "bands": 1,
+    "dataType": "SHORT",
+    "pixelSha256": "c59b4743dcee5cbfb31c69b1e19dfeea307c809b12a39d3ee2b56ea828240267",
+    "min": 132,
+    "max": 3544,
+    "observed": {
+      "date": "2026-10-22",
+      "os": "darwin-arm64",
+      "java": "temurin-17"
+    }
+  }
+}
