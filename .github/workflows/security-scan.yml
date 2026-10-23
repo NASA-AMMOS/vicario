@@ -117,9 +117,14 @@ jobs:
           clean package test-compile dependency:copy-dependencies -DoutputDirectory=target/dependency
 
       # No `category` here: the action sets one per language when several are
-      # analyzed together.
+      # analyzed together. upload: never keeps the findings out of GitHub code
+      # scanning (and its "Code scanning results / CodeQL" PR check): they reach
+      # SonarQube Cloud through the steps below, and uploading to both
+      # duplicates every finding. The SARIF is still written to ../results.
       - name: CodeQL Scan
         uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          upload: never
 
       # Feature-test coverage: the full tier again, with the JaCoCo agent on
       # every jConvertIIO process it starts (docs/TESTING.md, "Coverage"). Runs
