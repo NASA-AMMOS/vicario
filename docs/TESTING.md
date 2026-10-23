@@ -173,6 +173,8 @@ Where to find it:
 3. **`.github/scripts/fix_sarif_paths.py`** repairs the file paths and rule severities that scrub degrades.
 4. **The SonarQube Cloud scanner** imports the repaired reports along with its own Java and Python analysis (`sonar-project.properties`).
 
+The scan also runs the JUnit suite with JaCoCo (`mvn -P coverage test`, report in `target/site/jacoco/`), so SonarQube shows unit-test coverage. The feature tests are not included in the coverage numbers yet.
+
 Results appear on the [SonarQube Cloud project](https://sonarcloud.io/project/overview?id=NASA-AMMOS_vicario). The raw and repaired reports are kept as the `codeql-artifacts` artifact for 14 days.
 
 Setup, once, by an admin:

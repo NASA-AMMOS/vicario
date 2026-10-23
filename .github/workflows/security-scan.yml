@@ -105,11 +105,15 @@ jobs:
           languages: java-kotlin,python,actions
           config-file: ./.github/codeql/codeql-config.yml
 
-      # A clean compile so CodeQL sees every Java source, and the classes and
-      # dependency jars that SonarQube's Java analysis needs
-      # (sonar.java.binaries / sonar.java.libraries in sonar-project.properties).
-      - name: Build (traced by CodeQL)
-        run: mvn -B -DskipTests clean test-compile dependency:copy-dependencies -DoutputDirectory=target/dependency
+      # A clean build so CodeQL sees every Java source, plus what SonarQube's
+      # Java analysis needs (see sonar-project.properties): the classes and
+      # dependency jars, and the JUnit run with JaCoCo (-P coverage) for the
+      # coverage report. Test failures do not stop the scan; the ci.yml junit
+      # job is the gate for those.
+      - name: Build and unit tests with coverage (traced by CodeQL)
+        run: >-
+          mvn -B -P coverage -Dmaven.test.failure.ignore=true
+          clean test dependency:copy-dependencies -DoutputDirectory=target/dependency
 
       # No `category` here: the action sets one per language when several are
       # analyzed together.
