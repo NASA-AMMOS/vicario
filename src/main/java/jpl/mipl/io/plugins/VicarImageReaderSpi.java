@@ -72,7 +72,7 @@ super(vendorName,
               suffixes,
               MIMEtypes,
               readerClassName,
-              STANDARD_INPUT_TYPE,
+              new Class<?>[] { ImageInputStream.class },
               writerSpiNames,
               false, // supportsStandardStreamMetadataFormat, // new in 1.4
               // new add Metadata stuff

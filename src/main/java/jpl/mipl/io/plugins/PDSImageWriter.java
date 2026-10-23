@@ -474,7 +474,13 @@ public class PDSImageWriter extends ImageWriter {
      	URL url;
      	boolean go = true;
      	
-     	url = ClassLoader.getSystemResource(arg);
+     	// use this class's own loader so the resource is found when vicario is used
+     	// as a library (app servers, plugin loaders), not only from the system classpath
+     	url = getClass().getClassLoader().getResource(arg);
+     	if (url == null) {
+     		System.out.println(" InputStreamFromJar: resource not found on classpath: "+arg);
+     		return null;
+     	}
      	try {
      	is = url.openStream();
      	}
@@ -895,7 +901,7 @@ public class PDSImageWriter extends ImageWriter {
             }
             
             if (detachedLabelOnly == true && readerFormat.equalsIgnoreCase("pds")) {
-            	ArrayList xpathDeleteArrayList = new ArrayList();
+            	ArrayList<String> xpathDeleteArrayList = new ArrayList<>();
     			 
     			 // find all items whose name start with ^ - these are pointers
     			//  xPath = "//OBJECT/item[starts-with(@name,'^')]" ;
@@ -984,7 +990,7 @@ public class PDSImageWriter extends ImageWriter {
     				System.out.println("xPath "+xPath);
     			}
     			for (int z=0 ; z<dSize; z++) {
-    				String xp = xpathDeleteArrayList.get(z).toString();
+    				String xp = xpathDeleteArrayList.get(z);
     				if (debug) { 
     					System.out.println("PDSImageWriter deleteNode ");
     					System.out.println( z+") xp = "+xp); 
@@ -1041,7 +1047,7 @@ public class PDSImageWriter extends ImageWriter {
     			 * They should exist if the image read is not vicar
     			 **********/
     			// xpath to get all the OBJECTS that contain an item of PDS_OBJECT__TYPE
-            	ArrayList xpathDeleteArrayList = new ArrayList();
+            	ArrayList<String> xpathDeleteArrayList = new ArrayList<>();
     			    			
     			xPath = "//OBJECT/item[@name='PDS_OBJECT__TYPE']" ;
     			if (debug)  {
@@ -1229,7 +1235,7 @@ public class PDSImageWriter extends ImageWriter {
     				System.out.println("xpathDeleteArrayList size = "+dSize);
     			}
     			for (int z=0 ; z<dSize; z++) {
-    				String xp = xpathDeleteArrayList.get(z).toString();
+    				String xp = xpathDeleteArrayList.get(z);
     				if (debug) { 
     					System.out.println( "PDSIMageWriter deleteNode"); 
     					System.out.println( z+") xp = "+xp); 

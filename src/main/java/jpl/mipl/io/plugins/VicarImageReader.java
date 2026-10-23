@@ -535,7 +535,7 @@ public class VicarImageReader extends ImageReader {
         return imageType;
     }
     
-    public Iterator getImageTypes(int imageIndex)
+    public Iterator<ImageTypeSpecifier> getImageTypes(int imageIndex)
         throws IIOException {
         if (imageIndex != 0) {
             throw new IndexOutOfBoundsException();
@@ -543,7 +543,7 @@ public class VicarImageReader extends ImageReader {
         if (haveReadHeader == false) {
             readHeader();
         }
-        ArrayList list = new ArrayList();
+        ArrayList<ImageTypeSpecifier> list = new ArrayList<>();
         list.add(imageType);
         return list.iterator();
     }

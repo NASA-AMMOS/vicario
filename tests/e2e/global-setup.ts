@@ -1,0 +1,36 @@
+// Runs once before the specs: checks the build outputs exist and generates the
+// synthetic VICAR images (the replacement for VICAR `gen` in the legacy suite).
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import path from 'node:path';
+import { manifestAssets } from './support/data';
+import { DATA_DIR, JAVA, SYNTH_DIR, TEST_CLASSES, fatJar } from './support/env';
+
+export default function globalSetup() {
+  const jar = fatJar();
+  const probe = path.join(TEST_CLASSES, 'jpl', 'mipl', 'io', 'testsupport', 'ImageProbe.class');
+  if (!existsSync(probe)) {
+    throw new Error('target/test-classes is missing ImageProbe; run: mvn -B -P shade -DskipTests package test-compile');
+  }
+  // Verify the data up front: inside a knownFailure test a missing or corrupt
+  // asset would otherwise be absorbed as the "expected" failure.
+  const full = process.argv.some((a) => /full/.test(a)) || process.env.VICARIO_TIER === 'full';
+  const problems: string[] = [];
+  for (const a of manifestAssets()) {
+    const file = path.join(DATA_DIR, a.file);
+    if (!existsSync(file)) {
+      if (a.tier === 'fast' || full) problems.push(`${a.file} missing`);
+    } else if (createHash('sha256').update(readFileSync(file)).digest('hex') !== a.sha256) {
+      problems.push(`${a.file} does not match its pinned sha256`);
+    }
+  }
+  if (problems.length) {
+    throw new Error(`test data not ready (run npm run data:${full ? 'full' : 'fast'}):\n  ${problems.join('\n  ')}`);
+  }
+
+  rmSync(SYNTH_DIR, { recursive: true, force: true });
+  execFileSync(JAVA, ['-cp', `${jar}${path.delimiter}${TEST_CLASSES}`, 'jpl.mipl.io.testsupport.SyntheticGen', SYNTH_DIR],
+    { stdio: 'pipe' });
+  console.log(`vicario feature tests: ${path.basename(jar)}, synthetic data in ${path.relative(process.cwd(), SYNTH_DIR)}`);
+}

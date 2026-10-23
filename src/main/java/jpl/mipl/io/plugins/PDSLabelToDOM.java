@@ -214,7 +214,7 @@ public final class PDSLabelToDOM {
    * creates a node for the content and adds it in
    * return HashMap
    ***************************/
-  private HashMap processLine(String line, int lineCt, HashMap nodeLevelHM) {
+  private HashMap<String, Object> processLine(String line, int lineCt, HashMap<String, Object> nodeLevelHM) {
       Matcher pdsVersionIdM, odlVersionIdM, commentLineM ;
       Matcher  sfduLabelM, sfduLabelExceptionM ;
       Element element = null;
@@ -974,7 +974,7 @@ public final class PDSLabelToDOM {
       
       
       nodeLevelHM.put("currentNode", currentNode);
-      nodeLevelHM.put("level", new Integer(level) );
+      nodeLevelHM.put("level", Integer.valueOf(level) );
       return nodeLevelHM;
   }
   
@@ -1301,11 +1301,11 @@ public final class PDSLabelToDOM {
       String s = "";
       String strim = "";
       
-      HashMap nodeLevelHM = new HashMap();
+      HashMap<String, Object> nodeLevelHM = new HashMap<>();
       Integer levelInt ;
       
       nodeLevelHM.put("currentNode", currentNode);
-      nodeLevelHM.put("level", new Integer(level));
+      nodeLevelHM.put("level", Integer.valueOf(level));
       
       while((line = readLine()) != null) {
           // is /CR already stripped by readLine() ????

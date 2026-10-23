@@ -40,7 +40,7 @@ public class LabelToBean {
  */
 
     public static void readLabel(VicarLabelSet set, Object bean,
-		LabelEntry[] entries, List extraItems)
+		LabelEntry[] entries, List<? super VicarLabelItem> extraItems)
 		throws IntrospectionException,
 		       InvocationTargetException, IllegalAccessException
     {
@@ -91,13 +91,13 @@ public class LabelToBean {
 
 	switch (entry._type) {
 	    case LabelEntry.TYPE_INT:
-		arg[0] = new Integer(item.getInteger());
+		arg[0] = Integer.valueOf(item.getInteger());
 		break;
 	    case LabelEntry.TYPE_FLOAT:
-		arg[0] = new Float(item.getFloat());
+		arg[0] = Float.valueOf(item.getFloat());
 		break;
 	    case LabelEntry.TYPE_DOUBLE:
-		arg[0] = new Double(item.getDouble());
+		arg[0] = Double.valueOf(item.getDouble());
 		break;
 	    case LabelEntry.TYPE_STRING:
 		arg[0] = item.getString();
@@ -144,7 +144,7 @@ public class LabelToBean {
 		    // Found the matching valid flag
 		    Method valid = descriptors[i].getWriteMethod();
 		    if (valid != null)
-			valid.invoke(bean, new Object[] { new Boolean(true) });
+			valid.invoke(bean, new Object[] { Boolean.valueOf(true) });
 		    break;
 		}
 	    }

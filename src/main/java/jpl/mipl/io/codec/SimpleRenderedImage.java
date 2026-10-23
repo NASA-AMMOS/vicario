@@ -59,7 +59,7 @@ public abstract class SimpleRenderedImage implements RenderedImage {
     protected Vector sources = new Vector();
 
     /** A Hashtable containing the image properties. */
-    protected Hashtable properties = new Hashtable();
+    protected Hashtable<String, Object> properties = new Hashtable<>();
 
     TileCache _cache;
 
@@ -262,7 +262,7 @@ public abstract class SimpleRenderedImage implements RenderedImage {
 
         prefix = prefix.toLowerCase();
 
-        Vector names = new Vector();
+        Vector<String> names = new Vector<>();
         for (int i = 0; i < propertyNames.length; i++) {
             if (propertyNames[i].startsWith(prefix)) {
                 names.addElement(propertyNames[i]);
@@ -377,7 +377,7 @@ public abstract class SimpleRenderedImage implements RenderedImage {
         return ty*tileHeight + tileGridYOffset;
     }
 
-    public Vector getSources() {
+    public Vector<RenderedImage> getSources() {
         return null;
     }
 

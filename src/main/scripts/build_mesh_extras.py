@@ -4,6 +4,7 @@
 import argparse
 import json
 import os
+import sys
 
 
 
@@ -21,6 +22,28 @@ def writeJsonFile(d, jsonFileOut):
     f.close()
     
     return
+
+#############################
+#
+#  resolvePath
+#
+# Paths come from the command line (possibly assembled by another tool), so
+# resolve each one once and check it before use:
+#  - inputs must be existing regular files with the expected extension
+#  - the output must be a .json file inside one of allowed_dirs
+#############################
+def resolvePath(path, kind, ext, allowed_dirs=None):
+    if path == "" or "\0" in path:
+        sys.exit("build_mesh_extras: invalid %s path %r" % (kind, path))
+    real = os.path.realpath(os.path.join(allowed_dirs[0] if allowed_dirs else os.getcwd(), path))
+    if not real.lower().endswith(ext):
+        sys.exit("build_mesh_extras: %s must be a %s file: %s" % (kind, ext, path))
+    if allowed_dirs is None:
+        if not os.path.isfile(real):
+            sys.exit("build_mesh_extras: %s file not found: %s" % (kind, path))
+    elif not any(os.path.commonpath([real, d]) == d for d in allowed_dirs):
+        sys.exit("build_mesh_extras: %s %s is outside %s" % (kind, path, " or ".join(allowed_dirs)))
+    return real
 
 #####################################
 #
@@ -96,6 +119,17 @@ if __name__ == "__main__":
         cwd = os.getcwd()
         print ("cwd=%s" % (cwd))
         
+        # resolve every path before changing directory; the output may only go
+        # to the output directory or next to the input file
+        output_dir = os.path.realpath(output_dir)
+        if not os.path.isdir(output_dir):
+            sys.exit("build_mesh_extras: output directory not found: %s" % (output_dir))
+        out_file = resolvePath(out_file, "output", ".json",
+                               [output_dir, os.path.realpath(in_path or cwd)])
+        # as before, a relative .mtl path is relative to the output directory
+        mtl_file = resolvePath(os.path.join(output_dir, mtl_file), "mtl", ".mtl")
+        if base_json_file != "":
+            base_json_file = resolvePath(base_json_file, "base json", ".json")
         
         print ("output_dir = %s " % (output_dir))
         print ("out_file = %s " % (out_file))

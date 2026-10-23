@@ -1,0 +1,27 @@
+{
+  "name": "vicario-feature-tests",
+  "private": true,
+  "description": "Feature-based end-to-end tests for vicario / jConvertIIO, run with Playwright Test",
+  "type": "module",
+  "scripts": {
+    "data:fast": "node scripts/fetch-test-data.mjs --tier fast",
+    "data:full": "node scripts/fetch-test-data.mjs --tier full",
+    "data:pin": "node scripts/fetch-test-data.mjs --tier full --pin",
+    "test:fast": "playwright test --project fast",
+    "test:full": "playwright test --project full",
+    "goldens:update": "cross-env UPDATE_GOLDENS=1 playwright test --project full --workers 1",
+    "report": "playwright show-report report/playwright",
+    "guard": "bash scripts/check-data-sensitivity.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "22.20.5",
+    "@types/pngjs": "6.0.5",
+    "cross-env": "10.1.0",
+    "pngjs": "7.0.0",
+    "yaml": "2.9.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

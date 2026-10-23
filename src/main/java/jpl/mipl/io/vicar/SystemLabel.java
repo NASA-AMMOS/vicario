@@ -62,7 +62,7 @@ public class SystemLabel implements Cloneable
     protected boolean _realfmt_valid;
 
     /** This vector holds label items which weren't recognized */
-    protected List _extraItems;
+    protected List<VicarLabelItem> _extraItems;
 
     /** Codes for Org, used for efficiency when we need to compare a lot */
 
@@ -120,7 +120,7 @@ public class SystemLabel implements Cloneable
     public SystemLabel()
     {
 	setDefaults();
-	_extraItems = new ArrayList();
+	_extraItems = new ArrayList<>();
     }
 
 /***********************************************************************
@@ -197,7 +197,7 @@ public class SystemLabel implements Cloneable
 /***********************************************************************
  * Retrieve the values which didn't match anything
  */
-    public List getExtraItems()
+    public List<VicarLabelItem> getExtraItems()
     {
 	return _extraItems;
     }
@@ -712,10 +712,10 @@ public class SystemLabel implements Cloneable
 	// _extraItems is the only one that requires a deep copy.
 	// This is a *very* deep copy because the elements are VicarLabelItem's.
 
-	lbl._extraItems = (ArrayList)((ArrayList)(lbl._extraItems)).clone();
+	lbl._extraItems = new ArrayList<>(lbl._extraItems);
 	for (int i=0; i < lbl._extraItems.size(); i++) {
 	    lbl._extraItems.set(i,
-			((VicarLabelItem)(lbl._extraItems.get(i))).clone());
+			(VicarLabelItem)lbl._extraItems.get(i).clone());
 	}
 
 	return lbl;

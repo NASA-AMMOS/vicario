@@ -343,7 +343,7 @@ public class ISISInputFile extends VicarInputFile
     * Some Objects seem to go out os scope and become null.
     * PropertyGenerator is the probable answer.
     *************/
-    public void setToProperties(Hashtable properties) {
+    public void setToProperties(Hashtable<String, Object> properties) {
         
         if (debug) System.out.println("ISISInputFile.setToProperties $$$$$$$$$$$$$$$$$$$$$$");
         
@@ -730,7 +730,7 @@ public class ISISInputFile extends VicarInputFile
         int[] intArray = new int[st.countTokens()];
     
         while ( st.hasMoreTokens()  )  {
-            intArray[i] = new Integer ( st.nextToken() ).intValue();
+            intArray[i] = Integer.parseInt ( st.nextToken() );
             i++;
         }
         return intArray;
@@ -754,7 +754,7 @@ public class ISISInputFile extends VicarInputFile
         double[] doubleArray = new double[st.countTokens()];
     
         while ( st.hasMoreTokens()  )  {
-            doubleArray[i] = new Double ( st.nextToken() ).doubleValue();
+            doubleArray[i] = Double.parseDouble ( st.nextToken() );
             // float version would use
             // intArray[i] = new Double ( st.nextToken() ).floatValue();
             i++;

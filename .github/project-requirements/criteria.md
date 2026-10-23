@@ -1,0 +1,44 @@
+# Project requirements for vicario changes
+
+Reviewers check every pull request against these three requirements. The automated part is enforced by the required checks `junit`, `e2e-fast` and `data-guard` (see [docs/TESTING.md](../../docs/TESTING.md)).
+
+## 1. Documentation parity (blocking)
+
+User-visible behaviour changes update the docs in the same PR:
+- a new or changed `jConvertIIO` keyword updates the usage text in `jConvertIIO.java` and `README.md`;
+- a new format, label type or stylesheet updates the feature description in `tests/e2e/features.yml`;
+- a testing change updates `docs/TESTING.md`.
+
+## 2. Public deployability (blocking)
+
+The public repository and its workflows build and test anywhere:
+- no JPL-internal paths (`/project/...`, home directories), hosts, runners or repositories in code, tests, workflows or docs;
+- test data is publicly released, pinned in `tests/e2e/data/manifest.json` by URL, SHA-256 and license, and fetched only from the allowlisted public archives;
+- nothing from the legacy `TESTING/` area is committed.
+
+`data-guard` enforces the mechanical part; reviewers check the rest.
+
+## 3. Test coverage (blocking)
+
+- **Bug fix:** a test that fails without the fix, annotated with the ticket (`issue('IDS-NNNN', ...)`). If the fix removes a `knownFailure`, delete the marker.
+- **New capability or keyword:** a nominal and an off-nominal test in the owning feature's spec.
+- **Golden changes:** `tests/e2e/goldens/goldens.json` changes only with a stated reason in the PR description.
+
+### Area changed → expected test location
+
+| Area changed | Feature (id) | Expected tests in `tests/e2e/features/` |
+|---|---|---|
+| `src/main/java/jpl/mipl/io/vicar/**` (VICAR I/O, labels, prefixes) | `vicar-io`, `vicar-binary` | `vicar-io.spec.ts`, `vicar-binary.spec.ts`; JUnit in `src/test/java/jpl/mipl/io/vicar/` |
+| `plugins/PDS*`, `vicar/PDS*` (PDS3) | `pds3` | `pds3.spec.ts`; `PDS3ObjectNameTest` |
+| `src/main/resources/jpl/mipl/io/xsl/*.xsl`, `*Transcoder*` | `xsl-labels` | `xsl-labels.spec.ts` (a new VicarToPDS stylesheet is picked up automatically) |
+| `plugins/PDS4*`, `vicar/PDS4*`, `util/ExtractTableJPL*` | `pds4-images`, `pds4-tables` | `pds4-images.spec.ts`, `pds4-tables.spec.ts` |
+| `plugins/ISIS*`, `plugins/FITS*`, `plugins/Mgn*` | `isis`, `fits`, `magellan` | `isis.spec.ts`, `fits.spec.ts`, `magellan.spec.ts` |
+| `jConvertIIO.java` FORMAT handling, writer selection | `output-formats` | `output-formats.spec.ts` |
+| `OFORM` / `RESCALE` / `CLAMP` | `data-types` | `data-types.spec.ts` |
+| `SOURCE_REGION`, `SUBSAMPLING`, `CROP`, `SCALE`, `BANDS`, `2RGB`, transparency | `regions-bands` | `regions-bands.spec.ts` (expected pixels from `support/synthetic.ts`) |
+| `util/DOMutils*`, `util/TreeInfo*`, any XML parsing | `xml-security` | `xml-security.spec.ts`; `DOMutilsXXETest` |
+| `ARGFILE`, `PARALLEL_BATCH`, `OUT=-`, remote input | `batch-remote` | `batch-remote.spec.ts` |
+| `src/main/scripts/*.py` | `python-scripts` | `python-scripts.spec.ts` |
+| PDS4 label output (`FORMAT=pds4`, `VELO_*`), Labelocity compatibility | `velocity-labels` | `pds4-labels.spec.ts` (uses the pinned public Labelocity release) |
+| Anything producing images people view (browse, PNG/JPEG) | `visual-check` | `visual-check.spec.ts` (replaces the JADE review) |
+| `.github/workflows/**`, `tests/e2e/data/**` | — | `data-guard` passes; manifest entries pinned and licensed |

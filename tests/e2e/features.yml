@@ -1,0 +1,172 @@
+# VICARIO feature registry: the source of truth for what the product does and
+# where each capability is tested. Each feature's id is its report tag
+# (@<id>). features/registry.spec.ts enforces that every active feature has a
+# spec using it, every spec belongs to a feature, planned features name a
+# milestone, and excluded ones give a reason.
+# See docs/TESTING.md and .github/project-requirements/criteria.md.
+features:
+  - id: vicar-io
+    name: VICAR image read/write
+    status: active
+    description: >
+      Reading and writing VICAR images in every data type (BYTE, HALF, FULL, REAL, DOUB) and
+      organization (BSQ, BIL, BIP), in both byte orders, including degenerate shapes and
+      damaged files.
+    code: [src/main/java/jpl/mipl/io/vicar/**, src/main/java/jpl/mipl/io/plugins/Vicar*]
+    keywords: [FORMAT=vicar]
+    specs: [features/vicar-io.spec.ts]
+    junit: [jpl.mipl.io.vicar.VicarLabelTest]
+
+  - id: vicar-binary
+    name: VICAR binary headers and prefixes
+    status: active
+    description: >
+      Images with binary label headers and per-line prefixes (NLB/NBB): decoding them, and keeping
+      the prefix bytes when converting to VICAR or PDS (KEEP_LINE_PREFIX, ADD_BINARY_HEADER).
+    code: [src/main/java/jpl/mipl/io/vicar/**]
+    keywords: [KEEP_LINE_PREFIX, ADD_BINARY_HEADER, RI]
+    specs: [features/vicar-binary.spec.ts]
+
+
+  - id: pds3
+    name: PDS3 products
+    status: active
+    description: >
+      Reading PDS3 products (attached and detached labels, dual PDS3/VICAR labels) and writing
+      PDS3 with an embedded VICAR label, file name in the label, or ODL3 labels.
+    code: [src/main/java/jpl/mipl/io/plugins/PDS*, src/main/java/jpl/mipl/io/vicar/PDS*]
+    keywords: [FORMAT=pds, EMBED_VICAR_LABEL, PDS_FILENAME_IN_LABEL, PDS_OBJECT, PDS_DETACHED_LABEL, PDS_DETACHED_ONLY]
+    specs: [features/pds3.spec.ts]
+    junit: [jpl.mipl.io.vicar.PDS3ObjectNameTest]
+    tickets: [IDS-10212, IDS-8497]
+
+  - id: xsl-labels
+    name: PDS label transcoding (XSL)
+    status: active
+    description: Building PDS labels from VICAR labels with the bundled XSL stylesheets, the default stylesheet (XSL=-) and the legacy mission recipes.
+    code: [src/main/resources/jpl/mipl/io/xsl/**, src/main/java/jpl/mipl/io/plugins/*Transcoder*]
+    keywords: [XSL, PDS_LABEL_TYPE]
+    specs: [features/xsl-labels.spec.ts]
+    tickets: [IDS-8815, IDS-6405]
+
+  - id: pds4-images
+    name: PDS4 images
+    status: active
+    description: Reading images through PDS4 XML labels; the PDS4 view must match the attached-label view of the same data.
+    code: [src/main/java/jpl/mipl/io/plugins/PDS4*, src/main/java/jpl/mipl/io/vicar/PDS4*]
+    specs: [features/pds4-images.spec.ts]
+    tickets: [IDS-8455, IDS-8424, IDS-8562, IDS-8494]
+
+  - id: pds4-tables
+    name: PDS4 tables
+    status: active
+    description: Exporting PDS4 tables (character, delimited) as CSV or fixed-width text, with the bundled ExtractTableJPL tool and jConvertIIO's PDS4_TABLE_* keywords.
+    code: [src/main/java/jpl/mipl/io/plugins/PDS4Table*, src/main/java/jpl/mipl/io/util/ExtractTableJPL.java]
+    keywords: [PDS4_TABLE_LIST, PDS4_TABLE_INDEX, PDS4_TABLE_FIELDS, PDS4_TABLE_OUPUT_FORMAT]
+    specs: [features/pds4-tables.spec.ts]
+    tickets: [IDS-6210]
+
+
+  - id: isis
+    name: ISIS cubes
+    status: active
+    description: Reading ISIS2 cubes with SFDU labels, such as Cassini VIMS spectral cubes (ISIS3 cubes are not supported).
+    code: [src/main/java/jpl/mipl/io/plugins/ISIS*, src/main/java/jpl/mipl/io/vicar/ISIS*]
+    specs: [features/isis.spec.ts]
+
+
+  - id: fits
+    name: FITS images
+    status: active
+    description: Reading FITS images and converting them to other formats.
+    code: [src/main/java/jpl/mipl/io/plugins/FITS*]
+    specs: [features/fits.spec.ts]
+    tickets: [IDS-6383]
+
+  - id: magellan
+    name: Magellan products
+    status: active
+    description: >
+      Reading Magellan F-BIDR radar image strips (full-resolution basic image data records).
+      The resampled format (MgnResampImageReader) has no public sample and is not tested.
+    code: [src/main/java/jpl/mipl/io/plugins/Mgn*, src/main/java/jpl/mipl/io/vicar/Mgn*]
+    specs: [features/magellan.spec.ts]
+
+  - id: output-formats
+    name: Output formats
+    status: active
+    description: >
+      Every FORMAT= name and alias used by the legacy test (TIFF, PNG, JPEG, JPEG 2000,
+      JPEG-LS, BMP, PNM, RAW, PDS, VICAR, ISIS), for 8-bit, 16-bit and float images.
+    code: [src/main/java/jpl/mipl/io/jConvertIIO.java]
+    keywords: [FORMAT, OUT]
+    specs: [features/output-formats.spec.ts]
+
+  - id: data-types
+    name: Data type conversion
+    status: active
+    description: Changing the output data type (OFORM) with or without rescaling, clamping, and float data to 8-bit display formats.
+    keywords: [OFORM, RESCALE, RESCALE_CONSTANT, RESCALE_OFFSET, CLAMP, VALID_MINIMUM, VALID_MAXIMUM]
+    specs: [features/data-types.spec.ts]
+    tickets: [IDS-7610]
+
+  - id: regions-bands
+    name: Regions, subsampling and bands
+    status: active
+    description: >
+      Cropping (SOURCE_REGION, CROP), subsampling, scaling, band selection and reordering
+      (READ_BANDS, BANDS), single band to RGB (2RGB), and PNG alpha (WRITE_TRANSPARENCY).
+    keywords: [SOURCE_REGION, SUBSAMPLING, CROP, SCALE, READ_BANDS, BANDS, 2RGB, WRITE_TRANSPARENCY]
+    specs: [features/regions-bands.spec.ts]
+    tickets: [IDS-7098, IDS-7560]
+
+
+  - id: xml-security
+    name: XML metadata and parser security
+    status: active
+    description: Label DOM utilities and XML debug output (XML=true), with every XML parser hardened against external entity (XXE) attacks.
+    code: [src/main/java/jpl/mipl/io/util/DOMutils.java, src/main/java/jpl/mipl/io/util/TreeInfo.java]
+    keywords: [XML]
+    specs: [features/xml-security.spec.ts]
+    junit: [jpl.mipl.io.util.DOMutilsXXETest]
+    tickets: [IDS-10406]
+
+  - id: batch-remote
+    name: Batch, streaming and remote input
+    status: active
+    description: Batch runs from an argument file (serial and parallel), files without extensions, output to stdout, and https input from the public PDS archive.
+    keywords: [ARGFILE, PARALLEL_BATCH, SILENT, OUT=-]
+    specs: [features/batch-remote.spec.ts]
+    tickets: [IDS-10067, IDS-8883]
+
+
+  - id: visual-check
+    name: Visual check (replaces JADE review)
+    status: active
+    description: >
+      Every output a person would look at decodes to an image of the right size that is neither
+      blank nor saturated, with a preview in the report. Replaces opening each output in the JADE
+      viewer in the legacy procedure; the viewer itself is not tested.
+    specs: [features/visual-check.spec.ts]
+
+
+  - id: python-scripts
+    name: Python label scripts
+    status: active
+    description: >
+      The Python utilities in src/main/scripts: xml_swap.py (replace, list and show modes, XXE
+      hardening) and build_mesh_extras.py (mesh label extras, path validation).
+    code: [src/main/scripts/*.py]
+    specs: [features/python-scripts.spec.ts]
+    tickets: [IDS-10407]
+
+  - id: velocity-labels
+    name: PDS4 label generation (Labelocity)
+    status: active
+    description: >
+      Generating detached PDS4 labels from Velocity templates with the public Labelocity release
+      (PDS4 writer and mission templates) and the vicario build under test. Generated labels must
+      match the archive label's array structure and read back to the same pixels.
+    keywords: [FORMAT=pds4, PDS_LABEL_TYPE=PDS4, PDS_DETACHED_ONLY, VELO_TEMPLATE, VELO_CONFIG]
+    specs: [features/pds4-labels.spec.ts]
+    tickets: [IDS-8541, IDS-8624, IDS-8406]

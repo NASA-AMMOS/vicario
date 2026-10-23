@@ -50,7 +50,7 @@ public class VicarLabelSet implements Cloneable, Serializable, Set
 
     /** The items in the set.
      * @serial */
-    protected List _items;
+    protected List<VicarLabelItem> _items;
 
 /***********************************************************************
  * These values are used to indicate the "flavor" of this label set.
@@ -170,7 +170,7 @@ public class VicarLabelSet implements Cloneable, Serializable, Set
  * <p>
  * @see #fromXML(Element, List)
  */
-    public VicarLabelSet(Element set, List errorList)
+    public VicarLabelSet(Element set, List<? super String> errorList)
     {
 	String tagName = set.getTagName();
 	// System.out.println("VicarLabelSet.constructor tagName "+tagName);
@@ -204,7 +204,7 @@ public class VicarLabelSet implements Cloneable, Serializable, Set
  */
     protected void initItems()
     {
-	_items = new ArrayList();
+	_items = new ArrayList<>();
 
 	switch (_flavor) {
 	    case LABEL_SYSTEM:		// nothing special
@@ -309,7 +309,7 @@ public class VicarLabelSet implements Cloneable, Serializable, Set
  */
     public VicarLabelItem getItem(int index)
     {
-	return (VicarLabelItem)_items.get(index);
+	return _items.get(index);
     }
 
 /***********************************************************************
@@ -321,7 +321,7 @@ public class VicarLabelSet implements Cloneable, Serializable, Set
 	int index = _items.indexOf(new VicarLabelItem(keyword));
 	if (index == -1)
 	    return null;
-	return (VicarLabelItem)_items.get(index);
+	return _items.get(index);
     }
 
 /***********************************************************************
@@ -345,7 +345,7 @@ public class VicarLabelSet implements Cloneable, Serializable, Set
     {
 	String[] names = new String[_items.size()];
 	for (int i=0; i < _items.size(); i++)
-	    names[i] = ((VicarLabelItem)(_items.get(i))).getKeyword();
+	    names[i] = _items.get(i).getKeyword();
 	return names;
     }
 
@@ -427,13 +427,13 @@ public class VicarLabelSet implements Cloneable, Serializable, Set
  */
     public VicarLabelItem removeItem(int index)
     {
-	VicarLabelItem item = (VicarLabelItem)_items.get(index);
+	VicarLabelItem item = _items.get(index);
 	if (item.equals("PROPERTY") || item.equals("TASK") ||
 		item.equals("USER") || item.equals("DAT_TIM"))
 	    throw new IllegalArgumentException(
 		"Cannot remove PROPERTY, TASK, USER, or DAT_TIM label items");
 
-	return (VicarLabelItem)_items.remove(index);
+	return _items.remove(index);
     }
 
 /***********************************************************************
@@ -447,13 +447,13 @@ public class VicarLabelSet implements Cloneable, Serializable, Set
 	int index = _items.indexOf(new VicarLabelItem(keyword));
 	if (index == -1)
 	    return null;
-	VicarLabelItem item = (VicarLabelItem)_items.get(index);
+	VicarLabelItem item = _items.get(index);
 	if (item.equals("PROPERTY") || item.equals("TASK") ||
 		item.equals("USER") || item.equals("DAT_TIM"))
 	    throw new IllegalArgumentException(
 		"Cannot remove PROPERTY, TASK, USER, or DAT_TIM label items");
 
-	return (VicarLabelItem)_items.remove(index);
+	return _items.remove(index);
     }
 
 /***********************************************************************
@@ -631,7 +631,7 @@ public class VicarLabelSet implements Cloneable, Serializable, Set
  * @see VicarLabelItem#fromXML(Element, List)
  * @see #initItems()
  */
-    public void fromXML(Element set, List errorList)
+    public void fromXML(Element set, List<? super String> errorList)
     {
 	// Check the node type and set the flavor appropriately.
 
@@ -738,9 +738,9 @@ public class VicarLabelSet implements Cloneable, Serializable, Set
 	    return null;
 	}
 
-	set._items = (ArrayList)((ArrayList)(set._items)).clone();
+	set._items = new ArrayList<>(set._items);
 	for (int i=0; i < set._items.size(); i++) {
-	    set._items.set(i, ((VicarLabelItem)(set._items.get(i))).clone());
+	    set._items.set(i, (VicarLabelItem)set._items.get(i).clone());
 	}
 
 	return set;

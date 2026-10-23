@@ -52,7 +52,7 @@ public class MgnFbidrImageReaderSpi extends ImageReaderSpi {
               suffixes,
               MIMEtypes,
               readerClassName,
-              STANDARD_INPUT_TYPE,
+              new Class<?>[] { ImageInputStream.class },
               null,		// no writer for this format
               _supportsStandardStreamMetadataFormat,
               MgnFbidrMetadata.nativeStreamMetadataFormatName,
