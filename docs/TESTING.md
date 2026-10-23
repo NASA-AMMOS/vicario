@@ -29,7 +29,19 @@ open report/index.html                             # feature overview; full Play
 ## How the feature tests work
 
 - **Feature registry.** [`tests/e2e/features.yml`](../tests/e2e/features.yml) lists every capability (`vicar-io`, `pds3`, `pds4-images`, `output-formats`, ...) with a name and description, its code paths, keywords, tickets and status (`active`, `planned` with a milestone, or `excluded` with a reason). `features/registry.spec.ts` fails if a spec has no feature, an active feature has no spec, or a manifest asset is unpinned or unused.
-- **Specs.** One spec per feature in `tests/e2e/features/`. Each `test.describe` carries the feature tag and a tier tag (`@fast` or `@full`), so the HTML report groups results by feature.
+- **Specs.** One spec per feature in `tests/e2e/features/`. Each `test.describe` carries the feature tag and a tier tag (`@fast` or `@full`), so the HTML report groups results by feature. Specs import `test` and `expect` from `support/test.ts`, which adds a `source` annotation linking each test to its line on GitHub.
+- **Describing tests.** Every test passes `about(description, ...scopes)` as its details:
+
+  ```ts
+  test('SOURCE_REGION running past the image edge is clipped, not an error', about(
+    'Asks for a 20 x 20 region at (40,60) of the 48 x 64 image ... Passes when the output is clipped to 8 x 4 ...',
+    '@off-nominal', '@regression',
+  ), async ({}, testInfo) => { ... });
+  ```
+
+  - **The description** says what the test does and what makes it pass. It is plain text; `` `backticks` `` mark code. It appears as the "what it checks" annotation in the Playwright report and on the procedures page.
+  - **The scope tags** say what kind of testing it is. They are defined in `SCOPES` in `support/features.ts`: `@nominal`, `@off-nominal`, `@malformed-input`, `@lossless`, `@mission-data`, `@regression`, `@security`, `@legacy`, `@suite` and `@unit`. Filter by one with `--grep @off-nominal`.
+  - **Enforcement:** `registry.spec.ts` fails if any test lacks a description or a scope tag.
 - **Running the product.** Specs run the real CLI (`java -cp vicario-*-FAT.jar jpl.mipl.io.jConvertIIO ...`). Command lines and logs are attached to the report. `jConvertIIO` can exit 0 after an error, so `expectConverted()` also requires a non-empty output and a log free of exceptions.
 - **Oracle.** `jpl.mipl.io.testsupport.ImageProbe` (in `src/test/java`) decodes any readable image and reports its dimensions, data type, statistics and a format-independent `pixelSha256`. Lossless conversions must keep the hash; lossy ones are compared by statistics. A contrast-stretched PNG preview of every image is attached to the report.
 - **Unit tests in the report.** `features/junit.spec.ts` imports `target/surefire-reports`, one report entry per JUnit test, grouped under the feature whose `junit:` list names the class (an unlisted class fails).
@@ -74,8 +86,9 @@ See [.github/project-requirements/criteria.md](../.github/project-requirements/c
 | `publish.yml` | push to `main`, 07:00 UTC daily, release published, manual | `e2e-full`, then `deploy` to GitHub Pages |
 | `release.yml` | push to `main`/`develop` | `ci`, then build, release, publish |
 
-The report has two levels:
+The report has three parts:
 - **`report/index.html`**, the feature overview: each feature's description, status and pass/fail/known-issue counts, a gallery of image previews from its tests, the known issues grouped by ticket, and the features not yet automated. Each feature and image links into the full report.
+- **`report/procedures.html`**, the test procedures: every test grouped by feature, with its description, scope tags, issue notes and latest result, plus links to its run details and its source on GitHub. A scope legend at the top filters the list.
 - **`report/playwright/`**, the Playwright HTML report: every test with its command line, logs, label text and image previews, including the JUnit results.
 
 Where to find it:

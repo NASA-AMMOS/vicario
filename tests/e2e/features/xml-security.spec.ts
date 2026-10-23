@@ -4,9 +4,9 @@
 // src/test/java/jpl/mipl/io/util/DOMutilsXXETest.java (run by `mvn test`).
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/test';
 import { JAVA, fatJar, synthetic } from '../support/env';
-import { feature, issue } from '../support/features';
+import { about, feature, issue } from '../support/features';
 import { convert, expectConverted, run } from '../support/run';
 
 const SECRET = 'XXE-SECRET-CONTENT';
@@ -18,7 +18,10 @@ async function treeInfo(testInfo: import('@playwright/test').TestInfo, file: str
 }
 
 test.describe('XML metadata and parser security', feature('xml-security'), () => {
-  test('XML=true writes the label DOM as XML debug documents', async ({}, testInfo) => {
+  test('XML=true writes the label DOM as XML debug documents', about(
+    `Converts the synthetic image to PDS3 with \`XML=true\`, which writes the label DOM as XML debug files. Passes when at least one XML file is written and each is well formed (opens and closes its root element).`,
+    '@nominal',
+  ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_byte_bsq.vic'), 'xml_debug.pds', { format: 'pds', XML: 'true' });
     expectConverted(r);
     const xmls = readdirSync(testInfo.outputDir).filter((f) => f.endsWith('.xml'));
@@ -32,7 +35,10 @@ test.describe('XML metadata and parser security', feature('xml-security'), () =>
     }
   });
 
-  test('a DOCTYPE with a missing external DTD parses; the DTD is never loaded', async ({}, testInfo) => {
+  test('a DOCTYPE with a missing external DTD parses; the DTD is never loaded', about(
+    `Parses, with the TreeInfo tool, an XML document whose DOCTYPE points at a DTD that does not exist. Passes when there is no exception: the hardened parser never loads external DTDs.`,
+    '@security', '@malformed-input', '@regression',
+  ), async ({}, testInfo) => {
     issue('IDS-10406', 'before the fix this failed with FileNotFoundException for the DTD');
     const doc = testInfo.outputPath('label.xml');
     writeFileSync(doc, `<?xml version="1.0"?>\n<!DOCTYPE PDS_LABEL SYSTEM "${pathToFileURL(testInfo.outputPath('missing.dtd'))}">\n`
@@ -41,7 +47,10 @@ test.describe('XML metadata and parser security', feature('xml-security'), () =>
     expect(log).not.toMatch(/Exception/);
   });
 
-  test('external entities are not resolved (no file read, no error)', async ({}, testInfo) => {
+  test('external entities are not resolved (no file read, no error)', about(
+    `Parses a hostile XML document with external general and parameter entities: one reads a local "secret" file, another points at a missing file. Passes when the secret text never appears in the output and nothing tries to open the missing file.`,
+    '@security', '@malformed-input',
+  ), async ({}, testInfo) => {
     issue('IDS-10406', 'XXE: external general and parameter entities must be ignored');
     const secret = testInfo.outputPath('secret.txt');
     writeFileSync(secret, SECRET);

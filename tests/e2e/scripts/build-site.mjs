@@ -111,9 +111,10 @@ const counts = new Map((summary?.features ?? []).map((f) => [f.id, f]));
 const capabilityRows = features.filter((f) => f.status === 'active').map((f) => {
   const c = counts.get(f.id);
   const total = c ? c.passed + c.failed + c.known : null;
-  const link = `tests/playwright/index.html#?q=${encodeURIComponent('@' + f.id)}`;
+  const link = `tests/procedures.html#${encodeURIComponent(f.id)}`;
+  const scopes = Object.entries(c?.scopes ?? {}).map(([sc, n]) => `<span class="scope">${esc(sc.slice(1))} ${n}</span>`).join(' ');
   return `<tr>
-  <td><a class="fname" href="${link}">${esc(f.name)}</a><div class="desc">${esc(f.description.trim())}</div></td>
+  <td><a class="fname" href="${link}">${esc(f.name)}</a><div class="desc">${esc(f.description.trim())}</div>${scopes ? `<div class="scopes">${scopes}</div>` : ''}</td>
   <td class="num">${total ?? '–'}</td><td class="num">${c ? c.passed : '–'}</td><td class="num ${c?.failed ? 'bad' : ''}">${c ? c.failed : '–'}</td>
 </tr>`;
 }).join('\n');
@@ -172,6 +173,7 @@ td.kw { font-family:ui-monospace,Menlo,monospace; font-size:13px; white-space:no
 .num { text-align:right; font-variant-numeric:tabular-nums; width:72px; } .bad { color:var(--fail); font-weight:600; }
 .fname { font-weight:600; } .desc { color:var(--muted); font-size:13px; margin-top:2px; }
 .yes { color:var(--pass); font-weight:600; }
+.scopes { margin-top:6px; } .scope { display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--muted); margin:2px 2px 0 0; }
 details { border:1px solid var(--line); border-radius:8px; padding:6px 12px; margin:8px 0; }
 summary { cursor:pointer; font-weight:600; padding:4px 0; }
 .recipe { font-size:14px; color:var(--muted); margin:14px 0 0; }
@@ -263,9 +265,9 @@ ${formats.map(([f, r, w, n]) => `<tr><td class="fname">${esc(f)}</td><td class="
 <section id="testing">
 <h2>Testing</h2>
 <p>Every change runs a feature test suite: the real <code>jConvertIIO</code> command against synthetic images and public mission products from the PDS, with each output decoded and compared pixel for pixel. The full suite runs on every merge to <code>main</code> and nightly, and publishes the report linked here.</p>
-<div class="results"><p>${statusLine}</p><a class="button" href="tests/index.html">Open the test report</a></div>
+<div class="results"><p>${statusLine}</p><span class="actions" style="margin:0"><a class="button" href="tests/procedures.html">Test procedures</a><a class="button alt" href="tests/index.html">Test report</a></span></div>
 <h3>Capabilities</h3>
-<p class="muted">Each capability is a feature in the test suite. Click one to see its tests with commands, logs and image previews. Passed excludes tests that document a known bug.</p>
+<p class="muted">Each capability is a feature in the test suite. Click one to read its test procedures: what each test does and what makes it pass. The tags count tests by the kind of testing (nominal, off-nominal, malformed input, lossless, mission data, ...). Passed excludes tests that document a known bug.</p>
 <div class="scroll"><table>
 <thead><tr><th>Capability</th><th class="num">Tests</th><th class="num">Passed</th><th class="num">Failed</th></tr></thead>
 <tbody>

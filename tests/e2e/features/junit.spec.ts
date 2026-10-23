@@ -3,9 +3,9 @@
 // class in features.yml (`junit:`). Run `mvn package` (or `mvn test`) first.
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
-import { REPO_ROOT } from '../support/env';
-import { features, tagOf } from '../support/features';
+import { expect, test } from '../support/test';
+import { REPO_ROOT, sourceUrl } from '../support/env';
+import { about, features, tagOf } from '../support/features';
 
 const SUREFIRE = path.join(REPO_ROOT, 'target', 'surefire-reports');
 
@@ -34,23 +34,42 @@ function readCases(): Case[] {
   return cases;
 }
 
+/**
+ * Adds a "junit source" annotation linking to the Java test class (at the
+ * method, when given), which the procedures page uses as the test's source.
+ */
+function withJavaSource(cls: string, details: ReturnType<typeof about>, method?: string) {
+  const file = path.join(REPO_ROOT, 'src', 'test', 'java', ...cls.split('.')) + '.java';
+  const lines = existsSync(file) ? readFileSync(file, 'utf8').split('\n') : [];
+  const line = method ? lines.findIndex((l) => new RegExp(`void\\s+${method}\\s*\\(`).test(l)) + 1 : 0;
+  return { ...details, annotation: [details.annotation, { type: 'junit source', description: sourceUrl(file, line || undefined) }] };
+}
+
 if (!existsSync(SUREFIRE)) {
-  test('JUnit results are available', { tag: ['@junit', '@fast'] }, () => {
+  test.describe('JUnit results', { tag: ['@junit', '@fast'] }, () => test('JUnit results are available', about(
+    `Imports the JUnit results of the Maven build. Fails when target/surefire-reports is missing (build with Maven first).`,
+    '@unit',
+  ), () => {
     throw new Error("target/surefire-reports is missing; build with `mvn -B -P shade package test-compile`");
-  });
+  }));
 } else {
   const cases = readCases();
   const owners = new Map(features().flatMap((f) => (f.junit ?? []).map((cls) => [cls, f] as const)));
   for (const cls of [...new Set(cases.map((c) => c.cls))].sort()) {
     const owner = owners.get(cls);
     const tag = owner ? [tagOf(owner), '@fast'] : ['@junit', '@fast'];
-    const annotation = owner ? [{ type: 'feature', description: `${owner.name}: ${owner.description.trim()}` }] : [];
-    test.describe(`Unit tests (JUnit): ${cls.split('.').pop()}`, { tag, annotation }, () => {
-      test('class is listed under a feature in features.yml', () => {
+    test.describe(`Unit tests (JUnit): ${cls.split('.').pop()}`, { tag }, () => {
+      test('class is listed under a feature in features.yml', withJavaSource(cls, about(
+        `Bookkeeping, not a product test: checks that the JUnit class \`${cls}\` is listed in a feature's \`junit:\` list in features.yml, so its results are grouped under that feature.`,
+        '@suite',
+      )), () => {
         expect(owner, `add ${cls} to a feature's junit: list`).toBeTruthy();
       });
       for (const c of cases.filter((x) => x.cls === cls)) {
-        test(c.name, async ({}, testInfo) => {
+        test(c.name, withJavaSource(cls, about(
+          `Imports the result of the JUnit test \`${cls.split('.').pop()}.${c.name}\` from the Maven build (target/surefire-reports). Passes when it passed in JUnit; a JUnit failure is shown with its message.`,
+          '@unit',
+        ), c.name), async ({}, testInfo) => {
           testInfo.annotations.push({ type: 'junit', description: `${cls}#${c.name} (${c.time}s, from surefire)` });
           test.skip(c.outcome === 'skipped', 'skipped in JUnit');
           if (c.outcome === 'failed') {

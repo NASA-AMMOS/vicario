@@ -1,5 +1,6 @@
 // Paths and executables shared by the harness. Everything is relative to the
 // repository; nothing here may point at site-specific locations.
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,3 +44,24 @@ export function thinJar(): string {
 }
 
 export const synthetic = (name: string) => path.join(SYNTH_DIR, name);
+
+let sourceSha: string | undefined;
+
+/**
+ * GitHub link to a line of a test file, at the commit under test
+ * ($SOURCE_SHA in CI, else the local HEAD; falls back to main).
+ */
+export function sourceUrl(file: string, line?: number): string {
+  if (sourceSha === undefined) {
+    sourceSha = process.env.SOURCE_SHA || process.env.GITHUB_SHA || '';
+    if (!sourceSha) {
+      try {
+        sourceSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: E2E_ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+      } catch { /* not a checkout */ }
+    }
+  }
+  const repo = process.env.GITHUB_SERVER_URL && process.env.GITHUB_REPOSITORY
+    ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}` : 'https://github.com/NASA-AMMOS/vicario';
+  const rel = path.relative(REPO_ROOT, file).split(path.sep).join('/');
+  return `${repo}/blob/${sourceSha || 'main'}/${rel}${line ? `#L${line}` : ''}`;
+}

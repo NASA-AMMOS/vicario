@@ -2,10 +2,10 @@
 // file names without extensions, OUT=- to stdout, and http(s) input from the
 // public PDS archive.
 import { copyFileSync, existsSync, writeFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/test';
 import { asset } from '../support/data';
 import { JAVA, fatJar, synthetic } from '../support/env';
-import { feature, issue, knownFailure } from '../support/features';
+import { about, feature, issue, knownFailure } from '../support/features';
 import { convert, expectConverted, expectSamePixels, probe, run } from '../support/run';
 
 /** Three conversions of different inputs and formats for the batch tests. */
@@ -30,7 +30,11 @@ async function jConvert(testInfo: import('@playwright/test').TestInfo, args: str
 
 test.describe('Batch, streaming and remote input', feature('batch-remote'), () => {
   for (const parallel of [undefined, '2']) {
-    test(`ARGFILE batch${parallel ? ` with PARALLEL_BATCH=${parallel}` : ''} runs every line`, async ({}, testInfo) => {
+    const keywords = parallel ? `\`ARGFILE\` and \`PARALLEL_BATCH=${parallel}\`` : '`ARGFILE`';
+    test(`ARGFILE batch${parallel ? ` with PARALLEL_BATCH=${parallel}` : ''} runs every line`, about(
+      `Runs a batch file of 3 conversions (PNG, TIFF and VICAR from different inputs) with ${keywords}. Passes when the run exits 0 and every output exists with its input's pixels.`,
+      '@nominal', '@lossless',
+    ), async ({}, testInfo) => {
       const { file, jobs } = writeArgFile(testInfo);
       const args = [`ARGFILE=${file}`, ...(parallel ? [`PARALLEL_BATCH=${parallel}`] : [])];
       const r = await jConvert(testInfo, args, 'batch');
@@ -42,7 +46,10 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
     });
   }
 
-  test('input and output file names without extensions', async ({}, testInfo) => {
+  test('input and output file names without extensions', about(
+    `Converts an input file that has no extension to an output name with no extension. Passes when the output has the input pixels.`,
+    '@off-nominal', '@regression', '@lossless',
+  ), async ({}, testInfo) => {
     issue('IDS-10067', 'launchers failed on file names with no extension');
     const noExt = testInfo.outputPath('noext');
     copyFileSync(synthetic('gen_byte_bsq.vic'), noExt);
@@ -51,7 +58,10 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
     expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, synthetic('gen_byte_bsq.vic')));
   });
 
-  test('OUT=- with SILENT writes the image to stdout', async ({}, testInfo) => {
+  test('OUT=- with SILENT writes the image to stdout', about(
+    `Converts to PNG with \`OUT=-\` and \`SILENT\`, which should stream the image to stdout. Passes when the exit code is 0 and stdout starts with the PNG signature.`,
+    '@nominal',
+  ), async ({}, testInfo) => {
     knownFailure('UNFILED-12', 'OUT=- fails with IllegalArgumentException "image == null!" and writes nothing');
     const r = await run([JAVA, '-Djava.awt.headless=true', '-cp', fatJar(), 'jpl.mipl.io.jConvertIIO',
       `inp=${synthetic('gen_byte_bsq.vic')}`, 'out=-', 'format=png', 'SILENT'], { cwd: testInfo.outputDir });
@@ -62,7 +72,10 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
 });
 
 test.describe('Batch, streaming and remote input (network)', feature('batch-remote', 'full'), () => {
-  test('https input from the public PDS archive matches the local copy', async ({}, testInfo) => {
+  test('https input from the public PDS archive matches the local copy', about(
+    `Converts an MSL Navcam thumbnail straight from its https URL on the public PDS Imaging Node. Passes when the result has the same pixels as the local copy.`,
+    '@mission-data', '@lossless',
+  ), async ({}, testInfo) => {
     const local = asset('msl-navcam-thumb-img');
     const url = 'https://planetarydata.jpl.nasa.gov/img/data/msl/MSLNAV_0XXX/DATA/SOL00100/NLA_406359343EDR_T0050104NCAM00505M1.IMG';
     const r = await convert(testInfo, url, 'remote.vic', { format: 'vicar' });
