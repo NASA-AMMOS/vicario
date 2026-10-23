@@ -1,6 +1,7 @@
-// Python label scripts: xml_swap.py modes and XXE hardening (IDS-10407).
+// Python label scripts: xml_swap.py modes and XXE hardening (IDS-10407), and
+// build_mesh_extras.py (mesh label extras) with its path validation.
 // Needs python3 with lxml; a missing interpreter or module fails the test.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test } from '@playwright/test';
@@ -9,6 +10,7 @@ import { feature, issue } from '../support/features';
 import { run } from '../support/run';
 
 const SWAP = path.join(SCRIPTS_DIR, 'xml_swap.py');
+const MESH = path.join(SCRIPTS_DIR, 'build_mesh_extras.py');
 const NS = 'xmlns:pds="http://pds.nasa.gov/pds4/pds/v1"';
 
 async function swap(testInfo: import('@playwright/test').TestInfo, args: string[]) {
@@ -57,5 +59,40 @@ test.describe('Python label scripts', feature('python-scripts'), () => {
     expect(r.exitCode).toBe(0);
     expect(r.stdout).not.toContain('XXE-SECRET-CONTENT');
     expect(r.stdout).toContain('&xxe;');
+  });
+
+  test('build_mesh_extras.py writes the mesh extras JSON (LabelObj usage)', async ({}, testInfo) => {
+    const dir = testInfo.outputPath('work');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, 'mesh.mtl'), '# SOLAR_LONGITUDE 123.4\nnewmtl a\nmap_Kd NLA_411614614RASLF0051986NCAM00346M1.png\n');
+    writeFileSync(path.join(dir, 'mesh.VIC'), '');
+    const r = await run([PYTHON, '-I', MESH, '--in', 'mesh.VIC', '--out', 'mesh.json', '--mtl', 'mesh.mtl'], { cwd: dir });
+    await testInfo.attach('build_mesh_extras.log', { body: `exit ${r.exitCode}\n${r.stdout}\n${r.stderr}`, contentType: 'text/plain' });
+    expect(r.exitCode).toBe(0);
+    expect(JSON.parse(readFileSync(path.join(dir, 'mesh.json'), 'utf8'))).toEqual({
+      SOLAR_LONGITUDE: '123.4', PNGS: '(NLA_411614614RASLF0051986NCAM00346M1.png)' });
+  });
+
+  test('build_mesh_extras.py refuses paths outside its folders or of the wrong type', async ({}, testInfo) => {
+    issue('S8707', 'SonarCloud pythonsecurity:S8707 path traversal via command-line arguments');
+    const dir = testInfo.outputPath('work');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path.join(dir, 'mesh.mtl'), 'map_Kd a.png\n');
+    writeFileSync(path.join(dir, 'mesh.VIC'), '');
+    const attempts: Array<[string, string[], string]> = [
+      ['output outside the folders', ['--out', '../escaped.json'], testInfo.outputPath('escaped.json')],
+      ['output that is not JSON', ['--out', 'run.sh'], path.join(dir, 'run.sh')],
+      ['mtl that is not an .mtl file', ['--out', 'x.json', '--mtl', '/etc/hosts'], path.join(dir, 'x.json')],
+      ['base that is not JSON', ['--out', 'y.json', '--base', '/etc/hosts'], path.join(dir, 'y.json')],
+    ];
+    for (const [what, args, mustNotExist] of attempts) {
+      await test.step(what, async () => {
+        const full = ['--in', 'mesh.VIC', ...(args.includes('--mtl') ? [] : ['--mtl', 'mesh.mtl']), ...args];
+        const r = await run([PYTHON, '-I', MESH, ...full], { cwd: dir });
+        expect(r.exitCode, `${what}: ${r.stderr}`).not.toBe(0);
+        expect(r.stderr).toContain('build_mesh_extras:');
+        expect(existsSync(mustNotExist), `${path.basename(mustNotExist)} not written`).toBe(false);
+      });
+    }
   });
 });

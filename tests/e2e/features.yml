@@ -153,7 +153,9 @@ features:
   - id: python-scripts
     name: Python label scripts
     status: active
-    description: The Python utilities in src/main/scripts (xml_swap.py replace, list and show modes) and their XXE hardening.
+    description: >
+      The Python utilities in src/main/scripts: xml_swap.py (replace, list and show modes, XXE
+      hardening) and build_mesh_extras.py (mesh label extras, path validation).
     code: [src/main/scripts/*.py]
     specs: [features/python-scripts.spec.ts]
     tickets: [IDS-10407]
