@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '../support/test';
 import { synthetic } from '../support/env';
-import { about, feature, issue, needsReview } from '../support/features';
+import { about, feature, issue } from '../support/features';
 import { attachOverlay } from '../support/overlay';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 import { BYTE_3BAND, BYTE_GRAY, BYTE_RGBA, expectedHash, range } from '../support/synthetic';
@@ -63,17 +63,41 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
     });
   }
 
-  test('CROP=(x,y,height,width) as documented', about(
-    `Crops a gray image with \`CROP=(1,5,7,11)\`, documented as (x, y, height, width). Passes when the output is 11 wide by 7 high with exactly those pixels.`,
-    '@nominal',
+  for (const [format, ext] of [['png', 'png'], ['vicar', 'vic']] as const) {
+    test(`CROP=(x,y,width,height) to ${format} cuts out exactly that area`, about(
+      `Crops the 48 x 64 gray image with \`CROP=(1,5,11,7)\` (x, y, width, height) and writes ${format}. Passes when the output is 11 wide by 7 high and its pixel hash equals the hash computed from the generator formula for columns 1 to 11 and rows 5 to 11.`,
+      '@nominal', '@regression',
+    ), async ({}, testInfo) => {
+      issue('REVIEW-11', 'fixed: CROP used x as the y offset, and CROP to VICAR failed with a raster bounds error');
+      const r = await convert(testInfo, synthetic('gen_byte_gray.vic'), `crop.${ext}`, { format, CROP: '(1,5,11,7)' });
+      expectConverted(r);
+      const p = await probe(testInfo, r.out);
+      expect([p.width, p.height]).toEqual([11, 7]);
+      expect(p.pixelSha256).toBe(expectedHash(BYTE_GRAY, range(5, 12), range(1, 12), [0]));
+    });
+  }
+
+  test('CROP=(x,y) crops from (x,y) to the image edge', about(
+    `Crops the 48 x 64 gray image with the two-value form \`CROP=(40,60)\` and writes VICAR. Passes when the output is the 8 x 4 corner from (40,60) to the image edge, with exactly those pixels.`,
+    '@nominal', '@regression',
   ), async ({}, testInfo) => {
-    needsReview('REVIEW-11', 'CROP uses cropX for the y offset (jConvertIIO.java:4816) and reads the last two values '
-      + 'as width,height although the help text says height,width; CROP to VICAR also fails (raster bounds)');
-    const r = await convert(testInfo, synthetic('gen_byte_gray.vic'), 'crop.png', { format: 'png', CROP: '(1,5,7,11)' });
+    issue('REVIEW-11', 'fixed: the two-value CROP form always failed with "rectangular crop area must not be empty"');
+    const r = await convert(testInfo, synthetic('gen_byte_gray.vic'), 'crop_xy.vic', { format: 'vicar', CROP: '(40,60)' });
     expectConverted(r);
     const p = await probe(testInfo, r.out);
-    expect([p.width, p.height]).toEqual([11, 7]);
-    expect(p.pixelSha256).toBe(expectedHash(BYTE_GRAY, range(5, 12), range(1, 12), [0]));
+    expect([p.width, p.height]).toEqual([8, 4]);
+    expect(p.pixelSha256).toBe(expectedHash(BYTE_GRAY, range(60, 64), range(40, 48), [0]));
+  });
+
+  test('CROP outside the image is refused with a clear error', about(
+    `Crops the 48 x 64 gray image with \`CROP=(100,100,5,5)\`, which lies outside the image. Passes when jConvertIIO exits non-zero with a message naming CROP and no Java stack trace.`,
+    '@off-nominal',
+  ), async ({}, testInfo) => {
+    const r = await convert(testInfo, synthetic('gen_byte_gray.vic'), 'crop_out.vic', { format: 'vicar', CROP: '(100,100,5,5)' });
+    expect(r.exitCode, 'jConvertIIO exit code').not.toBe(0);
+    const log = `${r.stdout}\n${r.stderr}`;
+    expect(log).toMatch(/CROP/);
+    expect(log, 'no stack trace').not.toMatch(/\tat [\w.$]+\(/);
   });
 
   test('SCALE=(2,2,0,0) doubles the image size', about(

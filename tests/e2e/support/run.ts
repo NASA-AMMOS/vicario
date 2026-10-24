@@ -13,15 +13,28 @@ export interface ProcResult {
   stdout: string;
   stderr: string;
   durationMs: number;
+  /** The raw stdout bytes; set only when run with `binary: true` (then `stdout` is a latin1 view). */
+  stdoutBytes?: Buffer;
 }
 
-export function run(cmd: string[], opts: { cwd?: string; timeoutMs?: number } = {}): Promise<ProcResult> {
+/**
+ * Run a command. Output is decoded as UTF-8 unless `binary` is set, which keeps
+ * stdout as raw bytes in `stdoutBytes` (for programs that write an image to stdout).
+ */
+export function run(cmd: string[], opts: { cwd?: string; timeoutMs?: number; binary?: boolean } = {}): Promise<ProcResult> {
   const start = Date.now();
   return new Promise((resolve) => {
-    execFile(cmd[0], cmd.slice(1), { cwd: opts.cwd, timeout: opts.timeoutMs ?? 180_000, maxBuffer: 64 << 20 },
+    execFile(cmd[0], cmd.slice(1),
+      { cwd: opts.cwd, timeout: opts.timeoutMs ?? 180_000, maxBuffer: 64 << 20, encoding: 'buffer' },
       (err, stdout, stderr) => {
         const code = err ? (typeof (err as any).code === 'number' ? (err as any).code : 1) : 0;
-        resolve({ cmd, exitCode: code, stdout: String(stdout), stderr: String(stderr), durationMs: Date.now() - start });
+        resolve({
+          cmd, exitCode: code,
+          stdout: stdout.toString(opts.binary ? 'latin1' : 'utf8'),
+          stderr: stderr.toString('utf8'),
+          durationMs: Date.now() - start,
+          ...(opts.binary ? { stdoutBytes: stdout } : {}),
+        });
       });
   });
 }

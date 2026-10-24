@@ -109,7 +109,8 @@ import org.apache.jackrabbit.webdav.client.methods.PutMethod;
 * HELP will cause help info to be displayed <br>
 * no arguments will also cause the help to be printed <br>
 * INP=[inputFileName] <br>
-* OUT=[outputFileName] name of the output file.<br>
+* OUT=[outputFileName] name of the output file. OUT=- writes the image to stdout
+* (messages go to stderr; SILENT suppresses them).<br>
 * FORMAT=[imageFileFormatName] file format name to save the output to. 
 * The extention of the output filename is not used in any way. <br>
 * FORMAT=raw writes a headerless file of exactly width x height x bands samples, band sequential (BSQ), big-endian. <br>
@@ -172,7 +173,10 @@ int outputDataType;
 // these are the file names used as arguments. They MAY be full paths, \but could be relative
 // as long as they can be opened we don't care
 String inputFileName = "";
-String outputFileName = "-";
+String outputFileName = "-"; // "-" here also means no OUT was given; outToStdout tells them apart
+boolean outToStdout = false; // OUT=- : write the image to stdout
+/** The process's standard output, kept for the image bytes when OUT=- (main sends messages to stderr). */
+static final java.io.PrintStream imageStdout = System.out;
 
 int imageIndex = 0;
 
@@ -557,6 +561,23 @@ static public void main(String args[])
 	// have a flag for testing reuse the jConvertIIO or create a new one. force garbage collection ?
 	
 	if (argFile.equalsIgnoreCase("") ) {
+		// OUT=- writes the image to stdout, so messages go to stderr; SILENT drops them
+		boolean toStdout = false, silentRun = false;
+		for (String arg : args) {
+			int eq = arg.indexOf('=');
+			String k = eq == -1 ? arg : arg.substring(0, eq);
+			String v = eq == -1 ? "true" : arg.substring(eq + 1);
+			if (k.equalsIgnoreCase("OUT") && v.equals("-")) toStdout = true;
+			if (k.equalsIgnoreCase("SILENT") && v.equalsIgnoreCase("true")) silentRun = true;
+		}
+		if (silentRun) {
+			System.setOut(new PrintStream(new OutputStream() {
+				@Override public void write(int b) { }
+				@Override public void write(byte[] b, int off, int len) { }
+			}));
+		} else if (toStdout) {
+			System.setOut(System.err);
+		}
 		jConvertIIO convert = new jConvertIIO(args);
 		if (convert.convStatus == false) {
 			System.exit(1); // 1 is error return
@@ -965,9 +986,14 @@ public void printHelp() {
 	System.out.println("  An image with selected bands may be written to PDS or Vicar, It will fail to tif or jpg");
 	System.out.println("  Write to vicar or PDS then to jpg or tif.");
 	System.out.println("SCALE=(Xfactor,Yfactor,Xtranslation,Ytranslation) values are floats, no spaces allowed");
-	System.out.println("CROP=(cropX,cropY,cropHeight,cropWidth) values are floats, no spaces allowed");
+	System.out.println("CROP=(x,y,width,height) values are floats, no spaces allowed. Applied after the image is read.");
+	System.out.println("  CROP=(x,y) crops from x,y to the image edge. An area running past the edge is clipped.");
 	System.out.println("CLAMP=(minValue,MaxValue) values are floats, no spaces allowed");
 	System.out.println("RESCALE=[true/false] default is TRUE, only used if OFORM is to a new data type");
+	System.out.println("  The automatic stretch to the output range applies only when OFORM narrows the data type");
+	System.out.println("  (e.g. HALF or REAL to BYTE). OFORM to the same or a wider type keeps the values unless");
+	System.out.println("  VALID_MINIMUM/VALID_MAXIMUM or RESCALE_CONSTANT/RESCALE_OFFSET are given; that rescale");
+	System.out.println("  is done in the output data type, so it is not clipped to the input range.");
 	System.out.println("  for all keywords which are [true/false] the keyword alone sets the the flag to TRUE");
 	System.out.println("RESCALE_CONSTANT=constant  float value. default is 1.0, only used if OFORM is to a new data type");
 	System.out.println("RESCALE_OFFSET=offset  float value. default is 0.0, only used if OFORM is to a new data type");
@@ -985,8 +1011,9 @@ public void printHelp() {
 	System.out.println("argument names are NOT case sensitive, except filenames and FORMAT names");
 	System.out.println("an argument without a value will default to \"true\" (only for [true,false] args");
 	System.out.println("PLUGINS registered reader and writer names are printed ");
-	System.out.println("SILENT eliminate all printing to stdout, could be useful when OUT=- which writes output");
-	System.out.println(" file to stdout. Useful for piping to another process like ImageMagick \"convert\" ");
+	System.out.println("OUT=- writes the output image to stdout, for piping to another process like ImageMagick \"convert\".");
+	System.out.println(" FORMAT is required. Messages then go to stderr. Formats that need a second file (detached labels) are not supported.");
+	System.out.println("SILENT eliminate all printing to stdout (errors still go to stderr), useful with OUT=-");
 	System.out.println("IMAGE_INDEX=n sets the image index to read from the file. Defaults to 0.");	
 	System.out.println("  Few files will contain more than one image. "); 
 	
@@ -1711,6 +1738,7 @@ public boolean conv(String argv[]) {
 	    }
 	    else if (key.equalsIgnoreCase("OUT") ) {
 	        outputFileName = value;
+	        outToStdout = value.equals("-");
 	        if (value.equalsIgnoreCase("DISPLAY") ) {
 	            displayImage = true;
 	        }
@@ -1721,7 +1749,7 @@ public boolean conv(String argv[]) {
 		}	    
 		else if (key.equalsIgnoreCase("SILENT") ) {
 	    	
-						silent = true;
+						silent = value == null || value.equalsIgnoreCase("true");
 	    	
 				}
 	    else if (key.equalsIgnoreCase("RI") ) {
@@ -2053,7 +2081,7 @@ public boolean conv(String argv[]) {
 	    	if (debug) System.out.println("VALID_MAXIMUM "+validMaximum);	
 	    } 
 	    else if (key.equalsIgnoreCase("CROP") ) {
-	    	// CROP=(cropX,cropY,cropHeight,cropWidth) values are floats, no spaces allowed");
+	    	// CROP=(x,y,width,height) or CROP=(x,y) values are floats, no spaces allowed");
 	    	if (debug) System.out.println("CROP "+value);
 	    	cropImage=true;
 	    	float[] ff = getValuesFloat(value);
@@ -2200,7 +2228,7 @@ public boolean conv(String argv[]) {
 	    	if (debug) System.out.println("TIF_WRITE_TILE_SIZE "+value+",  "+tileSizeX+" x "+tileSizeY);
 	    }
 	    else if (key.equalsIgnoreCase("SOURCE_REGION") ) {
-	    	// CROP=(cropX,cropY,cropHeight,cropWidth) values are floats, no spaces allowed");
+	    	// SOURCE_REGION=(startX,startY,width,height) values are ints, no spaces allowed");
 	    	if (debug) System.out.println("SOURCE_REGION "+value);
 	    	sourceRegion=true;
 	    	// useRawReader = true;
@@ -2978,6 +3006,9 @@ public boolean conv(String argv[]) {
 	 if (debug) System.out.println("calling processFilters ***************************");
 	 imageHasBeenProcessed = false;
 	  filteredImage = processFilters(sourceImage);
+	  if (filteredImage == null) {
+		  return false; // processFilters printed the error
+	  }
 	  if (debug) {
 	  	System.out.println("after calling processFilters filteredImage "+filteredImage);			
 	  	System.out.println("filteredImage "+filteredImage.getWidth()+" "+filteredImage.getHeight());
@@ -3273,12 +3304,16 @@ public boolean conv(String argv[]) {
 	
 	
 	IIOImage iioImageOut = null;
-	if (outputFormat == null  && (outputFileName.equalsIgnoreCase("-") == false) &&
+	if (outputFormat == null  && (outToStdout || outputFileName.equalsIgnoreCase("-") == false) &&
 			outputFileName.equalsIgnoreCase("DISPLAY") == false ) {
-	  	System.out.println("no output format specified. use FORMAT=[format]");
+	  	System.err.println("no output format specified. use FORMAT=[format]");
 	  	System.exit(1); // error return
-	}  
-	else if (  outputFileName.equalsIgnoreCase("-") == false ) {
+	}
+	else if (outputFormat != null && outputFileName.equals("-") && !outToStdout) {
+		System.err.println("ERROR: FORMAT="+outputFormat+" given but no output file. use OUT=[file], or OUT=- to write to stdout");
+		return false;
+	}
+	else if (  outToStdout || outputFileName.equalsIgnoreCase("-") == false ) {
 		// the file should be written out
 	   
 	   if (debug) {
@@ -3404,7 +3439,7 @@ public boolean conv(String argv[]) {
 	}
 	    processSave(iioImageOut, inputFileName, outputFileName, outputFormat); 
 	    if (writeFailed) {
-	    	System.out.println("Image write failed: "+outputFileName);
+	    	System.err.println("Image write failed: "+outputFileName);
 	    	return false;
 	    }
 	    System.out.println("Image write Done");
@@ -4016,7 +4051,9 @@ public void jediTest(String inputFileName, boolean displayImage) {
         	// long size = fc.getSize();
         	// on webdavOutputStream
         	// set content to 0, write flush, close, reopen
-        	
+
+        } else if (outToStdout) {
+        	// OUT=- : the image goes to stdout below; no file is created
         } else {   
         	/***
         	 * Changed from using fout as a File to creating a FileOutputStream
@@ -4572,24 +4609,24 @@ public void jediTest(String inputFileName, boolean displayImage) {
             
             // -------------- add support for standard out so the output could be piped
             
-            if (fout != null && fout.equals("-")) {
-            	// OutputStream os = System.out;
-				// writer.setOutput( os );
-				writer.setOutput( System.out );
+            if (outToStdout) {
+				// writers need an ImageOutputStream; it caches so writers can seek back (e.g. VICAR labels)
+				ImageOutputStream sos = ImageIO.createImageOutputStream(imageStdout);
+				writer.setOutput( sos );
 				// first null is streamMetadata, might check for it in general case, most readers WILL return NULL
 				// // writer.write(null, iioImage, writeParam);
 				if (debug) System.out.println( "write iioImage "+iioImage);
 				if (format.equalsIgnoreCase("vicar") == true || format.equalsIgnoreCase("pds") == true ||
 					format.equalsIgnoreCase("tif") == true  || format.equalsIgnoreCase("tiff") == true ||
                     format.equalsIgnoreCase("btf") || format.equalsIgnoreCase("btiff") ||
-				 	format.equalsIgnoreCase("vic") == true) {
+				 	format.equalsIgnoreCase("vic") == true || format.toLowerCase().startsWith("pds")) {
 					writer.write(null, iioImage, writeParam); // PDS NEEDS WriteParam
 				}
 				else {
 					writer.write(iioImage); // don't bother with WriteParam now
 				}
-				//		can we close System.out ??
-				// os.close(); // writer does NOT close the stream 
+				sos.close(); // flushes the cache; does not close stdout
+				imageStdout.flush();
             	
             } else {
             	
@@ -4900,12 +4937,26 @@ public void jediTest(String inputFileName, boolean displayImage) {
     		}
     		
     		if (debug) System.out.println("processFilters CROP "+cropX+","+cropY+"  "+cropWidth+"x"+cropHeight);
+			// CROP=(x,y) or a width/height of 0 means "to the image edge"; clip to the image like SOURCE_REGION
+			java.awt.geom.Rectangle2D.Float imageBounds = new java.awt.geom.Rectangle2D.Float(
+					temp.getMinX(), temp.getMinY(), temp.getWidth(), temp.getHeight());
+			float cw = cropWidth  > 0 ? cropWidth  : (float) imageBounds.getMaxX() - cropX;
+			float ch = cropHeight > 0 ? cropHeight : (float) imageBounds.getMaxY() - cropY;
+			java.awt.geom.Rectangle2D cropArea = new java.awt.geom.Rectangle2D.Float(cropX, cropY, cw, ch)
+					.createIntersection(imageBounds);
+			if (cropArea.isEmpty()) {
+				System.err.println("ERROR: CROP=("+cropX+","+cropY+","+cropWidth+","+cropHeight
+						+") is outside the "+temp.getWidth()+" x "+temp.getHeight()+" image. CROP=(x,y,width,height)");
+				return null;
+			}
+			float cx = (float) cropArea.getX();
+			float cy = (float) cropArea.getY();
 			ParameterBlockJAI PBc=new ParameterBlockJAI("crop");
 			PBc.setSource(temp,0);
-			PBc.setParameter("x", cropX);
-			PBc.setParameter("y", cropX);
-			PBc.setParameter("width", cropWidth);
-			PBc.setParameter("height", cropHeight);
+			PBc.setParameter("x", cx);
+			PBc.setParameter("y", cy);
+			PBc.setParameter("width", (float) cropArea.getWidth());
+			PBc.setParameter("height", (float) cropArea.getHeight());
 			cropped = JAI.create("crop",PBc);
 			
 			if (debug) System.out.println("after crop cropped "+cropped);
@@ -4919,8 +4970,8 @@ public void jediTest(String inputFileName, boolean displayImage) {
 			
 			
 			
-			float x = (float) (cropX*-1.0);
-			float y = (float) (cropY*-1.0);
+			float x = (float) (cx*-1.0);
+			float y = (float) (cy*-1.0);
 			// float x = (float) (cropX);
 			// float y = (float) (cropY);
 			// x=0.0F; y=0.0F;
@@ -4942,7 +4993,11 @@ public void jediTest(String inputFileName, boolean displayImage) {
 			int w = trans.getWidth();
 			int h = trans.getHeight();
 			if (debug) System.out.println("tiledImage  "+w+"x"+h);
-			RenderedImage tiled = new TiledImage(trans, w, h );
+			// put the tile grid at the image origin: the VICAR writer assumes a tile grid offset of 0
+			TiledImage tiled = new TiledImage(trans.getMinX(), trans.getMinY(), w, h,
+					trans.getMinX(), trans.getMinY(),
+					trans.getSampleModel().createCompatibleSampleModel(w, h), trans.getColorModel());
+			tiled.set(trans);
 			// TiledImage tiled = new TiledImage(trans, false );
 			
 			temp = tiled;
@@ -5046,12 +5101,13 @@ public void jediTest(String inputFileName, boolean displayImage) {
       * then the dats should be rescaled even if the data type doesn't change.
       * 
       */   
-    // don't check if we should do this or not. Even of the data type is the same a rescale may help the data look better
-    /**
-    if (rescaleOnFormat == true && validMinimum == 0.0 && validMaximum == 0.0 && rescale_constant == 1.0 && rescale_offset == 0.0) {
+    // The automatic stretch applies only to narrowing conversions (see the HELP text for RESCALE).
+    // Same-type and widening conversions keep their values unless the user asked for a
+    // rescale with VALID_MINIMUM/VALID_MAXIMUM or RESCALE_CONSTANT/RESCALE_OFFSET.
+    boolean explicitRescale = validMinimum != 0.0 || validMaximum != 0.0 || rescale_constant != 1.0 || rescale_offset != 0.0;
+    if (rescaleOnFormat && !explicitRescale) {
          	rescaleOnFormat =  checkRescaleOnFormat(oldDataType, newDataType);
          }
-	***/
     if (rescaleOnFormat) {
     	// this will be for BYTE output
     	double constant[] = new double[]{1.0};
@@ -5181,6 +5237,16 @@ public void jediTest(String inputFileName, boolean displayImage) {
 			}
     	}
 	
+		// rescale clamps its result to the type of its source. For a widening conversion
+		// convert first, so the rescale runs in the output type and is not clipped to the input range.
+		if (oldDataType != newDataType && !checkRescaleOnFormat(oldDataType, newDataType)) {
+			// SHORT to USHORT: work in INT so negative input survives a positive offset
+			int workType = (oldDataType == DataBuffer.TYPE_SHORT && newDataType == DataBuffer.TYPE_USHORT)
+					? DataBuffer.TYPE_INT : newDataType;
+			ParameterBlock pbw = new ParameterBlock();
+			pbw.addSource(temp).add(workType);
+			temp = JAI.create("format", pbw);
+		}
 		PB=new ParameterBlock();
 		// PB.addSource(temp).add(new double[]{ceiling/(max-min)}).add(new double[]{ceiling*min/(min-max)});
 		PB.addSource(temp).add(constant).add(offset);
@@ -5348,13 +5414,13 @@ public void jediTest(String inputFileName, boolean displayImage) {
     	
     	double max = 0.0;
     	if (dataType == DataBuffer.TYPE_BYTE) {
-    		max = Byte.MAX_VALUE * 2;//used as unsigned
+    		max = 255.0; // used as unsigned (Byte.MAX_VALUE * 2 is 254)
 	        }
 	    else if (dataType == DataBuffer.TYPE_SHORT) {
 	    	max = Short.MAX_VALUE;
 	        }	    
 	    else if (dataType == DataBuffer.TYPE_USHORT) {	    	
-	    	max = Short.MAX_VALUE * 2;
+	    	max = 65535.0; // Short.MAX_VALUE * 2 is 65534
 	        }
 	    else if (dataType == DataBuffer.TYPE_INT) {
 	    	max = Integer.MAX_VALUE; // or 0.0 ?? // assume unsigned ???
