@@ -15,7 +15,7 @@ features:
     code: [src/main/java/jpl/mipl/io/vicar/**, src/main/java/jpl/mipl/io/plugins/Vicar*]
     keywords: [FORMAT=vicar]
     specs: [features/vicar-io.spec.ts]
-    junit: [jpl.mipl.io.vicar.VicarLabelTest, jpl.mipl.io.streams.ImageInputStreamStrideTest]
+    junit: [jpl.mipl.io.vicar.VicarLabelTest, jpl.mipl.io.streams.ImageInputStreamStrideTest, jpl.mipl.io.plugins.VicarImageReaderLabelErrorTest]
 
   - id: vicar-binary
     name: VICAR binary headers and prefixes
