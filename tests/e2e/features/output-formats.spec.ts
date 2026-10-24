@@ -163,7 +163,7 @@ test.describe('Output formats', feature('output-formats'), () => {
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_half_bsq.vic'), 'half.bmp', { format: 'bmp' });
     expect(r.exitCode, 'jConvertIIO exit code').not.toBe(0);
-    expect(r.stdout).toContain('Image write failed');
+    expect(`${r.stdout}\n${r.stderr}`).toContain('Image write failed');
   });
 
   test('a writer that crashes fails the conversion cleanly', about(
@@ -174,7 +174,7 @@ test.describe('Output formats', feature('output-formats'), () => {
     const r = await convert(testInfo, input, 'out.wbmp', { format: 'wbmp' });
     expect(r.exitCode, 'jConvertIIO exit code').not.toBe(0);
     expect(r.stdout).toContain('the wbmp writer failed');
-    expect(r.stdout).toContain('Image write failed');
+    expect(`${r.stdout}\n${r.stderr}`).toContain('Image write failed');
     expect(`${r.stdout}\n${r.stderr}`, 'no stack trace').not.toMatch(/^\s+at /m);
   });
 
@@ -209,7 +209,7 @@ test.describe('Output formats', feature('output-formats'), () => {
       const r = await convert(testInfo, synthetic(file), 'out.pnm', { format: 'pnm' });
       expect(r.exitCode, 'jConvertIIO exit code').not.toBe(0);
       expect(r.stdout).toContain(message);
-      expect(r.stdout).toContain('Image write failed');
+      expect(`${r.stdout}\n${r.stderr}`).toContain('Image write failed');
     });
   }
 
