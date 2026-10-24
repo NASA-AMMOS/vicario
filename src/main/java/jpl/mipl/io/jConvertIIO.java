@@ -112,6 +112,8 @@ import org.apache.jackrabbit.webdav.client.methods.PutMethod;
 * OUT=[outputFileName] name of the output file.<br>
 * FORMAT=[imageFileFormatName] file format name to save the output to. 
 * The extention of the output filename is not used in any way. <br>
+* FORMAT=raw writes a headerless file of exactly width x height x bands samples, band sequential (BSQ), big-endian. <br>
+* FORMAT=pnm writes binary PGM (1 band) or PPM (3 bands), 8 or 16 bit. <br>
 * OFORM=[outputFormat] convert input data type to the OFORM data type on output <br>
 * OFORM is an optional argument, data type will be preserved if no OFORM is specified <br>
 * OFORM=DEFAULT will preserve data type <br>
@@ -890,6 +892,8 @@ public void printHelp() {
     System.out.println("HELP:");
     System.out.println("jConvert INP=[inputFileName] OUT=[outputFileName] FORMAT=[imageFileFormatName] OFORM=<outputFormat>");
     System.out.println("FORMAT must name a registered image writer (FORMAT=jfif uses the JPEG writer); any other name fails with an error");
+    System.out.println("FORMAT=raw writes a headerless file of exactly width x height x bands samples, band sequential (BSQ), big-endian");
+    System.out.println("FORMAT=pnm writes binary PGM (1 band) or PPM (3 bands), 8 or 16 bit");
     System.out.println("ARGFILE=F or ARG=f read command line arguments for a batch run one line at a time from given file");
     System.out.println("PARALLEL_BATCH=N run batches in parallel groups of up to N tasks at a time.  If N is the string AVAILABLE_CORES then detect and use the number of available cores.  Non-positive N disables parallelism.");
     System.out.println("OFORM is the only optional argument, data type will be preserved if no OFORM is specified");
@@ -3900,6 +3904,8 @@ public void jediTest(String inputFileName, boolean displayImage) {
         DOMutils domUtils = new DOMutils();
         // the button for this option should ONLY be created if we have a BufferedImage
         // so a check for a non-null image is not needed
+        // jai_imageio's PNM writer cannot load on Java 17+; let vicario's PNM writer serve "pnm"
+        PNMImageWriterSpi.preferOver(IIORegistry.getDefaultInstance());
         Iterator writers = ImageIO.getImageWritersByFormatName( format );
         // jfif was only registered by jai_imageio's native CLib JPEG writer, which unregisters
         // itself without its native library. The standard JPEG writer also writes JFIF files.
@@ -4539,6 +4545,8 @@ public void jediTest(String inputFileName, boolean displayImage) {
          }
         
         
+        // RAW and BMP need a particular raster layout (see prepareForWriter)
+        iioImage = prepareForWriter(iioImage, format);
         
    try { 
         
@@ -4723,9 +4731,71 @@ public void jediTest(String inputFileName, boolean displayImage) {
 	    ioe.printStackTrace();
 	    writeFailed = true;
 	  } 
+	  catch (RuntimeException | Error e) {
+	    // a writer that crashes (e.g. on a raster layout it does not handle) fails the write cleanly
+	    System.out.println("jConvertIIO.processSave() the "+format+" writer failed: "+e);
+	    if (debug) e.printStackTrace();
+	    writeFailed = true;
+	  }
 	  
     } 
     
+    /**
+     * Gives writers that need a particular raster layout an image they can write.
+     * <ul>
+     * <li>RAW: jai_imageio's raw writer writes every tile whole, so an image that is not a
+     * multiple of the tile size (256 by default) was padded with zeros, and the sample order
+     * followed the tiles. The image is copied into one band-sequential (BSQ) tile, so the file
+     * holds exactly width x height x bands samples, band after band (VICAR BSQ order), in the
+     * writer's (big-endian) byte order. This holds the whole image in memory.</li>
+     * <li>BMP: the BMP writers only handle pixel-interleaved multi-band rasters; VICAR BSQ and
+     * BIL images (banded or line-interleaved) made them throw. Such 8-bit images are re-laid
+     * out pixel-interleaved.</li>
+     * </ul>
+     * Other formats are returned unchanged.
+     */
+    IIOImage prepareForWriter(IIOImage iioImage, String format) {
+        RenderedImage src = iioImage.getRenderedImage();
+        if (src == null) return iioImage;
+        SampleModel sm = src.getSampleModel();
+        int nb = sm.getNumBands();
+        SampleModel target;
+        int tileW = src.getTileWidth();
+        int tileH = src.getTileHeight();
+        if (format.equalsIgnoreCase("raw")) {
+            tileW = src.getWidth();
+            tileH = src.getHeight();
+            target = new BandedSampleModel(sm.getDataType(), tileW, tileH, nb);
+            if (src.getNumXTiles() == 1 && src.getNumYTiles() == 1 && sm instanceof BandedSampleModel
+                && src.getTileWidth() == tileW && src.getTileHeight() == tileH) {
+                return iioImage;
+            }
+        } else if (format.equalsIgnoreCase("bmp") && nb > 1 && sm.getDataType() == DataBuffer.TYPE_BYTE
+                   && !(sm instanceof PixelInterleavedSampleModel)) {
+            // only 8-bit: an interleaved 16-bit image would be written truncated to 8 bits
+            // instead of refused (BMP has no 16-bit-per-sample RGB)
+            int[] offsets = new int[nb];
+            for (int i = 0; i < nb; i++) offsets[i] = i;
+            target = new PixelInterleavedSampleModel(sm.getDataType(), tileW, tileH, nb, nb * tileW, offsets);
+        } else {
+            return iioImage;
+        }
+        if (debug) System.out.println("jConvertIIO.prepareForWriter() "+format+": "+sm+" -> "+target);
+        ImageLayout il = new ImageLayout();
+        il.setTileGridXOffset(src.getMinX());
+        il.setTileGridYOffset(src.getMinY());
+        il.setTileWidth(tileW);
+        il.setTileHeight(tileH);
+        il.setSampleModel(target);
+        ColorModel cm = src.getColorModel();
+        if (cm != null && cm.isCompatibleSampleModel(target)) il.setColorModel(cm);
+        ParameterBlock pb = new ParameterBlock();
+        pb.addSource(src);
+        pb.add(sm.getDataType());
+        RenderedImage out = JAI.create("format", pb, new RenderingHints(JAI.KEY_IMAGE_LAYOUT, il));
+        return new IIOImage(out, iioImage.getThumbnails(), iioImage.getMetadata());
+    }
+
     /**
      * adds JAI RenederedOps to the image. The Operators are controlled from 
      * the command line arguments. By default this method does nothing.
