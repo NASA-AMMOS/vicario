@@ -36,13 +36,42 @@ test.describe('PDS3 products', feature('pds3'), () => {
   });
 
   test('PDS_FILENAME_IN_LABEL=true puts the output file name in the label', about(
-    `Converts the synthetic image to PDS3 with \`PDS_FILENAME_IN_LABEL=true\`. Passes when the output file name appears in the label.`,
-    '@nominal',
+    `Converts the synthetic image to PDS3 with \`PDS_FILENAME_IN_LABEL=true\`. Passes when the label is valid, its \`^IMAGE\` pointer names the output file by its base name (\`^IMAGE = ("named.pds",n)\`) and the pixels are unchanged.`,
+    '@nominal', '@regression', '@lossless',
   ), async ({}, testInfo) => {
-    needsReview('REVIEW-9', 'the documented keyword PDS_FILENAME_IN_LABEL is parsed as PDS_FILENAME, so it is ignored');
+    issue('REVIEW-9', 'fixed: the documented keyword PDS_FILENAME_IN_LABEL was parsed as PDS_FILENAME and ignored, '
+      + 'and the writer never put the file name in the label');
     const r = await convert(testInfo, input, 'named.pds', { format: 'pds', PDS_FILENAME_IN_LABEL: 'true' });
     expectConverted(r);
-    expect(readFileSync(r.out, 'latin1')).toContain('named.pds');
+    const label = expectValidPds3Label(r.out, dims);
+    expect(label).toMatch(/^\^IMAGE\s*=\s*\("named\.pds",\s*\d+\)\s*$/m);
+    expect(label, 'no directory in the file name').not.toContain(path.dirname(r.out));
+    expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, input));
+  });
+
+  test('PDS_FILENAME (older spelling) still puts the file name in the label', about(
+    `Converts the synthetic image to PDS3 with \`PDS_FILENAME=true\`, the only spelling the parser accepted before. Passes when the \`^IMAGE\` pointer names the output file.`,
+    '@nominal', '@regression',
+  ), async ({}, testInfo) => {
+    issue('REVIEW-9', 'PDS_FILENAME is kept as an alias of PDS_FILENAME_IN_LABEL');
+    const r = await convert(testInfo, input, 'alias.pds', { format: 'pds', PDS_FILENAME: 'true' });
+    expectConverted(r);
+    expect(expectValidPds3Label(r.out, dims)).toMatch(/^\^IMAGE\s*=\s*\("alias\.pds",\s*\d+\)\s*$/m);
+  });
+
+  test('without PDS_FILENAME_IN_LABEL, or with =false, the label names no file', about(
+    `Converts the synthetic image to PDS3 without the keyword, and again with \`PDS_FILENAME_IN_LABEL=false\`. Passes when both labels use the record-number pointer \`^IMAGE = n\` and do not contain the output file name.`,
+    '@off-nominal', '@regression',
+  ), async ({}, testInfo) => {
+    issue('REVIEW-9', 'the file name is opt-in; the default attached label is unchanged');
+    const cases: [string, Record<string, string>][] = [['plain.pds', {}], ['nofile.pds', { PDS_FILENAME_IN_LABEL: 'false' }]];
+    for (const [name, kv] of cases) {
+      const r = await convert(testInfo, input, name, { format: 'pds', ...kv });
+      expectConverted(r);
+      const label = expectValidPds3Label(r.out, dims);
+      expect(label).toMatch(/^\^IMAGE\s*=\s*\d+\s*$/m);
+      expect(label).not.toContain(name);
+    }
   });
 
   test('PDS_LABEL_TYPE=ODL3 writes an ODL3 label', about(

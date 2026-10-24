@@ -130,6 +130,7 @@ public class DOMtoPDSlabel {
     boolean calculatingSize = false;
     
     String outputFilename = null;
+    String filenameInLabel = null; // base name for ^IMAGE = ("name",n), see setFilenameInLabel
     String band_storage_type = "BAND_SEQUENTIAL";
     
     // string to hold the output
@@ -280,6 +281,17 @@ public class DOMtoPDSlabel {
     
     public void setOutputFilename(String fname) {
         outputFilename = fname;
+    }
+
+    /**
+     * Name this file in the attached label's ^IMAGE and ^IMAGE_HEADER pointers,
+     * e.g. ^IMAGE = ("name.pds",22) (jConvertIIO PDS_FILENAME_IN_LABEL=true).
+     * Only the base name is written. null (the default) writes ^IMAGE = 22.
+     * Kept apart from outputFilename, which callers also set to the input file.
+     */
+    public void setFilenameInLabel(String fname) {
+        filenameInLabel = (fname == null || fname.isEmpty() || fname.equals("-"))
+            ? null : new java.io.File(fname).getName();
     }
     
     public int getLabelSize() {
@@ -1670,6 +1682,9 @@ public class DOMtoPDSlabel {
             			         		
             			sb.append(nodeName+pad+"= (\""+inputFilename+"\","+vicarLabelStartRecord+")"+LineEnd); 
             		}
+            		else if (filenameInLabel != null) {
+            			sb.append(nodeName+pad+"= (\""+filenameInLabel+"\","+vicarLabelStartRecord+")"+LineEnd);
+            		}
             		else if (outputFilename != null) {
 	                    // sb.append(nodeName+pad+"= (\""+outputFilename+"\","+vicarLabelStartRecord+")"+LineEnd); 
 	                    sb.append(nodeName+pad+"= "+vicarLabelStartRecord+LineEnd); 
@@ -1798,6 +1813,9 @@ public class DOMtoPDSlabel {
             		// this is the record the image starts at (1 is the first record, not 0)
             		sb.append(nodeName+pad+"= (\""+inputFilename+"\","+imageStartRecord+")"+LineEnd); 
             	}
+                else if (filenameInLabel != null) {
+                    sb.append(nodeName+pad+"= (\""+filenameInLabel+"\","+imageStartRecord+")"+LineEnd);
+                    }
                 else if (outputFilename != null) {
                     // sb.append(nodeName+pad+"= (\""+outputFilename+"\","+imageStartRecord+")"+LineEnd); 
                 	sb.append(nodeName+pad+"= "+imageStartRecord+LineEnd); 

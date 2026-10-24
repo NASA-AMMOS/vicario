@@ -123,7 +123,8 @@ import org.apache.jackrabbit.webdav.client.methods.PutMethod;
 * these Options are only valid for FORMAT=pds <br>
 * EMBED_VICAR_LABEL=[true,false] , will cause VicarLabel to be embedded in PDS label <br>
 * PDS_FILENAME_IN_LABEL=[true,false] only valid for FORMAT=pds, <br>
-* will cause output file name to be embedded in the PDS label
+* will cause output file name to be embedded in the PDS label: the data pointers
+* name the file, ^IMAGE = ("out.pds",n) instead of ^IMAGE = n (PDS_FILENAME is an older spelling)
 * if this Option is absent the filename will NOT be added to the label. <br>
 * 
 * some debugging Options: <br>
@@ -911,7 +912,9 @@ public void printHelp() {
 	System.out.println("EMBED_VICAR_LABEL=[true,false] only valid for FORMAT=pds, ");	
 	System.out.println(" Will cause a Vicar Label to be embedded in the PDS label.");
 	System.out.println("PDS_FILENAME_IN_LABEL=[true,false] only valid for FORMAT=pds, ");
-	System.out.println(" Will cause output file name to be embedded in the PDS label.");
+	System.out.println(" Will cause output file name to be embedded in the PDS label: the data pointers");
+	System.out.println(" name the file, ^IMAGE = (\"out.pds\",n) instead of ^IMAGE = n. Default false.");
+	System.out.println(" PDS_FILENAME is accepted as an older spelling.");
 	System.out.println("PDS_OBJECT=<name> only used when READING a PDS3 input file. Selects which OBJECT");
 	System.out.println(" block in the label to read (e.g. PDS_OBJECT=RFL_IMAGE for Moon Mineralogy Mapper).");
 	System.out.println(" Defaults to IMAGE / SPECTRAL_QUBE / QUBE; an image-shaped OBJECT is auto-detected");
@@ -1819,7 +1822,7 @@ public boolean conv(String argv[]) {
 						// it to the metadata
 					}
 				}
-		//		USE_FILENAME_IN_LABEL
+		//		USE_FILENAME (reader input; unrelated to PDS_FILENAME_IN_LABEL)
 		else if (key.equalsIgnoreCase("USE_FILENAME")) {
 				 if (value == null || value.equalsIgnoreCase("true")) {
 					 use_filename = true;
@@ -1828,11 +1831,9 @@ public boolean conv(String argv[]) {
 					 // most readers will die
 				 }
 			 }
-	    // PDS_FILENAME_IN_LABEL
-	    else if (key.equalsIgnoreCase("PDS_FILENAME")) {
-	    	if (value == null || value.equalsIgnoreCase("true")) {
-	        	useOutputFilename = true;
-	    	}
+	    // PDS_FILENAME_IN_LABEL (documented name); PDS_FILENAME is the older spelling, still accepted
+	    else if (key.equalsIgnoreCase("PDS_FILENAME_IN_LABEL") || key.equalsIgnoreCase("PDS_FILENAME")) {
+	    	useOutputFilename = (value == null || value.equalsIgnoreCase("true"));
 	    }	
 //	  PDS_DETACHED_LABEL
 	    else if (key.equalsIgnoreCase("PDS_DETACHED_LABEL")) {
@@ -4331,6 +4332,8 @@ public void jediTest(String inputFileName, boolean displayImage) {
             		// fname is just the filename, no path.
             		// outputFileName is the full path
             	}
+            	// PDS_FILENAME_IN_LABEL: the writer puts the base name in ^IMAGE = ("name",n)
+            	((PDSImageWriteParam)  writeParam).setFilenameInLabel(useOutputFilename);
                 ((PDSImageWriteParam)  writeParam).setDebug(debug);
                 ((PDSImageWriteParam)  writeParam).setOutputXML(outputXML)	 ;
                 ((PDSImageWriteParam)  writeParam).setEmbedVicarLabel(embedVicarLabel) ;      	
