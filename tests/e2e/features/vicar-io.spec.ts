@@ -106,15 +106,37 @@ test.describe('VICAR image read/write', feature('vicar-io'), () => {
     });
   }
 
+  // GDAL autotest files whose first history task lost its TASK keyword, so its
+  // items (BINC, DAT_TIM, and USER in the EOL label) sit in the system and
+  // property labels. They hold the same 4 x 3 values 1..24 as the other fixtures.
   for (const id of ['gdal-vicar-bigendian-int16', 'gdal-vicar-bigendian-float32', 'gdal-vicar-vax-float32']) {
     test(`reads ${id.replace('gdal-vicar-', '')} (system label with DAT_TIM/BINC)`, about(
-      `Reads the GDAL ${id.replace('gdal-vicar-', '')} fixture, whose system label has \`DAT_TIM\` and \`BINC\` items written by GDAL. Passes when the file decodes.`,
-      '@nominal',
+      `Reads the GDAL ${id.replace('gdal-vicar-', '')} fixture, whose system label has \`DAT_TIM\` and \`BINC\` items (a history task whose \`TASK\` keyword is missing), through the ImageIO API and converts it to VICAR. Passes when the file decodes to 4 x 3 values from 1 to 24 with mean 12.5${id.includes('int16') ? ' (the same pixels as the well-formed little-endian HALF fixture)' : ''}, jConvertIIO writes VICAR output with the same pixels, and the output keeps the orphaned \`DAT_TIM\` in a history task named \`UNKNOWN\`.`,
+      '@malformed-input', '@regression',
     ), async ({}, testInfo) => {
-      needsReview('REVIEW-2', 'VICAR reader rejects GDAL-written system labels: "DAT_TIM may only go in history label"');
-      expect(await tryProbe(testInfo, asset(id))).not.toBeNull();
+      issue('REVIEW-2', 'fixed: VICAR reader rejected labels with DAT_TIM/USER outside a history task '
+        + '("DAT_TIM may only go in history label") and then failed with a NullPointerException');
+      const p = await probe(testInfo, asset(id));
+      expect([p.width, p.height, p.bands]).toEqual([4, 3, 1]);
+      expect([p.min, p.max, p.mean]).toEqual([1, 24, 12.5]);
+      if (id.includes('int16')) expectSamePixels(p, await probe(testInfo, asset('gdal-vicar-int16')));
+      const r = await convert(testInfo, asset(id), `${id}.vic`, { format: 'vicar' });
+      expectConverted(r);
+      expectSamePixels(await probe(testInfo, r.out), p);
+      const label = readFileSync(r.out, 'latin1').slice(0, 2048);
+      expect(label).toMatch(/TASK='UNKNOWN'\s+USER='vos'\s+DAT_TIM='Thu Oct 17 16:46:44 2019'/);
+      expect(label).toContain("TASK='TASK'");
     });
   }
+
+  test('big-endian and VAX float32 fixtures decode to the same values', about(
+    `Reads the GDAL big-endian IEEE and VAX float32 fixtures (both with the misplaced \`DAT_TIM\` label item). Passes when the two decode to identical pixels.`,
+    '@malformed-input', '@regression',
+  ), async ({}, testInfo) => {
+    issue('REVIEW-2', 'fixed: these files could not be opened at all');
+    expectSamePixels(await probe(testInfo, asset('gdal-vicar-vax-float32')),
+      await probe(testInfo, asset('gdal-vicar-bigendian-float32')));
+  });
 
   test('jConvertIIO decodes little-endian DOUB (float64) and FULL (int32) fixtures', about(
     `Converts the GDAL little-endian DOUB (float64) and FULL (int32) fixtures to VICAR. Passes when each output holds the stored values 1 to 24.`,
