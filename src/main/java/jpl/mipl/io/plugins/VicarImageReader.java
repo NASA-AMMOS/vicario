@@ -341,17 +341,11 @@ public class VicarImageReader extends ImageReader {
            }
             // input.close(); // we keep the stream around so we can read in the data
         }
-        catch (IOException ex)
-        {
-            System.out.println("IOException Error reading header:"+ex.getMessage());
-            ex.printStackTrace();
-            return;
-        }
         catch (Exception ex)
         {
-            System.out.println("Exception Error reading header:"+ex.getMessage());
-            ex.printStackTrace();
-            return;
+            // Fail here with the cause rather than leave vif/sys half set
+            // up, which only led to a NullPointerException later.
+            throw new IIOException("Error reading VICAR label: " + ex.getMessage(), ex);
         }
         
         
