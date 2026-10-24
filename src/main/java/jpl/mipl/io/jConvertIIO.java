@@ -931,8 +931,10 @@ public void printHelp() {
 	System.out.println("XML=[true,false] output xml files used for debugging");
 	System.out.println("KEEP_LINE_PREFIX=[true,false] if line prefix data is present it will be read and passed");
 	System.out.println(" along in the image metadata to a writer. Default is true. The prefix is not part of the");
-	System.out.println(" displayed image. KEEP_LINE_PREFIX controls if it will be wrtten to an output file");
-	System.out.println(" VICAR, PDS and ISIS can have line prefix data. Currently vicar and PDS support writing line prefixs");
+	System.out.println(" displayed image. KEEP_LINE_PREFIX controls if it will be written to an output file");
+	System.out.println(" VICAR, PDS and ISIS can have line prefix data. Currently vicar and PDS support writing line prefixes.");
+	System.out.println(" VICAR to VICAR keeps the prefixes (NBB) by default; use KEEP_LINE_PREFIX=false to strip them.");
+	System.out.println(" Prefixes are not written if the output has a different number of lines or bands than the input.");
 	// ImageReadParam modifies how the data is read
 	System.out.println("ImageReadParam arguments applied to the reader");
 	System.out.println("READ_BANDS=1,2,3 will only read in the bads listed. bands start at 0 ");
@@ -990,6 +992,8 @@ public void printHelp() {
 	System.out.println("PDS_LABEL_TYPE=[MSL_ODL,ODL3,PDS3,PDS4] default is PDS3. Applys only to a PDS output file. Controls if ");
 	System.out.println("  the label is ODL or PDS or PDS4 (XML).  ");
 	System.out.println("ADD_BINARY_HEADER=[true,false] default is false. Useful only for PDS and vicar output formats"	);
+	System.out.println("    For vicar output the input's binary header (NLB records) is written. If the output record");
+	System.out.println("    size differs, each record is zero-padded, or cut if only zero bytes are cut, else re-blocked.");
 	System.out.println("ADD_BLOB=[true,false] default is false. Controls output of a vicar binary header blob into a PDS header");
 	System.out.println("    Useful only for PDS output formats"	);
 	
