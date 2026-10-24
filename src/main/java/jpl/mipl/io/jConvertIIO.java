@@ -961,7 +961,8 @@ public void printHelp() {
 	System.out.println("  An image with selected bands may be written to PDS or Vicar, It will fail to tif or jpg");
 	System.out.println("  Write to vicar or PDS then to jpg or tif.");
 	System.out.println("SCALE=(Xfactor,Yfactor,Xtranslation,Ytranslation) values are floats, no spaces allowed");
-	System.out.println("CROP=(cropX,cropY,cropHeight,cropWidth) values are floats, no spaces allowed");
+	System.out.println("CROP=(x,y,width,height) values are floats, no spaces allowed. Applied after the image is read.");
+	System.out.println("  CROP=(x,y) crops from x,y to the image edge. An area running past the edge is clipped.");
 	System.out.println("CLAMP=(minValue,MaxValue) values are floats, no spaces allowed");
 	System.out.println("RESCALE=[true/false] default is TRUE, only used if OFORM is to a new data type");
 	System.out.println("  The automatic stretch to the output range applies only when OFORM narrows the data type");
@@ -2053,7 +2054,7 @@ public boolean conv(String argv[]) {
 	    	if (debug) System.out.println("VALID_MAXIMUM "+validMaximum);	
 	    } 
 	    else if (key.equalsIgnoreCase("CROP") ) {
-	    	// CROP=(cropX,cropY,cropHeight,cropWidth) values are floats, no spaces allowed");
+	    	// CROP=(x,y,width,height) or CROP=(x,y) values are floats, no spaces allowed");
 	    	if (debug) System.out.println("CROP "+value);
 	    	cropImage=true;
 	    	float[] ff = getValuesFloat(value);
@@ -2200,7 +2201,7 @@ public boolean conv(String argv[]) {
 	    	if (debug) System.out.println("TIF_WRITE_TILE_SIZE "+value+",  "+tileSizeX+" x "+tileSizeY);
 	    }
 	    else if (key.equalsIgnoreCase("SOURCE_REGION") ) {
-	    	// CROP=(cropX,cropY,cropHeight,cropWidth) values are floats, no spaces allowed");
+	    	// SOURCE_REGION=(startX,startY,width,height) values are ints, no spaces allowed");
 	    	if (debug) System.out.println("SOURCE_REGION "+value);
 	    	sourceRegion=true;
 	    	// useRawReader = true;
@@ -2978,6 +2979,9 @@ public boolean conv(String argv[]) {
 	 if (debug) System.out.println("calling processFilters ***************************");
 	 imageHasBeenProcessed = false;
 	  filteredImage = processFilters(sourceImage);
+	  if (filteredImage == null) {
+		  return false; // processFilters printed the error
+	  }
 	  if (debug) {
 	  	System.out.println("after calling processFilters filteredImage "+filteredImage);			
 	  	System.out.println("filteredImage "+filteredImage.getWidth()+" "+filteredImage.getHeight());
@@ -4834,12 +4838,26 @@ public void jediTest(String inputFileName, boolean displayImage) {
     		}
     		
     		if (debug) System.out.println("processFilters CROP "+cropX+","+cropY+"  "+cropWidth+"x"+cropHeight);
+			// CROP=(x,y) or a width/height of 0 means "to the image edge"; clip to the image like SOURCE_REGION
+			java.awt.geom.Rectangle2D.Float imageBounds = new java.awt.geom.Rectangle2D.Float(
+					temp.getMinX(), temp.getMinY(), temp.getWidth(), temp.getHeight());
+			float cw = cropWidth  > 0 ? cropWidth  : (float) imageBounds.getMaxX() - cropX;
+			float ch = cropHeight > 0 ? cropHeight : (float) imageBounds.getMaxY() - cropY;
+			java.awt.geom.Rectangle2D cropArea = new java.awt.geom.Rectangle2D.Float(cropX, cropY, cw, ch)
+					.createIntersection(imageBounds);
+			if (cropArea.isEmpty()) {
+				System.err.println("ERROR: CROP=("+cropX+","+cropY+","+cropWidth+","+cropHeight
+						+") is outside the "+temp.getWidth()+" x "+temp.getHeight()+" image. CROP=(x,y,width,height)");
+				return null;
+			}
+			float cx = (float) cropArea.getX();
+			float cy = (float) cropArea.getY();
 			ParameterBlockJAI PBc=new ParameterBlockJAI("crop");
 			PBc.setSource(temp,0);
-			PBc.setParameter("x", cropX);
-			PBc.setParameter("y", cropX);
-			PBc.setParameter("width", cropWidth);
-			PBc.setParameter("height", cropHeight);
+			PBc.setParameter("x", cx);
+			PBc.setParameter("y", cy);
+			PBc.setParameter("width", (float) cropArea.getWidth());
+			PBc.setParameter("height", (float) cropArea.getHeight());
 			cropped = JAI.create("crop",PBc);
 			
 			if (debug) System.out.println("after crop cropped "+cropped);
@@ -4853,8 +4871,8 @@ public void jediTest(String inputFileName, boolean displayImage) {
 			
 			
 			
-			float x = (float) (cropX*-1.0);
-			float y = (float) (cropY*-1.0);
+			float x = (float) (cx*-1.0);
+			float y = (float) (cy*-1.0);
 			// float x = (float) (cropX);
 			// float y = (float) (cropY);
 			// x=0.0F; y=0.0F;
@@ -4876,7 +4894,11 @@ public void jediTest(String inputFileName, boolean displayImage) {
 			int w = trans.getWidth();
 			int h = trans.getHeight();
 			if (debug) System.out.println("tiledImage  "+w+"x"+h);
-			RenderedImage tiled = new TiledImage(trans, w, h );
+			// put the tile grid at the image origin: the VICAR writer assumes a tile grid offset of 0
+			TiledImage tiled = new TiledImage(trans.getMinX(), trans.getMinY(), w, h,
+					trans.getMinX(), trans.getMinY(),
+					trans.getSampleModel().createCompatibleSampleModel(w, h), trans.getColorModel());
+			tiled.set(trans);
 			// TiledImage tiled = new TiledImage(trans, false );
 			
 			temp = tiled;
