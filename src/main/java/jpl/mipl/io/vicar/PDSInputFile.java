@@ -607,9 +607,11 @@ public class PDSInputFile extends VicarInputFile
     // hasEmbeddedVicarLabel = pdsLabel2Dom.hasEmbeddedVicarLabel ;
     // pdsLabel2Dom should leave _input_stream at the beginning of the VicarLabel !!!
     
-    if (_hasEmbeddedVicarLabel) {
+    if (_hasEmbeddedVicarLabel && !detachedLabel) {
     	readEmbeddedVicarLabel();	    
     }
+    // a detached label's ^IMAGE_HEADER points into the data file: openInternal
+    // reads the embedded VICAR label after it has opened that file
     
     if (debug) {
         System.out.println("  AFTER readEmbeddedVicarLabel()  _hasEmbeddedVicarLabel "+_hasEmbeddedVicarLabel); 

@@ -5,10 +5,18 @@ import path from 'node:path';
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
 import { XSL_DIR, synthetic } from '../support/env';
-import { about, feature, issue, needsReview } from '../support/features';
+import { about, feature, issue } from '../support/features';
 import { expectGolden } from '../support/goldens';
 import { expectValidPds3Label, pdsLabel } from '../support/labels';
 import { convert, expectConverted, expectSamePixels, probe, tryProbe } from '../support/run';
+
+/** The VICAR label text (the first LBLSIZE bytes) of a VICAR file. */
+function vicarLabelText(file: string): string {
+  const text = readFileSync(file, 'latin1');
+  const size = Number(text.match(/^LBLSIZE=\s*(\d+)/)?.[1]);
+  expect(size, `${path.basename(file)} starts with LBLSIZE`).toBeGreaterThan(0);
+  return text.slice(0, size);
+}
 
 test.describe('PDS3 products', feature('pds3'), () => {
   const input = synthetic('gen_byte_bsq.vic');
@@ -96,13 +104,30 @@ test.describe('PDS3 products', feature('pds3'), () => {
   });
 
   test('reads an MSL Navcam EDR through its detached .LBL', about(
-    `Converts the same MSL thumbnail by giving jConvertIIO its detached \`.LBL\` label instead of the image file. Passes when the conversion succeeds.`,
-    '@mission-data',
+    `Converts the same MSL thumbnail by giving jConvertIIO its detached \`.LBL\` label instead of the image file. Passes when the conversion succeeds and the VICAR output has the same pixels as the \`.IMG\`.`,
+    '@mission-data', '@regression', '@lossless',
   ), async ({}, testInfo) => {
-    needsReview('REVIEW-7', 'PDSImageReader fails on the detached MSL label: "Error reading header: Negative size"');
-    asset('msl-navcam-thumb-img'); // the label points at this file
+    issue('REVIEW-7', 'fixed: the embedded VICAR label (^IMAGE_HEADER in the .IMG) was read from the .LBL before the '
+      + 'data file was opened, and seeking past the end of the .LBL failed with "Negative size"');
+    const img = asset('msl-navcam-thumb-img'); // the label points at this file
     const r = await convert(testInfo, asset('msl-navcam-thumb-lbl'), 'msl_lbl.vic', { format: 'vicar' });
     expectConverted(r);
+    expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, img));
+  });
+
+  test('namespaced PDS3 keywords (MSL:...) become legal VICAR keywords', about(
+    `Converts the MSL thumbnail's detached \`.LBL\`, which uses namespaced keywords such as \`MSL:MODEL_TRANSFORM_VECTOR\`, to VICAR. Passes when no VICAR keyword contains \`:\`, the namespace is dropped (\`MODEL_TRANSFORM_VECTOR=\` is present, as in the mission's own VICAR label) and the output reads back with the \`.IMG\` pixels.`,
+    '@mission-data', '@regression',
+  ), async ({}, testInfo) => {
+    issue('NEW-pds3-2', 'fixed: MSL:... keywords were copied verbatim into the VICAR label, which vicario then could '
+      + 'not read back ("\'=\' expected after label keyword \'MSL\'")');
+    const img = asset('msl-navcam-thumb-img');
+    const r = await convert(testInfo, asset('msl-navcam-thumb-lbl'), 'msl_ns.vic', { format: 'vicar' });
+    expectConverted(r);
+    const label = vicarLabelText(r.out);
+    expect(label.match(/(?:^|\s)[A-Z0-9_]*:[A-Z0-9_]+=/g), 'keywords with a namespace').toBeNull();
+    expect(label).toMatch(/(?:^|\s)MODEL_TRANSFORM_VECTOR=\(/);
+    expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, img));
   });
 
   test('PDS-labelled input to FORMAT=pds with the default stylesheet', about(
