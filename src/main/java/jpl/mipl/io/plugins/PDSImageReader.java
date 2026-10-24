@@ -350,6 +350,7 @@ public class PDSImageReader extends ImageReader {
         
         
         
+        boolean labelOpened = false; // pif.open() succeeded and gave a system label
         try
         {
             // for now use seekableStream
@@ -455,6 +456,7 @@ public class PDSImageReader extends ImageReader {
             }
                 
            sys = pif.getSystemLabel();
+           labelOpened = true;
            
            
            
@@ -619,6 +621,12 @@ public class PDSImageReader extends ImageReader {
        
         catch (Exception ex)
         {
+            if (!labelOpened) {
+                // the label could not be read at all: report it now instead of a later NullPointerException
+                this.haveReadHeader = false;
+                throw new IIOException("PDS reader cannot read the label of "+(filename != null ? filename : "the input")
+                    +": "+ex, ex);
+            }
             System.out.println("PDSImageReader Exception Error reading header:"+ex.getMessage());
             ex.printStackTrace();
             // return;

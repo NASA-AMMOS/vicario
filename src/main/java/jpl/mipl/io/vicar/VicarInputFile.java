@@ -307,7 +307,11 @@ public class VicarInputFile implements VicarInput
 	_input_stream = iis;
 
 	_random_allowed = true;
-	_random_easy = (_input_stream instanceof FileImageInputStream);
+	// Any ImageInputStream seeks directly unless it is backed by a cache (an
+	// InputStream wrapped by FileCache/MemoryCacheImageInputStream), as in
+	// VicarOutputFile. Checking for FileImageInputStream alone rejected the
+	// seekable file streams jConvertIIO and imageio-ext supply.
+	_random_easy = !iis.isCached();
 
 	openInternal();
     }

@@ -38,7 +38,7 @@ features:
     code: [src/main/java/jpl/mipl/io/plugins/PDS*, src/main/java/jpl/mipl/io/vicar/PDS*]
     keywords: [FORMAT=pds, EMBED_VICAR_LABEL, PDS_FILENAME_IN_LABEL, PDS_OBJECT, PDS_DETACHED_LABEL, PDS_DETACHED_ONLY]
     specs: [features/pds3.spec.ts]
-    junit: [jpl.mipl.io.vicar.PDS3ObjectNameTest]
+    junit: [jpl.mipl.io.vicar.PDS3ObjectNameTest, jpl.mipl.io.vicar.PDS3DetachedLabelTest]
     tickets: [IDS-10212, IDS-8497]
 
   - id: xsl-labels
@@ -74,6 +74,7 @@ features:
     description: Reading ISIS2 cubes with SFDU labels, such as Cassini VIMS spectral cubes (ISIS3 cubes are not supported).
     code: [src/main/java/jpl/mipl/io/plugins/ISIS*, src/main/java/jpl/mipl/io/vicar/ISIS*]
     specs: [features/isis.spec.ts]
+    junit: [jpl.mipl.io.plugins.ReaderSelectionTest]
 
 
   - id: fits

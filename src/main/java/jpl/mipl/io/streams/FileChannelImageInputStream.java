@@ -159,8 +159,9 @@ public class FileChannelImageInputStream extends ImageInputStreamImpl {
         // If request is outside mapped region, map a new region.
         if(streamPos < mappedPos || streamPos + len >= mappedUpperBound) {
 
-            // Set the map position.
-            mappedPos = streamPos;
+            // Set the map position. Seeking past EOF is legal for an
+            // ImageInputStream: map an empty region at EOF so reads return -1.
+            mappedPos = Math.min(streamPos, channel.size());
 
             // Determine the map size.
             long mappedSize = Math.min(channel.size() - mappedPos,
@@ -475,7 +476,7 @@ public class FileChannelImageInputStream extends ImageInputStreamImpl {
         } else {
             // Seeking to location outside mapped buffer: get a new mapped
             // buffer at current position with maximal size.
-            int len = (int)Math.min(channel.size() - pos, Integer.MAX_VALUE);
+            int len = (int)Math.max(0, Math.min(channel.size() - pos, Integer.MAX_VALUE));
             mappedBuffer = getMappedBuffer(len);
         }
     }
