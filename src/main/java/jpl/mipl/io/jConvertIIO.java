@@ -889,6 +889,7 @@ public void printHelp() {
 	
     System.out.println("HELP:");
     System.out.println("jConvert INP=[inputFileName] OUT=[outputFileName] FORMAT=[imageFileFormatName] OFORM=<outputFormat>");
+    System.out.println("FORMAT must name a registered image writer (FORMAT=jfif uses the JPEG writer); any other name fails with an error");
     System.out.println("ARGFILE=F or ARG=f read command line arguments for a batch run one line at a time from given file");
     System.out.println("PARALLEL_BATCH=N run batches in parallel groups of up to N tasks at a time.  If N is the string AVAILABLE_CORES then detect and use the number of available cores.  Non-positive N disables parallelism.");
     System.out.println("OFORM is the only optional argument, data type will be preserved if no OFORM is specified");
@@ -3899,20 +3900,24 @@ public void jediTest(String inputFileName, boolean displayImage) {
         DOMutils domUtils = new DOMutils();
         // the button for this option should ONLY be created if we have a BufferedImage
         // so a check for a non-null image is not needed
-        try {
-          Iterator writers = ImageIO.getImageWritersByFormatName( format );
-          
-          /* if there are multiple writers how do we choose???
-           * could put all the writers into the imageWriteParam
-           * 	if there is a ParmaController the user could be allowed to choose the Writer
-           * */
-           if (debug) System.out.println( "jConvertIIO.processSave() writers.next() "); 
-           writer = (ImageWriter) writers.next();
-        } catch ( NoSuchElementException e) {
-			System.out.println( "jConvertIIO.processSave()  NoSuchElementException " +e );
-			e.printStackTrace();
-		}
-       
+        Iterator writers = ImageIO.getImageWritersByFormatName( format );
+        // jfif was only registered by jai_imageio's native CLib JPEG writer, which unregisters
+        // itself without its native library. The standard JPEG writer also writes JFIF files.
+        if (!writers.hasNext() && format.equalsIgnoreCase("jfif")) {
+        	writers = ImageIO.getImageWritersByFormatName( "jpeg" );
+        }
+        if (!writers.hasNext()) {
+        	System.out.println( "jConvertIIO.processSave() no ImageWriter for FORMAT="+format+"; this format cannot be written");
+        	writeFailed = true;
+        	return;
+        }
+        /* if there are multiple writers how do we choose???
+         * could put all the writers into the imageWriteParam
+         * 	if there is a ParmaController the user could be allowed to choose the Writer
+         * */
+        if (debug) System.out.println( "jConvertIIO.processSave() writers.next() ");
+        writer = (ImageWriter) writers.next();
+
                 
         
         

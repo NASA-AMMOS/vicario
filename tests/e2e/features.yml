@@ -96,8 +96,10 @@ features:
     name: Output formats
     status: active
     description: >
-      Every FORMAT= name and alias used by the legacy test (TIFF, PNG, JPEG, JPEG 2000,
-      JPEG-LS, BMP, PNM, RAW, PDS, VICAR, ISIS), for 8-bit, 16-bit and float images.
+      Every FORMAT= name and alias used by the legacy test (TIFF, PNG, JPEG/JFIF, JPEG 2000,
+      BMP, PNM, RAW, PDS, VICAR), for 8-bit, 16-bit and float images. The legacy
+      test also listed ISIS, JPEG-LS and JPEG-LOSSLESS; those tests are skipped because this
+      build has no writer for them.
     code: [src/main/java/jpl/mipl/io/jConvertIIO.java]
     keywords: [FORMAT, OUT]
     specs: [features/output-formats.spec.ts]

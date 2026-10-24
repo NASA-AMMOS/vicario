@@ -87,6 +87,20 @@ export function needsReview(id: string, why: string) {
   test.info().annotations.push({ type: NEEDS_REVIEW, description: `${id}: ${why}` });
 }
 
+/** The annotation type of deferred notes. */
+export const DEFERRED = 'deferred';
+
+/**
+ * Mark a reviewed bug or missing capability that we decided not to fix yet.
+ * The test still reproduces it, but is skipped by default so the suite stays
+ * green; set VICARIO_RUN_DEFERRED=1 to run it (it fails until someone fixes the
+ * behaviour, then the marker gets removed). The reason shows in the report.
+ */
+export function deferred(id: string, why: string) {
+  test.info().annotations.push({ type: DEFERRED, description: `${id}: ${why}` });
+  test.skip(!process.env.VICARIO_RUN_DEFERRED, `${id}: ${why}`);
+}
+
 export function issue(id: string, what: string) {
   test.info().annotations.push({ type: 'issue', description: `${id}: ${what}` });
 }
