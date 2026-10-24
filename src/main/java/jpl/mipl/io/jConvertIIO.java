@@ -109,7 +109,8 @@ import org.apache.jackrabbit.webdav.client.methods.PutMethod;
 * HELP will cause help info to be displayed <br>
 * no arguments will also cause the help to be printed <br>
 * INP=[inputFileName] <br>
-* OUT=[outputFileName] name of the output file.<br>
+* OUT=[outputFileName] name of the output file. OUT=- writes the image to stdout
+* (messages go to stderr; SILENT suppresses them).<br>
 * FORMAT=[imageFileFormatName] file format name to save the output to. 
 * The extention of the output filename is not used in any way. <br>
 * OFORM=[outputFormat] convert input data type to the OFORM data type on output <br>
@@ -170,7 +171,10 @@ int outputDataType;
 // these are the file names used as arguments. They MAY be full paths, \but could be relative
 // as long as they can be opened we don't care
 String inputFileName = "";
-String outputFileName = "-";
+String outputFileName = "-"; // "-" here also means no OUT was given; outToStdout tells them apart
+boolean outToStdout = false; // OUT=- : write the image to stdout
+/** The process's standard output, kept for the image bytes when OUT=- (main sends messages to stderr). */
+static final java.io.PrintStream imageStdout = System.out;
 
 int imageIndex = 0;
 
@@ -555,6 +559,23 @@ static public void main(String args[])
 	// have a flag for testing reuse the jConvertIIO or create a new one. force garbage collection ?
 	
 	if (argFile.equalsIgnoreCase("") ) {
+		// OUT=- writes the image to stdout, so messages go to stderr; SILENT drops them
+		boolean toStdout = false, silentRun = false;
+		for (String arg : args) {
+			int eq = arg.indexOf('=');
+			String k = eq == -1 ? arg : arg.substring(0, eq);
+			String v = eq == -1 ? "true" : arg.substring(eq + 1);
+			if (k.equalsIgnoreCase("OUT") && v.equals("-")) toStdout = true;
+			if (k.equalsIgnoreCase("SILENT") && v.equalsIgnoreCase("true")) silentRun = true;
+		}
+		if (silentRun) {
+			System.setOut(new PrintStream(new OutputStream() {
+				@Override public void write(int b) { }
+				@Override public void write(byte[] b, int off, int len) { }
+			}));
+		} else if (toStdout) {
+			System.setOut(System.err);
+		}
 		jConvertIIO convert = new jConvertIIO(args);
 		if (convert.convStatus == false) {
 			System.exit(1); // 1 is error return
@@ -986,8 +1007,9 @@ public void printHelp() {
 	System.out.println("argument names are NOT case sensitive, except filenames and FORMAT names");
 	System.out.println("an argument without a value will default to \"true\" (only for [true,false] args");
 	System.out.println("PLUGINS registered reader and writer names are printed ");
-	System.out.println("SILENT eliminate all printing to stdout, could be useful when OUT=- which writes output");
-	System.out.println(" file to stdout. Useful for piping to another process like ImageMagick \"convert\" ");
+	System.out.println("OUT=- writes the output image to stdout, for piping to another process like ImageMagick \"convert\".");
+	System.out.println(" FORMAT is required. Messages then go to stderr. Formats that need a second file (detached labels) are not supported.");
+	System.out.println("SILENT eliminate all printing to stdout (errors still go to stderr), useful with OUT=-");
 	System.out.println("IMAGE_INDEX=n sets the image index to read from the file. Defaults to 0.");	
 	System.out.println("  Few files will contain more than one image. "); 
 	
@@ -1712,6 +1734,7 @@ public boolean conv(String argv[]) {
 	    }
 	    else if (key.equalsIgnoreCase("OUT") ) {
 	        outputFileName = value;
+	        outToStdout = value.equals("-");
 	        if (value.equalsIgnoreCase("DISPLAY") ) {
 	            displayImage = true;
 	        }
@@ -1722,7 +1745,7 @@ public boolean conv(String argv[]) {
 		}	    
 		else if (key.equalsIgnoreCase("SILENT") ) {
 	    	
-						silent = true;
+						silent = value == null || value.equalsIgnoreCase("true");
 	    	
 				}
 	    else if (key.equalsIgnoreCase("RI") ) {
@@ -3277,12 +3300,16 @@ public boolean conv(String argv[]) {
 	
 	
 	IIOImage iioImageOut = null;
-	if (outputFormat == null  && (outputFileName.equalsIgnoreCase("-") == false) &&
+	if (outputFormat == null  && (outToStdout || outputFileName.equalsIgnoreCase("-") == false) &&
 			outputFileName.equalsIgnoreCase("DISPLAY") == false ) {
-	  	System.out.println("no output format specified. use FORMAT=[format]");
+	  	System.err.println("no output format specified. use FORMAT=[format]");
 	  	System.exit(1); // error return
-	}  
-	else if (  outputFileName.equalsIgnoreCase("-") == false ) {
+	}
+	else if (outputFormat != null && outputFileName.equals("-") && !outToStdout) {
+		System.err.println("ERROR: FORMAT="+outputFormat+" given but no output file. use OUT=[file], or OUT=- to write to stdout");
+		return false;
+	}
+	else if (  outToStdout || outputFileName.equalsIgnoreCase("-") == false ) {
 		// the file should be written out
 	   
 	   if (debug) {
@@ -3408,7 +3435,7 @@ public boolean conv(String argv[]) {
 	}
 	    processSave(iioImageOut, inputFileName, outputFileName, outputFormat); 
 	    if (writeFailed) {
-	    	System.out.println("Image write failed: "+outputFileName);
+	    	System.err.println("Image write failed: "+outputFileName);
 	    	return false;
 	    }
 	    System.out.println("Image write Done");
@@ -4018,7 +4045,9 @@ public void jediTest(String inputFileName, boolean displayImage) {
         	// long size = fc.getSize();
         	// on webdavOutputStream
         	// set content to 0, write flush, close, reopen
-        	
+
+        } else if (outToStdout) {
+        	// OUT=- : the image goes to stdout below; no file is created
         } else {   
         	/***
         	 * Changed from using fout as a File to creating a FileOutputStream
@@ -4572,24 +4601,24 @@ public void jediTest(String inputFileName, boolean displayImage) {
             
             // -------------- add support for standard out so the output could be piped
             
-            if (fout != null && fout.equals("-")) {
-            	// OutputStream os = System.out;
-				// writer.setOutput( os );
-				writer.setOutput( System.out );
+            if (outToStdout) {
+				// writers need an ImageOutputStream; it caches so writers can seek back (e.g. VICAR labels)
+				ImageOutputStream sos = ImageIO.createImageOutputStream(imageStdout);
+				writer.setOutput( sos );
 				// first null is streamMetadata, might check for it in general case, most readers WILL return NULL
 				// // writer.write(null, iioImage, writeParam);
 				if (debug) System.out.println( "write iioImage "+iioImage);
 				if (format.equalsIgnoreCase("vicar") == true || format.equalsIgnoreCase("pds") == true ||
 					format.equalsIgnoreCase("tif") == true  || format.equalsIgnoreCase("tiff") == true ||
                     format.equalsIgnoreCase("btf") || format.equalsIgnoreCase("btiff") ||
-				 	format.equalsIgnoreCase("vic") == true) {
+				 	format.equalsIgnoreCase("vic") == true || format.toLowerCase().startsWith("pds")) {
 					writer.write(null, iioImage, writeParam); // PDS NEEDS WriteParam
 				}
 				else {
 					writer.write(iioImage); // don't bother with WriteParam now
 				}
-				//		can we close System.out ??
-				// os.close(); // writer does NOT close the stream 
+				sos.close(); // flushes the cache; does not close stdout
+				imageStdout.flush();
             	
             } else {
             	

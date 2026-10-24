@@ -192,7 +192,7 @@ cd ../.. && mvn -B -P coverage jacoco:merge@merge-all jacoco:report@report-all
 open target/site/jacoco/index.html
 ```
 
-A new spec that starts vicario directly, rather than through `convert()`, should use `PRODUCT_JAVA` instead of `JAVA` so its coverage counts.
+A new spec that starts vicario directly, rather than through `convert()`, should use `PRODUCT_JAVA` instead of `JAVA` so its coverage counts. `run()` decodes stdout as UTF-8; pass `binary: true` when a command writes binary data to stdout (such as `OUT=-`) and read the bytes from `stdoutBytes`.
 
 Results appear on the [SonarQube Cloud project](https://sonarcloud.io/project/overview?id=NASA-AMMOS_vicario). The raw and repaired reports are kept as the `codeql-artifacts` artifact for 14 days.
 
