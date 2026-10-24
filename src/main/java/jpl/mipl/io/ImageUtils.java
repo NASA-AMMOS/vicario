@@ -1037,8 +1037,10 @@ if (debug) {
 			if (debug) System.out.println("AFTER Calling PDS reader with a filename ");
      	}
      	else {
-     		
-			reader.setInput(iis, true);
+     		// imageio-ext's TIFF reader reads the stream metadata by counting the images,
+     		// which it refuses to do on a seek-forward-only stream
+     		boolean seekForwardOnly = !readerFormat.toLowerCase().startsWith("tif");
+			reader.setInput(iis, seekForwardOnly);
      	}
          
 		if (debug) {

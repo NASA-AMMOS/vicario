@@ -100,7 +100,7 @@ features:
       BMP, PNM, RAW, PDS, VICAR), for 8-bit, 16-bit and float images. The legacy
       test also listed ISIS, JPEG-LS and JPEG-LOSSLESS; those tests are skipped because this
       build has no writer for them. RAW is headerless band-sequential; PNM is written by
-      vicario's own PGM/PPM writer.
+      vicario's own PGM/PPM writer. TIFF output can be read back as input.
     code: [src/main/java/jpl/mipl/io/jConvertIIO.java, src/main/java/jpl/mipl/io/plugins/PNMImageWriter.java, src/main/java/jpl/mipl/io/plugins/PNMImageWriterSpi.java]
     keywords: [FORMAT, OUT]
     specs: [features/output-formats.spec.ts]

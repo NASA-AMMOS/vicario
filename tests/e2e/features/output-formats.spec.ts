@@ -225,6 +225,18 @@ test.describe('Output formats', feature('output-formats'), () => {
     expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, input));
   });
 
+  test('a TIFF file written by jConvertIIO can be read back as input', about(
+    'Writes the synthetic 3-band BYTE image as TIFF, then converts that TIFF to PNG. Passes when the second conversion succeeds with no exception and the PNG has exactly the original pixels.',
+    '@nominal', '@lossless', '@regression',
+  ), async ({}, testInfo) => {
+    issue('NEW-output-1', 'fixed: reading TIFF input failed with IllegalStateException "seekForwardOnly and allowSearch can\'t both be true"');
+    const tif = await convert(testInfo, input, 'out.tif', { format: 'tif' });
+    expectConverted(tif);
+    const r = await convert(testInfo, tif.out, 'back.png', { format: 'png' });
+    expectConverted(r);
+    expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, input));
+  });
+
   for (const [type, formats] of [['half', ['tif', 'png', 'jpeg2000', 'pds', 'vicar']], ['real', ['tif', 'pds', 'vicar']]] as const) {
     for (const format of formats) {
       test(`${type.toUpperCase()} input to FORMAT=${format} is lossless`, about(
