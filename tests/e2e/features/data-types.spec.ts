@@ -3,7 +3,7 @@
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
 import { synthetic } from '../support/env';
-import { about, feature, issue, needsReview } from '../support/features';
+import { about, feature, issue } from '../support/features';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 
 test.describe('Data type conversion', feature('data-types'), () => {
@@ -66,16 +66,92 @@ test.describe('Data type conversion', feature('data-types'), () => {
     expect([p.dataType, p.min, p.max, p.mean]).toEqual(['FLOAT', src.min, src.max, src.mean]);
   });
 
-  test('BYTE to HALF with the default RESCALE keeps the image contrast', about(
-    `Converts the synthetic BYTE image to HALF with the default rescaling. Passes when the output keeps at least half the relative contrast (standard deviation over range) of the input.`,
-    '@nominal',
+  test('BYTE to HALF with the default RESCALE keeps the values', about(
+    `Converts the synthetic BYTE image (values 0 to 255) to HALF with the default rescaling. A widening conversion is not stretched unless asked for. Passes when the output is 16-bit with pixels equal to the input.`,
+    '@nominal', '@regression', '@lossless',
   ), async ({}, testInfo) => {
-    needsReview('REVIEW-6', 'OFORM=HALF with default RESCALE saturates byte input (mean 254.5, std 9.8; source std 56)');
-    const src = await probe(testInfo, synthetic('gen_byte_bsq.vic'));
-    const r = await convert(testInfo, synthetic('gen_byte_bsq.vic'), 'byte_half_rescale.vic', { format: 'vicar', OFORM: 'HALF' });
+    issue('REVIEW-6', 'fixed: the default rescale ran in the source type, so BYTE to HALF saturated to 3 distinct values');
+    const src = synthetic('gen_byte_bsq.vic');
+    const r = await convert(testInfo, src, 'byte_half_rescale.vic', { format: 'vicar', OFORM: 'HALF' });
     expectConverted(r);
     const p = await probe(testInfo, r.out);
-    expect(p.std! / (p.max! - p.min!), 'relative contrast').toBeGreaterThan(0.5 * src.std! / (src.max! - src.min!));
+    expect(p.dataType).toBe('SHORT');
+    expectSamePixels(p, await probe(testInfo, src));
+  });
+
+  test('BYTE to REAL with the default RESCALE keeps the values', about(
+    `Converts the synthetic BYTE image to REAL with the default rescaling. Passes when the output is floating point with the input's minimum, maximum and mean (no stretch to the float range, no saturation).`,
+    '@nominal', '@regression',
+  ), async ({}, testInfo) => {
+    issue('REVIEW-6', 'fixed: BYTE to REAL with the default rescale saturated to 2 distinct values');
+    const src = await probe(testInfo, synthetic('gen_byte_bsq.vic'));
+    const r = await convert(testInfo, synthetic('gen_byte_bsq.vic'), 'byte_real_rescale.vic', { format: 'vicar', OFORM: 'REAL' });
+    expectConverted(r);
+    const p = await probe(testInfo, r.out);
+    expect([p.dataType, p.min, p.max, p.mean]).toEqual(['FLOAT', src.min, src.max, src.mean]);
+  });
+
+  test('HALF to HALF with the default RESCALE keeps the values', about(
+    `Converts the synthetic HALF image (values 0 to 284) with \`OFORM=HALF\`, its own data type. RESCALE applies only when OFORM changes to a narrower type. Passes when the output pixels equal the input.`,
+    '@nominal', '@regression', '@lossless',
+  ), async ({}, testInfo) => {
+    issue('REVIEW-6', 'fixed: the same data type was stretched to the full 16-bit range');
+    const src = synthetic('gen_half_bsq.vic');
+    const r = await convert(testInfo, src, 'half_half.vic', { format: 'vicar', OFORM: 'HALF' });
+    expectConverted(r);
+    const p = await probe(testInfo, r.out);
+    expect(p.dataType).toBe('SHORT');
+    expectSamePixels(p, await probe(testInfo, src));
+  });
+
+  test('BYTE to HALF with RESCALE_CONSTANT and RESCALE_OFFSET is not clipped to the byte range', about(
+    `Converts the synthetic BYTE image (0 to 255) to HALF with \`RESCALE_CONSTANT=10 RESCALE_OFFSET=3\`. The rescale must run in the 16-bit output type. Passes when the output spans exactly 3 to 2553 (255 x 10 + 3) with mean equal to the input mean x 10 + 3.`,
+    '@nominal', '@regression',
+  ), async ({}, testInfo) => {
+    issue('REVIEW-6', 'fixed: an explicit rescale on a widening OFORM was clipped to the source (byte) range');
+    const src = await probe(testInfo, synthetic('gen_byte_bsq.vic'));
+    const r = await convert(testInfo, synthetic('gen_byte_bsq.vic'), 'byte_half_const.vic',
+      { format: 'vicar', OFORM: 'HALF', RESCALE_CONSTANT: '10', RESCALE_OFFSET: '3' });
+    expectConverted(r);
+    const p = await probe(testInfo, r.out);
+    expect([p.dataType, p.min, p.max]).toEqual(['SHORT', 3, 2553]);
+    expect(p.mean!).toBeCloseTo(src.mean! * 10 + 3, 1);
+  });
+
+  test('HALF to BYTE with VALID_MINIMUM and VALID_MAXIMUM stretches that range to 0..255', about(
+    `Converts the synthetic HALF image (0 to 284) to BYTE with \`VALID_MINIMUM=0 VALID_MAXIMUM=142\`. Passes when the output is BYTE, spans exactly 0 to 255, and values above 142 are clipped to 255.`,
+    '@off-nominal',
+  ), async ({}, testInfo) => {
+    const r = await convert(testInfo, synthetic('gen_half_bsq.vic'), 'half_byte_valid.vic',
+      { format: 'vicar', OFORM: 'BYTE', VALID_MINIMUM: '0', VALID_MAXIMUM: '142' });
+    expectConverted(r);
+    const p = await probe(testInfo, r.out);
+    expect([p.dataType, p.min, p.max]).toEqual(['BYTE', 0, 255]);
+    expect(p.mean!, 'the upper half of the input range is clipped to 255').toBeGreaterThan(160);
+  });
+
+  test('HALF to BYTE with the default RESCALE reaches 255', about(
+    `Converts the synthetic HALF image (0 to 284) to BYTE with the default rescaling. Passes when the output spans exactly 0 to 255 (the full unsigned byte range, not 0 to 254).`,
+    '@nominal', '@regression',
+  ), async ({}, testInfo) => {
+    issue('NEW-cli-1', 'fixed: the BYTE rescale ceiling was Byte.MAX_VALUE * 2 = 254, not 255');
+    const r = await convert(testInfo, synthetic('gen_half_bsq.vic'), 'half_byte_255.vic', { format: 'vicar', OFORM: 'BYTE' });
+    expectConverted(r);
+    const p = await probe(testInfo, r.out);
+    expect([p.dataType, p.min, p.max]).toEqual(['BYTE', 0, 255]);
+  });
+
+  test('BYTE to BYTE with OFORM=BYTE keeps the values', about(
+    `Converts the synthetic gray BYTE image (values 0 to 204) with \`OFORM=BYTE\`, its own data type. Passes when the output pixels equal the input (no stretch).`,
+    '@nominal', '@regression', '@lossless',
+  ), async ({}, testInfo) => {
+    issue('NEW-cli-1', 'fixed: OFORM=BYTE on BYTE input stretched the data to 0..254');
+    const src = synthetic('gen_byte_gray.vic');
+    const r = await convert(testInfo, src, 'byte_byte.vic', { format: 'vicar', OFORM: 'BYTE' });
+    expectConverted(r);
+    const p = await probe(testInfo, r.out);
+    expect(p.dataType).toBe('BYTE');
+    expectSamePixels(p, await probe(testInfo, src));
   });
 
   test('CLAMP=(10,100) limits the output range', about(

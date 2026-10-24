@@ -964,6 +964,10 @@ public void printHelp() {
 	System.out.println("CROP=(cropX,cropY,cropHeight,cropWidth) values are floats, no spaces allowed");
 	System.out.println("CLAMP=(minValue,MaxValue) values are floats, no spaces allowed");
 	System.out.println("RESCALE=[true/false] default is TRUE, only used if OFORM is to a new data type");
+	System.out.println("  The automatic stretch to the output range applies only when OFORM narrows the data type");
+	System.out.println("  (e.g. HALF or REAL to BYTE). OFORM to the same or a wider type keeps the values unless");
+	System.out.println("  VALID_MINIMUM/VALID_MAXIMUM or RESCALE_CONSTANT/RESCALE_OFFSET are given; that rescale");
+	System.out.println("  is done in the output data type, so it is not clipped to the input range.");
 	System.out.println("  for all keywords which are [true/false] the keyword alone sets the the flag to TRUE");
 	System.out.println("RESCALE_CONSTANT=constant  float value. default is 1.0, only used if OFORM is to a new data type");
 	System.out.println("RESCALE_OFFSET=offset  float value. default is 0.0, only used if OFORM is to a new data type");
@@ -4976,12 +4980,13 @@ public void jediTest(String inputFileName, boolean displayImage) {
       * then the dats should be rescaled even if the data type doesn't change.
       * 
       */   
-    // don't check if we should do this or not. Even of the data type is the same a rescale may help the data look better
-    /**
-    if (rescaleOnFormat == true && validMinimum == 0.0 && validMaximum == 0.0 && rescale_constant == 1.0 && rescale_offset == 0.0) {
+    // The automatic stretch applies only to narrowing conversions (see the HELP text for RESCALE).
+    // Same-type and widening conversions keep their values unless the user asked for a
+    // rescale with VALID_MINIMUM/VALID_MAXIMUM or RESCALE_CONSTANT/RESCALE_OFFSET.
+    boolean explicitRescale = validMinimum != 0.0 || validMaximum != 0.0 || rescale_constant != 1.0 || rescale_offset != 0.0;
+    if (rescaleOnFormat && !explicitRescale) {
          	rescaleOnFormat =  checkRescaleOnFormat(oldDataType, newDataType);
          }
-	***/
     if (rescaleOnFormat) {
     	// this will be for BYTE output
     	double constant[] = new double[]{1.0};
@@ -5111,6 +5116,16 @@ public void jediTest(String inputFileName, boolean displayImage) {
 			}
     	}
 	
+		// rescale clamps its result to the type of its source. For a widening conversion
+		// convert first, so the rescale runs in the output type and is not clipped to the input range.
+		if (oldDataType != newDataType && !checkRescaleOnFormat(oldDataType, newDataType)) {
+			// SHORT to USHORT: work in INT so negative input survives a positive offset
+			int workType = (oldDataType == DataBuffer.TYPE_SHORT && newDataType == DataBuffer.TYPE_USHORT)
+					? DataBuffer.TYPE_INT : newDataType;
+			ParameterBlock pbw = new ParameterBlock();
+			pbw.addSource(temp).add(workType);
+			temp = JAI.create("format", pbw);
+		}
 		PB=new ParameterBlock();
 		// PB.addSource(temp).add(new double[]{ceiling/(max-min)}).add(new double[]{ceiling*min/(min-max)});
 		PB.addSource(temp).add(constant).add(offset);
@@ -5278,13 +5293,13 @@ public void jediTest(String inputFileName, boolean displayImage) {
     	
     	double max = 0.0;
     	if (dataType == DataBuffer.TYPE_BYTE) {
-    		max = Byte.MAX_VALUE * 2;//used as unsigned
+    		max = 255.0; // used as unsigned (Byte.MAX_VALUE * 2 is 254)
 	        }
 	    else if (dataType == DataBuffer.TYPE_SHORT) {
 	    	max = Short.MAX_VALUE;
 	        }	    
 	    else if (dataType == DataBuffer.TYPE_USHORT) {	    	
-	    	max = Short.MAX_VALUE * 2;
+	    	max = 65535.0; // Short.MAX_VALUE * 2 is 65534
 	        }
 	    else if (dataType == DataBuffer.TYPE_INT) {
 	    	max = Integer.MAX_VALUE; // or 0.0 ?? // assume unsigned ???
