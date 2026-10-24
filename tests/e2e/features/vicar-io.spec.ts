@@ -84,14 +84,27 @@ test.describe('VICAR image read/write', feature('vicar-io'), () => {
 
   test('ImageIO API decodes little-endian HALF the same as BYTE 1..24', about(
     `Reads the GDAL little-endian HALF fixture (values 1 to 24) through the Java ImageIO API rather than jConvertIIO, and compares it with the BYTE fixture holding the same values. Passes when the pixel hashes match.`,
-    '@nominal',
+    '@nominal', '@regression',
   ), async ({}, testInfo) => {
-    needsReview('REVIEW-1', 'VicarImageReader via the ImageIO API returns byte-swapped samples for INTFMT=LOW files '
-      + '(256, 512, ... instead of 1, 2, ...); jConvertIIO output is correct');
+    issue('REVIEW-1', 'fixed: VicarImageReader via the ImageIO API returned byte-swapped samples for INTFMT=LOW files '
+      + '(256, 512, ... instead of 1, 2, ...) because the imageio-ext file stream ignores the byte order in its array reads');
     const half = await probe(testInfo, asset('gdal-vicar-int16'));
     const byte = await probe(testInfo, asset('gdal-vicar-byte'));
     expect(half.pixelSha256).toBe(byte.pixelSha256);
   });
+
+  for (const id of ['gdal-vicar-int16', 'gdal-vicar-int32', 'gdal-vicar-float32-bsq', 'gdal-vicar-float64']) {
+    test(`ImageIO API decodes little-endian ${id.replace('gdal-vicar-', '')} the same on every input stream`, about(
+      `Reads the GDAL little-endian ${id.replace('gdal-vicar-', '')} fixture (\`INTFMT\`/\`REALFMT\` = LOW) through the Java ImageIO API twice: with the stream \`ImageIO.createImageInputStream\` picks (imageio-ext's file stream in the FAT jar) and with the JDK \`FileImageInputStream\`. Passes when both give the same pixels and the smallest value is 1, the first value stored in the file.`,
+      '@nominal', '@regression',
+    ), async ({}, testInfo) => {
+      issue('REVIEW-1', 'fixed: the imageio-ext file stream returned byte-swapped HALF/FULL/REAL/DOUB samples for little-endian files');
+      const viaImageIO = await probe(testInfo, asset(id));
+      const viaJdkStream = await probe(testInfo, asset(id), { fileStream: true });
+      expect(viaImageIO.min).toBe(1);
+      expectSamePixels(viaImageIO, viaJdkStream);
+    });
+  }
 
   for (const id of ['gdal-vicar-bigendian-int16', 'gdal-vicar-bigendian-float32', 'gdal-vicar-vax-float32']) {
     test(`reads ${id.replace('gdal-vicar-', '')} (system label with DAT_TIM/BINC)`, about(
