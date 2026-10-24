@@ -169,7 +169,7 @@ public class ISISImageReader extends ImageReader {
 	}
 	
 	public void setInput(Object input) {
-		System.out.println("setInput ##############################################");
+		if (debug) System.out.println("setInput ##############################################");
         super.setInput(input, false, false);
         setInputInternal(input);		
 	}
@@ -181,9 +181,10 @@ public class ISISImageReader extends ImageReader {
         /** we will need to see if the VicarIO needs to be changed to use 
          * ImageInputStream
          */
-        debug = true;
-        System.out.println("*********************************************");
-        System.out.println("ISISImageReader.setInputInternal "+input);
+        if (debug) {
+            System.out.println("*********************************************");
+            System.out.println("ISISImageReader.setInputInternal "+input);
+        }
         
         if (input instanceof ImageInputStream ) {
             if (debug)     
@@ -301,8 +302,9 @@ public class ISISImageReader extends ImageReader {
         
         // isisInputFile
         ****/
-        
-        
+
+
+        boolean labelOpened = false; // iif.open() succeeded and gave a system label
         try
         {
             // for now use seekableStream
@@ -338,6 +340,7 @@ public class ISISImageReader extends ImageReader {
 	        }
 	       
 	       sys = iif.getSystemLabel();
+	       labelOpened = true;
 	       
 	       String format = sys.getFormat();
 	       String org = sys.getOrg(); 
@@ -412,6 +415,10 @@ public class ISISImageReader extends ImageReader {
         } **/
         catch (Exception ex)
         {
+            if (!labelOpened) {
+                // the label could not be read at all: report it now instead of a later NullPointerException
+                throw new IIOException("ISIS reader cannot read the label: "+ex, ex);
+            }
             System.out.println("Exception Error reading header:"+ex.getMessage());
             ex.printStackTrace();
             return;

@@ -730,7 +730,7 @@ public class ISISInputFile extends VicarInputFile
         int[] intArray = new int[st.countTokens()];
     
         while ( st.hasMoreTokens()  )  {
-            intArray[i] = Integer.parseInt ( st.nextToken() );
+            intArray[i] = Integer.parseInt ( st.nextToken().trim() ); // ODL allows "(1, 352, 64)"
             i++;
         }
         return intArray;

@@ -73,6 +73,7 @@ features:
     description: Reading ISIS2 cubes with SFDU labels, such as Cassini VIMS spectral cubes (ISIS3 cubes are not supported).
     code: [src/main/java/jpl/mipl/io/plugins/ISIS*, src/main/java/jpl/mipl/io/vicar/ISIS*]
     specs: [features/isis.spec.ts]
+    junit: [jpl.mipl.io.plugins.ReaderSelectionTest]
 
 
   - id: fits

@@ -2522,6 +2522,11 @@ public boolean conv(String argv[]) {
 		
 		// for some output formats fullRead will tolerate read exceptions and continue anyway
 	    iioImage = imUtil.fullRead(inputFileName, irp);
+	    if (iioImage == null) {
+	    	// the reader's error was printed above; stop here instead of a NullPointerException
+	    	System.out.println("ERROR: could not read "+inputFileName);
+	    	return false;
+	    }
 	    // check if metadata is being read in??
 	    reader = imUtil.getImageReader();
 	    readerFormat = reader.getFormatName();
