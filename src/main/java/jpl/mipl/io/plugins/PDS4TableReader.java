@@ -423,6 +423,13 @@ public class PDS4TableReader extends ImageReader {
 				}
 			}
 			labelFile = ((PDS4TableReadParam) param).getLabelFile();
+			if (labelFile == null) {
+				// The default read param (as ImageUtils.fullRead() passes it) has no label yet.
+				// Return the placeholder; jConvertIIO extracts the table later with
+				// readAsString() and a fully populated PDS4TableReadParam. Running
+				// ExtractTableJPL here would stop the JVM with "Cannot read label file".
+				return bi;
+			}
 		} else {
 			// the param object supplies the File labelFile
 			// if it is null return null

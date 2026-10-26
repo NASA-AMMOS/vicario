@@ -62,7 +62,7 @@ features:
     status: active
     description: Exporting PDS4 tables (character, delimited) as CSV or fixed-width text, with the bundled ExtractTableJPL tool and jConvertIIO's PDS4_TABLE_* keywords.
     code: [src/main/java/jpl/mipl/io/plugins/PDS4Table*, src/main/java/jpl/mipl/io/util/ExtractTableJPL.java]
-    keywords: [PDS4_TABLE_LIST, PDS4_TABLE_INDEX, PDS4_TABLE_FIELDS, PDS4_TABLE_OUPUT_FORMAT]
+    keywords: [PDS4_TABLE_LIST, PDS4_TABLE_INDEX, PDS4_TABLE_FIELDS, PDS4_TABLE_OUTPUT_FORMAT, PDS4_TABLE_OUPUT_FORMAT, TABLE_FIELD_SEPARATOR]
     specs: [features/pds4-tables.spec.ts]
     tickets: [IDS-6210]
 
