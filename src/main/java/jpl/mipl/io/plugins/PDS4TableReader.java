@@ -423,6 +423,13 @@ public class PDS4TableReader extends ImageReader {
 				}
 			}
 			labelFile = ((PDS4TableReadParam) param).getLabelFile();
+			if (labelFile == null) {
+				// The default read param (as ImageUtils.fullRead() passes it) has no label yet.
+				// Return the placeholder; jConvertIIO extracts the table later with
+				// readAsString() and a fully populated PDS4TableReadParam. Running
+				// ExtractTableJPL here would stop the JVM with "Cannot read label file".
+				return bi;
+			}
 		} else {
 			// the param object supplies the File labelFile
 			// if it is null return null
@@ -681,9 +688,17 @@ public class PDS4TableReader extends ImageReader {
 				argsList.add(String.format("%s", output_filename));
 			}
 			
+			int index = _param.getIndex();
+			if (index > 1) {
+				argsList.add("--index"); // "-n", the 1-based table index
+				argsList.add(String.valueOf(index));
+			}
+			
 			String fieldSeparator = _param.getFieldSeparator();
-			if (!fieldSeparator.equals(" ") && fieldSeparator.equals(",")) {
-				argsList.add("--field-separator"); // "-o"
+			// " " is the param's default: let ExtractTableJPL use the format's own default
+			// (a space for fixed-width, a comma for csv). Pass any other separator on.
+			if (fieldSeparator != null && !fieldSeparator.equals("") && !fieldSeparator.equals(" ")) {
+				argsList.add("--field-separator"); // "-t"
 				argsList.add(String.format("%s", fieldSeparator));
 			}
 			

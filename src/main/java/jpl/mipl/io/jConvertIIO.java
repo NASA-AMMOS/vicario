@@ -355,7 +355,7 @@ int pds4_table_index = 1; // index of the table to read
 // String pds4_table_index = "1";
 String pds4_table_field_separator = " ";
 // String table_platform = "platform"; // also "unix" "windows"
-String pds4_table_output_format = "csv"; // "fixed-width" or "csv"
+String pds4_table_output_format = "fixed-width"; // "fixed-width" or "csv"; HELP documents fixed-width as the default
 
 // output_filename we will use outputFileName from the out= argument
 // also available String table_line_separator // options are "platform" "unix" "windows"
@@ -1052,7 +1052,9 @@ public void printHelp() {
 	System.out.println("PDS4_TABLE_INDEX=n - index n starts at 1, default is 1. Specify the index of the table to access.");
 	System.out.println("PDS4_TABLE_FIELDS=1,2,3  comma separated list of filed names or numbers. Default is all fields.");
 	System.out.println("	Run once with PDS4_TABLE_LIST to get a list of the field names.");
-	System.out.println("PDS4_TABLE_OUPUT_FORMAT=[csv,fixed-width]  default is fixed-width.");
+	System.out.println("PDS4_TABLE_OUTPUT_FORMAT=[csv,fixed-width]  default is fixed-width.");
+	System.out.println("	The older spelling PDS4_TABLE_OUPUT_FORMAT is also accepted.");
+	System.out.println("TABLE_FIELD_SEPARATOR=c  output field separator. Default is a comma for csv, a space for fixed-width.");
 	System.out.println("The only output available at this time for PDS4 Tables is as a text file. ");
 	System.out.println("The output filename for PDS4 Tables is out filename (out=filename) ");
 	System.out.println("CSV (Comma Separated Value) or fixed width.");
@@ -2381,7 +2383,8 @@ public boolean conv(String argv[]) {
 	    	} 
 	    	pds4_table_is_the_output = true;
 	    	if (debug) System.out.println("PDS4_TABLE_FIELDS "+value);
-	    }  else if (key.equalsIgnoreCase("PDS4_TABLE_OUTPUT_FORMAT") ) { 
+	    }  else if (key.equalsIgnoreCase("PDS4_TABLE_OUTPUT_FORMAT") || key.equalsIgnoreCase("PDS4_TABLE_OUPUT_FORMAT") ) { 
+	    	// PDS4_TABLE_OUPUT_FORMAT is the misspelling earlier HELP text documented; keep accepting it
 	    	 // could also use format or just ignore it if any table values are seen
 		    // if we are reading a Table but creating a PDS4 label (not available yet)
 		    // we could want to have format useable ??
@@ -2652,6 +2655,7 @@ public boolean conv(String argv[]) {
 			pds4TableReadParam.setFields(pds4_table_fields);
 			pds4TableReadParam.setFieldSeparator(pds4_table_field_separator);
 			pds4TableReadParam.setOutput_format(pds4_table_output_format);
+			pds4TableReadParam.setIndex(pds4_table_index);
 			// pds4TableReadParam.setOutputFileName(outputFileName);
 			pds4TableReadParam.setOutputFileName("string");
 			
@@ -2673,7 +2677,14 @@ public boolean conv(String argv[]) {
 			// now do the read using readAsString()
 			int imageIndex = pds4_table_index; // does this get used at all??
 			// probably the read param does the work
-			String table = ((PDS4TableReader) reader).readAsString(imageIndex, pds4TableReadParam);
+			String table;
+			try {
+				table = ((PDS4TableReader) reader).readAsString(imageIndex, pds4TableReadParam);
+			} catch (UnsupportedOperationException e) {
+				// e.g. delimited tables, which this build's opencsv cannot read
+				System.err.println("jConvertIIO: " + e.getMessage());
+				return false;
+			}
 			// the string may be used for something ??
 			// write to a file for now
 			if (debug) { 
