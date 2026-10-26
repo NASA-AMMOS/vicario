@@ -695,8 +695,10 @@ public class PDS4TableReader extends ImageReader {
 			}
 			
 			String fieldSeparator = _param.getFieldSeparator();
-			if (!fieldSeparator.equals(" ") && fieldSeparator.equals(",")) {
-				argsList.add("--field-separator"); // "-o"
+			// " " is the param's default: let ExtractTableJPL use the format's own default
+			// (a space for fixed-width, a comma for csv). Pass any other separator on.
+			if (fieldSeparator != null && !fieldSeparator.equals("") && !fieldSeparator.equals(" ")) {
+				argsList.add("--field-separator"); // "-t"
 				argsList.add(String.format("%s", fieldSeparator));
 			}
 			

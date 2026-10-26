@@ -1016,6 +1016,7 @@ public void printHelp() {
 	System.out.println("	Run once with PDS4_TABLE_LIST to get a list of the field names.");
 	System.out.println("PDS4_TABLE_OUTPUT_FORMAT=[csv,fixed-width]  default is fixed-width.");
 	System.out.println("	The older spelling PDS4_TABLE_OUPUT_FORMAT is also accepted.");
+	System.out.println("TABLE_FIELD_SEPARATOR=c  output field separator. Default is a comma for csv, a space for fixed-width.");
 	System.out.println("The only output available at this time for PDS4 Tables is as a text file. ");
 	System.out.println("The output filename for PDS4 Tables is out filename (out=filename) ");
 	System.out.println("CSV (Comma Separated Value) or fixed width.");
