@@ -179,10 +179,23 @@ public class Pds4NamespaceContext implements NamespaceContext {
     	if (debug) System.out.printf("key_value "+key_value);
     	
     	setPrefixAndNamespaceFromStringArray(key_value) ;
-    	
+
+    	// The label readers' XPath expressions always use the "pds:" prefix for the PDS4
+    	// common namespace. Labels often bind that namespace as the default (xmlns="...")
+    	// and never declare "pds", which made every such expression fail with
+    	// "Prefix must resolve to a namespace: pds". Bind it when the label does not.
+    	if (!prefixMap.containsKey("pds")) {
+    		prefixMap.put("pds", PDS4_COMMON_NAMESPACE);
+    		if (!namespaceMap.containsKey(PDS4_COMMON_NAMESPACE)) {
+    			namespaceMap.put(PDS4_COMMON_NAMESPACE, "pds");
+    		}
+    	}
     }
 
-    
+    /** The PDS4 common namespace, which XPath expressions refer to as "pds:". */
+    static final String PDS4_COMMON_NAMESPACE = "http://pds.nasa.gov/pds4/pds/v1";
+
+
     public void setPrefixAndNamespaceFromFile(String filename) {
     	// open the file, loop thru the values and add 
     	// add these to the namespace
