@@ -208,10 +208,15 @@ POSSIBILITY OF SUCH DAMAGE.
              ExtractTableJPL compiles against it unchanged.
              We exclude two transitive deps that pds4-jparser's pom declares but which are
              NOT actually published to Maven Central (they only exist in JPL Artifactory):
-               - gov.nasa.pds:opencsv — a repackaged opencsv, not public
-               - gov.nasa.pds:vicario — a different PDS-internal project that happens
-                 to share the name "vicario"; not public
-             These are only used on code paths we don't invoke. -->
+               - gov.nasa.pds:opencsv — a PDS fork of opencsv, not public. It adds
+                 CSVParserBuilder.withKeepQuotations, which pds4-jparser's TableReader calls
+                 for delimited tables (Table_Delimited). Public opencsv has no such method, so
+                 delimited tables fail in this build (ExtractTableJPL reports "delimited PDS4
+                 tables are not supported in this build"). Character and binary tables do not
+                 use it. pds4-jparser 3.x bundles the fork but needs Java 17 (see REVIEW-16).
+               - gov.nasa.pds:vicario — not public; an older build of this library's own
+                 jpl.mipl.io classes (pds4-jparser 3.x jars bundle a copy of them), so it
+                 must stay excluded to avoid duplicate classes. -->
          <dependency>
             <groupId>gov.nasa.pds</groupId>
             <artifactId>pds4-jparser</artifactId>
@@ -232,7 +237,8 @@ POSSIBILITY OF SUCH DAMAGE.
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- Standard public opencsv replaces the excluded gov.nasa.pds:opencsv rehost -->
+        <!-- Standard public opencsv replaces the excluded gov.nasa.pds:opencsv fork. It covers every
+             use except delimited tables (no withKeepQuotations; see the comment above). -->
         <dependency>
             <groupId>com.opencsv</groupId>
             <artifactId>opencsv</artifactId>

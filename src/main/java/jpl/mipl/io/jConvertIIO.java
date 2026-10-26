@@ -2631,7 +2631,14 @@ public boolean conv(String argv[]) {
 			// now do the read using readAsString()
 			int imageIndex = pds4_table_index; // does this get used at all??
 			// probably the read param does the work
-			String table = ((PDS4TableReader) reader).readAsString(imageIndex, pds4TableReadParam);
+			String table;
+			try {
+				table = ((PDS4TableReader) reader).readAsString(imageIndex, pds4TableReadParam);
+			} catch (UnsupportedOperationException e) {
+				// e.g. delimited tables, which this build's opencsv cannot read
+				System.err.println("jConvertIIO: " + e.getMessage());
+				return false;
+			}
 			// the string may be used for something ??
 			// write to a file for now
 			if (debug) { 

@@ -225,6 +225,13 @@ public class ExtractTableJPL {
 			TableReader reader = null;
 			try {
 				reader = ExporterFactory.getTableReader(obj, dataFile);
+			} catch (LinkageError ex) {
+				// pds4-jparser 2.12.1 reads delimited tables with CSVParserBuilder.withKeepQuotations,
+				// which exists only in the unpublished gov.nasa.pds:opencsv fork, not in the public
+				// com.opencsv:opencsv this build uses (see pom.xml).
+				out.close();
+				String what = (tableType == TableType.DELIMITED) ? "delimited PDS4 tables are" : "this PDS4 table type is";
+				throw new UnsupportedOperationException(what + " not supported in this build: " + ex, ex);
 			} catch (Exception ex) {
 				System.err.println("Cannot create a table reader for the table: " + ex.getMessage());
 				ex.printStackTrace();
