@@ -688,6 +688,12 @@ public class PDS4TableReader extends ImageReader {
 				argsList.add(String.format("%s", output_filename));
 			}
 			
+			int index = _param.getIndex();
+			if (index > 1) {
+				argsList.add("--index"); // "-n", the 1-based table index
+				argsList.add(String.valueOf(index));
+			}
+			
 			String fieldSeparator = _param.getFieldSeparator();
 			if (!fieldSeparator.equals(" ") && fieldSeparator.equals(",")) {
 				argsList.add("--field-separator"); // "-o"

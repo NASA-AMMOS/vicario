@@ -2612,6 +2612,7 @@ public boolean conv(String argv[]) {
 			pds4TableReadParam.setFields(pds4_table_fields);
 			pds4TableReadParam.setFieldSeparator(pds4_table_field_separator);
 			pds4TableReadParam.setOutput_format(pds4_table_output_format);
+			pds4TableReadParam.setIndex(pds4_table_index);
 			// pds4TableReadParam.setOutputFileName(outputFileName);
 			pds4TableReadParam.setOutputFileName("string");
 			
