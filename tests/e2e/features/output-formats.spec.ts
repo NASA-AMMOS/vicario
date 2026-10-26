@@ -43,7 +43,7 @@ const CHECKS: Record<Mode, string> = {
   lossy: "Passes when the output has the input's size and bands and its mean is within 2 DN of the input (JPEG is lossy).",
   raw: 'Passes when the file holds exactly width x height x bands bytes and they are the input pixels in band-sequential (BSQ) order.',
   pnm: "Passes when the file is a binary PPM (`P6`, maxval 255) of the input's size whose samples are exactly the input pixels.",
-  skip: 'Skipped: ', // followed by the format's own reason
+  skip: "Deferred (REVIEW-19), so skipped by default. When run, passes when the output has the input's size and bands and its mean is within 2 DN of the input.",
 };
 const SCOPES_FOR: Record<Mode, Scope[]> = { lossless: ['@lossless'], lossy: ['@nominal'], raw: ['@nominal', '@lossless'], pnm: ['@nominal', '@lossless'], skip: ['@off-nominal'] };
 
@@ -91,7 +91,7 @@ test.describe('Output formats', feature('output-formats'), () => {
     // number the titles: aliases differing only in case would otherwise share an
     // output directory on case-insensitive file systems (macOS)
     test(`FORMAT=${format} (#${String(i + 1).padStart(2, '0')})`, about(
-      `Converts the synthetic 3-band BYTE image with \`FORMAT=${format}\`, one of the 29 format names and aliases in the legacy test. ${CHECKS[mode]}${mode === 'skip' ? `${reason}.` : ''}`,
+      `Converts the synthetic 3-band BYTE image with \`FORMAT=${format}\`, one of the 29 format names and aliases in the legacy test. ${CHECKS[mode]}`,
       '@legacy', ...SCOPES_FOR[mode], ...(fixed ? ['@regression' as Scope] : []),
     ), async ({}, testInfo) => {
       if (mode === 'skip') deferred('REVIEW-19', reason!);

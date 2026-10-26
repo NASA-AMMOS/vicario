@@ -10,7 +10,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSyn
 import path from 'node:path';
 import type { FullConfig, FullResult, Reporter, Suite, TestCase } from '@playwright/test/reporter';
 import { E2E_ROOT, sourceUrl } from './env';
-import { ABOUT, NEEDS_REVIEW, SCOPES, features, tagOf, type Feature, type Scope } from './features';
+import { ABOUT, DEFERRED, NEEDS_REVIEW, SCOPES, features, tagOf, type Feature, type Scope } from './features';
 
 interface Row {
   feature?: Feature;
@@ -125,8 +125,9 @@ export default class OverviewReporter implements Reporter {
       row.procedures.push({
         title: t.title, group: t.parent.title, testId: t.id, scopes, result,
         about: t.annotations.find((a) => a.type === ABOUT)?.description ?? '',
-        issues: [...t.annotations, ...(last?.annotations ?? [])].filter((a) => a.type === 'issue' || a.type === NEEDS_REVIEW)
-          .map((a) => a.type === NEEDS_REVIEW ? `NEEDS REVIEW: ${a.description ?? ''}` : a.description ?? '')
+        issues: [...t.annotations, ...(last?.annotations ?? [])].filter((a) => a.type === 'issue' || a.type === NEEDS_REVIEW || a.type === DEFERRED)
+          .map((a) => a.type === NEEDS_REVIEW ? `NEEDS REVIEW: ${a.description ?? ''}`
+            : a.type === DEFERRED ? `DEFERRED: ${a.description ?? ''}` : a.description ?? '')
           .filter((v, i, a) => a.indexOf(v) === i),
         source: t.annotations.find((a) => a.type === 'junit source')?.description ?? sourceUrl(t.location.file, t.location.line),
       });
