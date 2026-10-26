@@ -82,13 +82,29 @@ public class ExtractTableJPL {
 	
 	boolean debug = false;
 
+	/** True when run from main(): showHelp() then ends the program with its exit code. */
+	private boolean exitOnHelp = false;
+
 	/**
 	 * Runs the application with given command-line arguments.
 	 *
 	 * @param args the command-line arguments
 	 */
 	public static void main(String[] args) {
-		(new ExtractTableJPL()).run(args);
+		ExtractTableJPL extractor = new ExtractTableJPL();
+		extractor.exitOnHelp = true;
+		try {
+			extractor.run(args);
+		} catch (UnsupportedOperationException e) {
+			System.err.println(e.getMessage());
+			System.exit(1);
+		}
+		if (extractor.outputFile == null) {
+			// No -o: run() buffers the table (or the --list-tables output) so that
+			// library callers can collect it; on the command line it goes to stdout.
+			System.out.print(extractor.getOutputAsString());
+			System.out.flush();
+		}
 	}
 
 	/**
@@ -534,7 +550,14 @@ public class ExtractTableJPL {
 
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.printHelp(programName + " [-f field,...] [-o outputfile] [options] labelfile", options);
-		// System.exit(exitCode);
+		if (exitOnHelp) {
+			System.exit(exitCode);
+		}
+		// Library use (PDS4TableReader, TableUtils): do not end the JVM. An error
+		// becomes an exception instead of falling through to a later crash.
+		if (exitCode != 0) {
+			throw new IllegalArgumentException(errorMessage);
+		}
 	}
 
 	/**
