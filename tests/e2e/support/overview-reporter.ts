@@ -37,6 +37,8 @@ const PW = 'playwright/index.html';
 /** Product tests first, then imported JUnit results, then suite bookkeeping. */
 const rank = (p: Procedure) => (p.scopes.includes('@suite') ? 2 : p.scopes.includes('@unit') ? 1 : 0);
 const byRank = (ps: Procedure[]) => [...ps].sort((a, b) => rank(a) - rank(b));
+const RESULT: Record<Procedure['result'], [string, string]> =
+  { passed: ['pass', 'Passed'], failed: ['fail', 'Failed'], known: ['warn', 'Known issue'], skipped: ['', 'Skipped'] };
 /** Anchor of a test's entry on the procedures page. */
 const procedureId = (testId: string) => `t-${testId}`;
 
@@ -219,8 +221,15 @@ export default class OverviewReporter implements Reporter {
       const link = r.feature ? `${PW}#?q=${encodeURIComponent(tagOf(r.feature))}` : `${PW}#?q=${encodeURIComponent('@' + r.key)}`;
       const gallery = r.images.length ? `<div class="gallery">${r.images.map((i) =>
         `<a href="${PW}#?testId=${encodeURIComponent(i.testId)}" title="${esc(i.caption)}"><img src="${i.src}" alt="${esc(i.caption)}" data-public="${!i.synthetic}" loading="lazy"><span>${esc(i.caption)}</span></a>`).join('')}</div>` : '';
+      // a collapsed summary table of the feature's tests, each linking to its procedure
+      const tests = r.procedures.length ? `<details class="tests"><summary>${r.procedures.length} test${r.procedures.length === 1 ? '' : 's'}</summary><div class="scroll"><table>
+<thead><tr><th>Test</th><th>Scope</th><th>Result</th></tr></thead><tbody>
+${byRank(r.procedures).map((p) => `<tr><td><a href="procedures.html#${esc(procedureId(p.testId))}">${esc(p.title)}</a></td>`
+        + `<td>${p.scopes.map((sc) => `<span class="scope">${esc(sc.slice(1))}</span>`).join(' ')}</td>`
+        + `<td><span class="pill ${RESULT[p.result][0]}">${RESULT[p.result][1]}</span></td></tr>`).join('\n')}
+</tbody></table></div></details>` : '';
       return `<tr>
-  <td><a class="fname" href="${link}">${esc(r.name)}</a><div class="desc">${esc(r.description)} <a href="procedures.html#${esc(r.key)}">Procedures</a></div>${gallery}</td>
+  <td><a class="fname" href="${link}">${esc(r.name)}</a><div class="desc">${esc(r.description)} <a href="procedures.html#${esc(r.key)}">Procedures</a></div>${tests}${gallery}</td>
   <td><span class="pill ${state}">${label}</span></td>
   <td class="num">${r.passed}</td><td class="num ${r.failed ? 'bad' : ''}">${r.failed}</td>
 </tr>`;
@@ -251,7 +260,11 @@ ${notAutomated.map((f) => `<tr><td><span class="fname">${esc(f.name)}</span><div
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VICARIO Feature Tests</title>
 <style>
-${CSS}</style></head>
+${CSS}
+details.tests { background:transparent; padding:2px 10px; } details.tests summary { font-size:13px; font-weight:600; }
+details.tests table { font-size:13px; } details.tests th, details.tests td { padding:5px 6px; } details.tests td:first-child { width:60%; }
+details.tests .scope { display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--muted); margin:1px 2px 1px 0; }
+</style></head>
 <body><main>
 <h1>VICARIO feature tests</h1>
 <div class="meta">${meta}</div>
@@ -275,7 +288,6 @@ ${notAutoHtml}
   }
 
   private procedures(rows: Row[], info: ReturnType<OverviewReporter['runInfo']>, result: FullResult): string {
-    const RESULT = { passed: ['pass', 'Passed'], failed: ['fail', 'Failed'], known: ['warn', 'Known issue'], skipped: ['', 'Skipped'] };
     const chip = (sc: Scope) => `<span class="scope" title="${esc(SCOPES[sc])}">${esc(sc.slice(1))}</span>`;
     const counts = (m: Partial<Record<Scope, number>>) => (Object.keys(SCOPES) as Scope[]).filter((sc) => m[sc])
       .map((sc) => `${chip(sc)}<span class="n">${m[sc]}</span>`).join(' ');

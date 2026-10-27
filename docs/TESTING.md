@@ -131,7 +131,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
 The description is plain text in the spec; nothing else feeds it. At the end of a run the reporter (`support/overview-reporter.ts`) reads each test's annotations and tags and writes them out in three places:
 - **Playwright report:** shown as the "what it checks" and "source" annotations (plain text, with links).
 - **`report/procedures.html`:** rendered as HTML, with code formatting, scope chips, the result and links.
-- **Website:** counted in the capabilities table, and listed in its feature's drop-down test table, which links to the test's procedure.
+- **Report overview and website:** counted for its feature, and listed in the feature's drop-down test table, which links to the test's procedure.
 
 Changing the description in the spec changes all three on the next run.
 
