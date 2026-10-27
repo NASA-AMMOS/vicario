@@ -34,6 +34,11 @@ interface Item { title: string; testId: string; feature: string; issue: string; 
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const PW = 'playwright/index.html';
+/** Product tests first, then imported JUnit results, then suite bookkeeping. */
+const rank = (p: Procedure) => (p.scopes.includes('@suite') ? 2 : p.scopes.includes('@unit') ? 1 : 0);
+const byRank = (ps: Procedure[]) => [...ps].sort((a, b) => rank(a) - rank(b));
+/** Anchor of a test's entry on the procedures page. */
+const procedureId = (testId: string) => `t-${testId}`;
 
 /** Styles shared by the overview and procedures pages. */
 const CSS = `:root { --bg:#ffffff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --card:#f6f8fa; --link:#0969da;
@@ -149,7 +154,8 @@ export default class OverviewReporter implements Reporter {
     mkdirSync(this.outDir, { recursive: true });
     writeFileSync(path.join(this.outDir, 'summary.json'), JSON.stringify({
       status: result.status, ...totals, ...info,
-      features: all.map((r) => ({ id: r.key, name: r.name, passed: r.passed, failed: r.failed, known: r.known, scopes: r.scopes })),
+      features: all.map((r) => ({ id: r.key, name: r.name, passed: r.passed, failed: r.failed, known: r.known, scopes: r.scopes,
+        tests: byRank(r.procedures).map((p) => ({ title: p.title, anchor: procedureId(p.testId), result: p.result, scopes: p.scopes })) })),
     }, null, 2));
     writeFileSync(path.join(this.outDir, 'index.html'), this.html(all, totals, failures, known, notAutomated, info, result));
     writeFileSync(path.join(this.outDir, 'procedures.html'), this.procedures(all, info, result));
@@ -270,8 +276,6 @@ ${notAutoHtml}
 
   private procedures(rows: Row[], info: ReturnType<OverviewReporter['runInfo']>, result: FullResult): string {
     const RESULT = { passed: ['pass', 'Passed'], failed: ['fail', 'Failed'], known: ['warn', 'Known issue'], skipped: ['', 'Skipped'] };
-    // product tests first, then imported JUnit results, then suite bookkeeping
-    const rank = (p: Procedure) => (p.scopes.includes('@suite') ? 2 : p.scopes.includes('@unit') ? 1 : 0);
     const chip = (sc: Scope) => `<span class="scope" title="${esc(SCOPES[sc])}">${esc(sc.slice(1))}</span>`;
     const counts = (m: Partial<Record<Scope, number>>) => (Object.keys(SCOPES) as Scope[]).filter((sc) => m[sc])
       .map((sc) => `${chip(sc)}<span class="n">${m[sc]}</span>`).join(' ');
@@ -285,10 +289,10 @@ ${notAutoHtml}
 <p class="desc">${esc(r.description)}</p>
 <p class="counts">${r.procedures.length} tests · ${counts(r.scopes)}</p>
 <ol class="procs">
-${[...r.procedures].sort((a, b) => rank(a) - rank(b)).map((p) => {
+${byRank(r.procedures).map((p) => {
       const [cls, label] = RESULT[p.result];
       const group = p.group && p.group !== r.name ? `<span class="group">${esc(p.group)}</span>` : '';
-      return `<li data-scopes="${esc(p.scopes.map((sc) => sc.slice(1)).join(' '))}">
+      return `<li id="${esc(procedureId(p.testId))}" data-scopes="${esc(p.scopes.map((sc) => sc.slice(1)).join(' '))}">
   <div class="head"><span class="ptitle">${esc(p.title)}</span><span class="pill ${cls}">${label}</span></div>
   <div class="chips">${p.scopes.map(chip).join('')}${group}</div>
   <p>${p.about ? rich(p.about) : '<em>No description.</em>'}</p>
