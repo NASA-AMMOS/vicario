@@ -1,12 +1,15 @@
 // XML metadata and parser security: XML=true debug output, and the XXE hardening of the
-// XML parsers (IDS-10406) exercised through the TreeInfo command line.
+// XML parsers and the XSL stylesheet reader (IDS-10406), exercised through the
+// TreeInfo and jConvertIIO command lines.
 // Unit-level XXE coverage, against both the JDK parser and Xerces, is in
 // src/test/java/jpl/mipl/io/util/DOMutilsXXETest.java (run by `mvn test`).
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test } from '../support/test';
-import { PRODUCT_JAVA, fatJar, synthetic } from '../support/env';
+import { PRODUCT_JAVA, XSL_DIR, fatJar, synthetic } from '../support/env';
 import { about, feature, issue } from '../support/features';
+import { expectValidPds3Label, pdsLabel } from '../support/labels';
 import { convert, expectConverted, run } from '../support/run';
 
 const SECRET = 'XXE-SECRET-CONTENT';
@@ -65,5 +68,24 @@ test.describe('XML metadata and parser security', feature('xml-security'), () =>
     const log = await treeInfo(testInfo, doc);
     expect(log, 'secret not read').not.toContain(SECRET);
     expect(log, 'no attempt to open the missing entity file').not.toMatch(/FileNotFound|does-not-exist/);
+  });
+
+  test('an XSL stylesheet cannot read files through external entities', about(
+    `Converts the synthetic image to PDS3 with \`XSL=\` set to a copy of \`VicarToPDSmer1.xsl\` that declares an external entity reading a local "secret" file and writes it into a \`LEAK\` label item. Passes when the conversion still produces a valid label and the secret text appears in neither the label nor the log.`,
+    '@security', '@malformed-input', '@regression',
+  ), async ({}, testInfo) => {
+    issue('IDS-10406', 'fixed: stylesheets were parsed without XXE protection (Sonar java:S2755 on TransformerFactory), '
+      + 'so XSL= could read any local file into the output label');
+    const secret = testInfo.outputPath('secret.txt');
+    writeFileSync(secret, SECRET);
+    const xsl = testInfo.outputPath('evil.xsl');
+    writeFileSync(xsl, readFileSync(path.join(XSL_DIR, 'VicarToPDSmer1.xsl'), 'utf8')
+      .replace('<xsl:stylesheet', `<!DOCTYPE xsl:stylesheet [ <!ENTITY xxe SYSTEM "${pathToFileURL(secret)}"> ]>\n<xsl:stylesheet`)
+      .replace('<PDS_LABEL>', '<PDS_LABEL><item name="LEAK">&xxe;</item>'));
+    const r = await convert(testInfo, synthetic('gen_byte_bsq.vic'), 'xxe.pds', { format: 'pds', XSL: xsl });
+    expectConverted(r);
+    expectValidPds3Label(r.out, { lines: 64, samples: 48, bands: 3 });
+    expect(pdsLabel(r.out), 'secret not in the label').not.toContain(SECRET);
+    expect(`${r.stdout}\n${r.stderr}`, 'secret not in the log').not.toContain(SECRET);
   });
 });
