@@ -1,16 +1,19 @@
 // Playwright reporter that writes the report's landing page (report/index.html):
-// every feature from features.yml with its description, status and results,
-// linking into the Playwright HTML report (report/playwright/) filtered to that
-// feature. It also writes report/procedures.html (every test with its
-// description, scope tags and result, grouped by feature) and report/overview.md
-// for the GitHub job summary.
+// a summary table of every feature's results and its new and modified tests
+// since the last release, then every feature from features.yml with its
+// description, status and a drop-down table of its tests, linking into the
+// Playwright HTML report (report/playwright/). It also writes
+// report/procedures.html (every test with its description, scope tags, history,
+// result and image previews, grouped by feature) and report/overview.md for the
+// GitHub job summary.
 import { execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { FullConfig, FullResult, Reporter, Suite, TestCase } from '@playwright/test/reporter';
 import { E2E_ROOT, sourceUrl } from './env';
-import { ABOUT, DEFERRED, NEEDS_REVIEW, SCOPES, features, tagOf, type Feature, type Scope } from './features';
+import { ABOUT, ADDED, DEFERRED, MODIFIED, NEEDS_REVIEW, SCOPES, features, tagOf, type Feature, type Scope } from './features';
+import { baselineRelease, changeSince, type Baseline } from './releases';
 
 interface Row {
   feature?: Feature;
@@ -21,15 +24,18 @@ interface Row {
   failed: number;
   known: number;
   skipped: number;
-  images: Picture[];
+  added: number;
+  modified: number;
   procedures: Procedure[];
   scopes: Partial<Record<Scope, number>>;
 }
 interface Procedure {
   title: string; group: string; testId: string; about: string; scopes: Scope[]; issues: string[];
   result: 'passed' | 'failed' | 'known' | 'skipped'; source: string;
+  added?: string; modified?: string; change: '' | 'new' | 'modified'; images: Picture[];
 }
-interface Picture { src: string; caption: string; testId: string; synthetic: boolean; hash: string }
+/** An image preview, copied to report/images/<hash>.png. */
+interface Picture { src: string; caption: string; mission: boolean }
 interface Item { title: string; testId: string; feature: string; issue: string; why: string; error?: string; review?: string }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -41,6 +47,11 @@ const RESULT: Record<Procedure['result'], [string, string]> =
   { passed: ['pass', 'Passed'], failed: ['fail', 'Failed'], known: ['warn', 'Known issue'], skipped: ['', 'Skipped'] };
 /** Anchor of a test's entry on the procedures page. */
 const procedureId = (testId: string) => `t-${testId}`;
+/** Anchor of a feature's row on the overview. */
+const featureId = (key: string) => `f-${key}`;
+const CHANGE = { new: 'New', modified: 'Modified' } as const;
+/** Image previews shown per test on the procedures page; the rest are in the run details. */
+const MAX_IMAGES = 8;
 
 /** Styles shared by the overview and procedures pages. */
 const CSS = `:root { --bg:#ffffff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --card:#f6f8fa; --link:#0969da;
@@ -65,11 +76,12 @@ th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(-
 .pill { display:inline-block; font-size:12px; padding:2px 10px; border-radius:999px; white-space:nowrap; }
 .pill.pass { color:var(--pass); background:var(--pass-bg); } .pill.warn { color:var(--warn); background:var(--warn-bg); }
 .pill.fail { color:var(--fail); background:var(--fail-bg); }
+.pill.change { color:var(--link); border:1px solid var(--line); background:transparent; }
 details { border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin:8px 0; background:var(--card); }
 summary { cursor:pointer; } .issue { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; font-weight:600; margin-right:6px; }
 .count { color:var(--muted); font-size:12px; margin-left:6px; } details ul { margin:8px 0 0; padding-left:20px; }
 .fails { padding-left:20px; } .review { font-size:13px; margin:2px 0; } .err { color:var(--fail); font-family:ui-monospace,Menlo,monospace; font-size:12px; overflow-wrap:anywhere; }
-.gallery { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.gallery { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 4px; }
 .gallery a { display:flex; flex-direction:column; width:112px; color:var(--muted); font-size:11px; }
 .gallery img { width:112px; height:84px; object-fit:contain; background:#000; border:1px solid var(--line); border-radius:6px; image-rendering:auto; }
 .gallery span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; }
@@ -78,6 +90,49 @@ summary { cursor:pointer; } .issue { font-family:ui-monospace,SFMono-Regular,Men
 
 /** Plain description text to HTML: `backticks` become code. */
 const rich = (s: string) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+
+/**
+ * Image previews attached by tests ("<file> preview"), copied once each to
+ * report/images so the pages do not depend on the Playwright data folder.
+ */
+class Images {
+  private copied = new Set<string>();
+  /** Distinct previews of public mission products, in the order first seen. */
+  readonly mission: Picture[] = [];
+
+  constructor(private dir: string) {
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(dir, { recursive: true });
+  }
+
+  /** A test's distinct previews (at most MAX_IMAGES), copied into the report. */
+  add(attachments: { name: string; contentType: string; path?: string }[]): Picture[] {
+    const out: Picture[] = [];
+    for (const a of attachments) {
+      const m = a.name.match(/^(.*) preview( \[mission data\])?$/);
+      if (a.contentType !== 'image/png' || !a.path || !m || !existsSync(a.path)) continue;
+      const name = `${createHash('sha256').update(readFileSync(a.path)).digest('hex').slice(0, 16)}.png`;
+      const pic = { src: `images/${name}`, caption: m[1], mission: !!m[2] };
+      if (out.some((p) => p.src === pic.src) || out.length >= MAX_IMAGES) continue;
+      out.push(pic);
+      if (this.copied.has(name)) continue;
+      this.copied.add(name);
+      copyFileSync(a.path, path.join(this.dir, name));
+      if (pic.mission) this.mission.push(pic);
+    }
+    return out;
+  }
+}
+
+/** Totals over all features. */
+interface Totals { passed: number; failed: number; known: number; skipped: number; added: number; modified: number }
+
+/** What the New and Modified columns count, for the pages. */
+function baselineNote(base: Baseline | null, link: (b: Baseline) => string) {
+  if (!base) return 'New and modified tests are not counted: the release list could not be read from GitHub for this run.';
+  if (!base.tag) return 'New and modified count against the first release: there is no earlier release, so every test is new.';
+  return `New and modified count the tests added or changed since release ${link(base)} (published ${base.date}), from each test's <code>added</code> and <code>modified</code> dates.`;
+}
 
 export default class OverviewReporter implements Reporter {
   private suite!: Suite;
@@ -97,14 +152,15 @@ export default class OverviewReporter implements Reporter {
 
   async onEnd(result: FullResult) {
     const reg = features();
+    const base = await baselineRelease();
     const rows = new Map<string, Row>();
+    const empty = { passed: 0, failed: 0, known: 0, skipped: 0, added: 0, modified: 0, procedures: [], scopes: {} };
     for (const f of reg.filter((x) => x.status === 'active')) {
-      rows.set(f.id, { feature: f, key: f.id, name: f.name, description: f.description.trim(), passed: 0, failed: 0, known: 0, skipped: 0,
-        images: [], procedures: [], scopes: {} });
+      rows.set(f.id, { feature: f, key: f.id, name: f.name, description: f.description.trim(), ...empty, procedures: [], scopes: {} });
     }
     const infra = (key: string, name: string, description: string) =>
-      rows.get(key) ?? rows.set(key, { key, name, description, passed: 0, failed: 0, known: 0, skipped: 0, images: [], procedures: [], scopes: {} })
-        .get(key)!;
+      rows.get(key) ?? rows.set(key, { key, name, description, ...empty, procedures: [], scopes: {} }).get(key)!;
+    const images = new Images(path.join(this.outDir, 'images'));
     const failures: Item[] = [];
     const known: Item[] = [];
 
@@ -129,8 +185,14 @@ export default class OverviewReporter implements Reporter {
       } else row.passed++;
       const scopes = t.tags.filter((tag): tag is Scope => tag in SCOPES);
       for (const sc of scopes) row.scopes[sc] = (row.scopes[sc] ?? 0) + 1;
+      const added = t.annotations.find((a) => a.type === ADDED)?.description;
+      const modified = t.annotations.find((a) => a.type === MODIFIED)?.description;
+      const change = changeSince(base, added, modified);
+      if (change === 'new') row.added++;
+      if (change === 'modified') row.modified++;
       row.procedures.push({
-        title: t.title, group: t.parent.title, testId: t.id, scopes, result,
+        title: t.title, group: t.parent.title, testId: t.id, scopes, result, added, modified, change,
+        images: images.add(last?.attachments ?? []),
         about: t.annotations.find((a) => a.type === ABOUT)?.description ?? '',
         issues: [...t.annotations, ...(last?.annotations ?? [])].filter((a) => a.type === 'issue' || a.type === NEEDS_REVIEW || a.type === DEFERRED)
           .map((a) => a.type === NEEDS_REVIEW ? `NEEDS REVIEW: ${a.description ?? ''}`
@@ -138,49 +200,28 @@ export default class OverviewReporter implements Reporter {
           .filter((v, i, a) => a.indexOf(v) === i),
         source: t.annotations.find((a) => a.type === 'junit source')?.description ?? sourceUrl(t.location.file, t.location.line),
       });
-      for (const a of last?.attachments ?? []) {
-        const m = a.name.match(/^(.*) preview( \[mission data\])?$/);
-        if (a.contentType !== 'image/png' || !a.path || !m || !existsSync(a.path)) continue;
-        row.images.push({ src: a.path, caption: m[1], testId: t.id, synthetic: !m[2],
-          hash: createHash('sha256').update(readFileSync(a.path)).digest('hex').slice(0, 16) });
-      }
     }
-    this.pickGallery([...rows.values()]);
 
     const all = [...rows.values()];
-    const totals = all.reduce((a, r) => ({ passed: a.passed + r.passed, failed: a.failed + r.failed, known: a.known + r.known }),
-      { passed: 0, failed: 0, known: 0 });
+    const totals = all.reduce((a, r) => ({ passed: a.passed + r.passed, failed: a.failed + r.failed, known: a.known + r.known,
+      skipped: a.skipped + r.skipped, added: a.added + r.added, modified: a.modified + r.modified }),
+    { passed: 0, failed: 0, known: 0, skipped: 0, added: 0, modified: 0 });
     const notAutomated = reg.filter((f) => f.status !== 'active');
     const info = this.runInfo(result);
 
     mkdirSync(this.outDir, { recursive: true });
     writeFileSync(path.join(this.outDir, 'summary.json'), JSON.stringify({
-      status: result.status, ...totals, ...info,
-      features: all.map((r) => ({ id: r.key, name: r.name, passed: r.passed, failed: r.failed, known: r.known, scopes: r.scopes,
-        tests: byRank(r.procedures).map((p) => ({ title: p.title, anchor: procedureId(p.testId), result: p.result, scopes: p.scopes })) })),
+      status: result.status, ...totals, ...info, baseline: base,
+      // previews of public mission products, for the site's image strip
+      images: images.mission.slice(0, 12),
+      features: all.map((r) => ({ id: r.key, name: r.name, passed: r.passed, failed: r.failed, known: r.known, skipped: r.skipped,
+        added: r.added, modified: r.modified, scopes: r.scopes,
+        tests: byRank(r.procedures).map((p) => ({ title: p.title, anchor: procedureId(p.testId), result: p.result, scopes: p.scopes,
+          added: p.added, modified: p.modified, change: p.change })) })),
     }, null, 2));
-    writeFileSync(path.join(this.outDir, 'index.html'), this.html(all, totals, failures, known, notAutomated, info, result));
-    writeFileSync(path.join(this.outDir, 'procedures.html'), this.procedures(all, info, result));
-    writeFileSync(path.join(this.outDir, 'overview.md'), this.markdown(all, totals, failures, known, notAutomated, info, result));
-  }
-
-  /**
-   * Up to six distinct previews per feature, real mission products first, copied
-   * to report/images so the landing page does not depend on the Playwright data folder.
-   */
-  private pickGallery(rows: Row[]) {
-    const dir = path.join(this.outDir, 'images');
-    rmSync(dir, { recursive: true, force: true });
-    mkdirSync(dir, { recursive: true });
-    for (const r of rows) {
-      const seen = new Set<string>();
-      const ordered = [...r.images.filter((i) => !i.synthetic), ...r.images.filter((i) => i.synthetic)];
-      r.images = ordered.filter((i) => !seen.has(i.hash) && seen.add(i.hash)).slice(0, 6).map((i) => {
-        const name = `${i.hash}.png`;
-        copyFileSync(i.src, path.join(dir, name));
-        return { ...i, src: `images/${name}` };
-      });
-    }
+    writeFileSync(path.join(this.outDir, 'index.html'), this.html(all, totals, failures, known, notAutomated, info, result, base));
+    writeFileSync(path.join(this.outDir, 'procedures.html'), this.procedures(all, info, result, base));
+    writeFileSync(path.join(this.outDir, 'overview.md'), this.markdown(all, totals, failures, known, notAutomated, info, result, base));
   }
 
   private rowFor(t: TestCase, reg: Feature[], rows: Map<string, Row>,
@@ -211,27 +252,32 @@ export default class OverviewReporter implements Reporter {
     };
   }
 
-  private html(rows: Row[], totals: { passed: number; failed: number; known: number }, failures: Item[], known: Item[],
-    notAutomated: Feature[], info: ReturnType<OverviewReporter['runInfo']>, result: FullResult): string {
+  private html(rows: Row[], totals: Totals, failures: Item[], known: Item[],
+    notAutomated: Feature[], info: ReturnType<OverviewReporter['runInfo']>, result: FullResult, base: Baseline | null): string {
     const ok = result.status === 'passed';
     const testLink = (i: Item) => `<a href="${PW}#?testId=${encodeURIComponent(i.testId)}">${esc(i.title)}</a>`;
+    const counted = !!base;
+    const n = (v: number, cls = '') => `<td class="num ${v ? cls : ''}">${v}</td>`;
+    const changeCells = (r: { added: number; modified: number }) => counted ? `${n(r.added, 'chg')}${n(r.modified, 'chg')}` : '<td class="num">–</td><td class="num">–</td>';
+    const summaryRows = rows.map((r) => `<tr><td><a href="#${esc(featureId(r.key))}">${esc(r.name)}</a></td>`
+      + `${n(r.procedures.length)}${n(r.passed)}${n(r.failed, 'bad')}${n(r.known, 'warn')}${n(r.skipped)}${changeCells(r)}</tr>`).join('\n');
+    const all = rows.reduce((a, r) => a + r.procedures.length, 0);
+
     const featureRows = rows.map((r) => {
       const state = r.failed ? 'fail' : r.known ? 'warn' : 'pass';
       const label = r.failed ? 'Failing' : r.known ? 'Passing, with known issues' : 'Passing';
       const link = r.feature ? `${PW}#?q=${encodeURIComponent(tagOf(r.feature))}` : `${PW}#?q=${encodeURIComponent('@' + r.key)}`;
-      const gallery = r.images.length ? `<div class="gallery">${r.images.map((i) =>
-        `<a href="${PW}#?testId=${encodeURIComponent(i.testId)}" title="${esc(i.caption)}"><img src="${i.src}" alt="${esc(i.caption)}" data-public="${!i.synthetic}" loading="lazy"><span>${esc(i.caption)}</span></a>`).join('')}</div>` : '';
       // a collapsed summary table of the feature's tests, each linking to its procedure
       const tests = r.procedures.length ? `<details class="tests"><summary>${r.procedures.length} test${r.procedures.length === 1 ? '' : 's'}</summary><div class="scroll"><table>
-<thead><tr><th>Test</th><th>Scope</th><th>Result</th></tr></thead><tbody>
+<thead><tr><th>Test</th><th>Scope</th><th>Result</th><th>Change</th></tr></thead><tbody>
 ${byRank(r.procedures).map((p) => `<tr><td><a href="procedures.html#${esc(procedureId(p.testId))}">${esc(p.title)}</a></td>`
         + `<td>${p.scopes.map((sc) => `<span class="scope">${esc(sc.slice(1))}</span>`).join(' ')}</td>`
-        + `<td><span class="pill ${RESULT[p.result][0]}">${RESULT[p.result][1]}</span></td></tr>`).join('\n')}
-</tbody></table></div></details>` : '';
-      return `<tr>
-  <td><a class="fname" href="${link}">${esc(r.name)}</a><div class="desc">${esc(r.description)} <a href="procedures.html#${esc(r.key)}">Procedures</a></div>${tests}${gallery}</td>
+        + `<td><span class="pill ${RESULT[p.result][0]}">${RESULT[p.result][1]}</span></td>`
+        + `<td>${p.change ? `<span class="pill change">${CHANGE[p.change]}</span>` : ''}</td></tr>`).join('\n')}
+</tbody></table></div><p class="more"><a href="procedures.html#${esc(r.key)}">Detailed procedures</a></p></details>` : '';
+      return `<tr id="${esc(featureId(r.key))}">
+  <td><a class="fname" href="${link}">${esc(r.name)}</a><div class="desc">${esc(r.description)}</div>${tests}</td>
   <td><span class="pill ${state}">${label}</span></td>
-  <td class="num">${r.passed}</td><td class="num ${r.failed ? 'bad' : ''}">${r.failed}</td>
 </tr>`;
     }).join('\n');
 
@@ -261,33 +307,41 @@ ${notAutomated.map((f) => `<tr><td><span class="fname">${esc(f.name)}</span><div
 <title>VICARIO Feature Tests</title>
 <style>
 ${CSS}
+.result { margin:16px 0 0; font-size:15px; }
+.summary td, .summary th { padding:6px 8px; } .summary tfoot td { font-weight:700; border-top:2px solid var(--line); border-bottom:0; }
+.summary .num { width:64px; } .num.warn { color:var(--warn); font-weight:600; } .num.chg { color:var(--link); font-weight:600; }
+code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; }
 details.tests { background:transparent; padding:2px 10px; } details.tests summary { font-size:13px; font-weight:600; }
-details.tests table { font-size:13px; } details.tests th, details.tests td { padding:5px 6px; } details.tests td:first-child { width:60%; }
+details.tests table { font-size:13px; } details.tests th, details.tests td { padding:5px 6px; } details.tests td:first-child { width:55%; }
 details.tests .scope { display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--muted); margin:1px 2px 1px 0; }
+details.tests .more { font-size:13px; margin:8px 0 4px; }
 </style></head>
 <body><main>
 <h1>VICARIO feature tests</h1>
 <div class="meta">${meta}</div>
-<p class="meta"><a href="procedures.html">Test procedures</a>: what every test does and checks, grouped by feature. <a href="${PW}">Full Playwright report</a>: commands, logs and images.</p>
-<div class="banner">
-  <div class="stat ${ok ? 'ok' : 'bad'}"><b>${ok ? 'Passed' : 'Failed'}</b><span>overall result</span></div>
-  <div class="stat ok"><b>${totals.passed}</b><span>tests passed</span></div>
-  <div class="stat ${totals.failed ? 'bad' : 'ok'}"><b>${totals.failed}</b><span>unexpected failures</span></div>
-</div>
+<p class="result">Result: <span class="pill ${ok ? 'pass' : 'fail'}">${ok ? 'Passed' : 'Failed'}</span> <span class="meta">${totals.passed} passed, ${totals.failed} unexpected failures. <a href="procedures.html">Test procedures</a>: what every test does and checks. <a href="${PW}">Full Playwright report</a>: commands, logs and images.</span></p>
+<section><h2>Summary</h2><div class="scroll"><table class="summary">
+<thead><tr><th>Feature</th><th class="num">Tests</th><th class="num">Passed</th><th class="num">Failed</th><th class="num">Known issues</th><th class="num">Skipped</th><th class="num">New</th><th class="num">Modified</th></tr></thead>
+<tbody>
+${summaryRows}
+</tbody>
+<tfoot><tr><td>Total</td>${n(all)}${n(totals.passed)}${n(totals.failed, 'bad')}${n(totals.known, 'warn')}${n(totals.skipped)}${changeCells(totals)}</tr></tfoot>
+</table></div>
+<p class="meta">${baselineNote(base, (b) => `<a href="${esc(b.url)}">${esc(b.tag)}</a>`)} Known issues are tests of tracked bugs, marked "expected to fail".</p></section>
 ${failHtml}
 <section><h2>Features</h2><div class="scroll"><table>
-<thead><tr><th>Feature</th><th>Status</th><th class="num">Passed</th><th class="num">Failed</th></tr></thead>
+<thead><tr><th>Feature</th><th>Status</th></tr></thead>
 <tbody>
 ${featureRows}
 </tbody></table></div></section>
 ${known.length ? `<section><h2>Known issues</h2><p class="meta">Bugs reproduced by the tests and tracked by issue. Each test is marked "expected to fail" and turns red once the bug is fixed, so the marker is removed with the fix.</p>${knownHtml}</section>` : ''}
 ${notAutoHtml}
-<p class="howto">Click a feature to see its tests in the <a href="${PW}">full Playwright report</a>, with commands, logs and image previews for every conversion.</p>
+<p class="howto">Click a feature to see its tests in the <a href="${PW}">full Playwright report</a>, with commands, logs and image previews for every conversion. Open its test list for a summary of each test, linked to its detailed procedure.</p>
 </main></body></html>
 `;
   }
 
-  private procedures(rows: Row[], info: ReturnType<OverviewReporter['runInfo']>, result: FullResult): string {
+  private procedures(rows: Row[], info: ReturnType<OverviewReporter['runInfo']>, result: FullResult, base: Baseline | null): string {
     const chip = (sc: Scope) => `<span class="scope" title="${esc(SCOPES[sc])}">${esc(sc.slice(1))}</span>`;
     const counts = (m: Partial<Record<Scope, number>>) => (Object.keys(SCOPES) as Scope[]).filter((sc) => m[sc])
       .map((sc) => `${chip(sc)}<span class="n">${m[sc]}</span>`).join(' ');
@@ -304,12 +358,17 @@ ${notAutoHtml}
 ${byRank(r.procedures).map((p) => {
       const [cls, label] = RESULT[p.result];
       const group = p.group && p.group !== r.name ? `<span class="group">${esc(p.group)}</span>` : '';
+      const run = `${PW}#?testId=${encodeURIComponent(p.testId)}`;
+      const history = p.added ? `<span class="when">Added ${esc(p.added)}${p.modified ? `, modified ${esc(p.modified)}` : ''}</span>` : '';
+      const shots = p.images.length ? `<div class="gallery">${p.images.map((i) =>
+        `<a href="${run}" title="${esc(i.caption)}"><img src="${i.src}" alt="${esc(i.caption)}" loading="lazy"><span>${esc(i.caption)}</span></a>`).join('')}</div>` : '';
       return `<li id="${esc(procedureId(p.testId))}" data-scopes="${esc(p.scopes.map((sc) => sc.slice(1)).join(' '))}">
-  <div class="head"><span class="ptitle">${esc(p.title)}</span><span class="pill ${cls}">${label}</span></div>
-  <div class="chips">${p.scopes.map(chip).join('')}${group}</div>
+  <div class="head"><span class="ptitle">${esc(p.title)}</span><span>${p.change ? `<span class="pill change">${CHANGE[p.change]}</span> ` : ''}<span class="pill ${cls}">${label}</span></span></div>
+  <div class="chips">${p.scopes.map(chip).join('')}${group}${history}</div>
   <p>${p.about ? rich(p.about) : '<em>No description.</em>'}</p>
+  ${shots}
   ${p.issues.map((i) => `<p class="note">${i.startsWith('NOTE: ') ? `Note: ${rich(i.slice(6))}` : i.startsWith('NEEDS REVIEW: ') ? `Needs review (bug or intended?): ${rich(i.slice(14))}` : `Issue ${rich(i)}`}</p>`).join('')}
-  <p class="links"><a href="${PW}#?testId=${encodeURIComponent(p.testId)}">Run details</a> · <a href="${esc(p.source)}">Source</a></p>
+  <p class="links"><a href="${run}">Run details</a> · <a href="${esc(p.source)}">Source</a></p>
 </li>`;
     }).join('\n')}
 </ol>
@@ -329,7 +388,7 @@ button.scope { cursor:pointer; font-size:12px; } button.scope.on { background:va
 .feature { border-top:1px solid var(--line); margin-top:28px; } .counts { font-size:13px; }
 .procs { padding-left:22px; } .procs li { margin:0 0 16px; padding-left:4px; } .procs p { margin:4px 0; font-size:14px; }
 .head { display:flex; flex-wrap:wrap; gap:8px; align-items:baseline; justify-content:space-between; }
-.ptitle { font-weight:600; } .chips { margin-top:3px; } .group { color:var(--muted); font-size:12px; }
+.ptitle { font-weight:600; } .chips { margin-top:3px; } .group, .when { color:var(--muted); font-size:12px; margin-right:8px; }
 .note { color:var(--muted); } .links { font-size:12px; } .bad { color:var(--fail); }
 .procs li.hidden, .feature.hidden { display:none; }
 </style></head>
@@ -337,7 +396,8 @@ button.scope { cursor:pointer; font-size:12px; } button.scope.on { background:va
 <p class="meta"><a href="index.html">← Feature overview</a></p>
 <h1>VICARIO test procedures</h1>
 <div class="meta">${esc(info.tier)} tier · ${esc(info.date)}${info.commit ? ` · commit ${info.commitUrl ? `<a href="${info.commitUrl}">${info.commit}</a>` : info.commit}` : ''} · ${result.status === 'passed' ? 'passed' : '<b class="bad">failed</b>'}</div>
-<p>Every test in the suite, grouped by feature: what it does, what makes it pass, the kinds of testing it covers, and its latest result. Each test links to its run details (commands, logs, image previews) and to its source on GitHub.</p>
+<p>Every test in the suite, grouped by feature: what it does, what makes it pass, the kinds of testing it covers, when it was added and last modified, its latest result and the images it read or wrote. Each test links to its run details (commands and logs) and to its source on GitHub.</p>
+<p class="meta">${baselineNote(base, (b) => `<a href="${esc(b.url)}">${esc(b.tag)}</a>`).replace('New and modified count', 'Tests marked New or Modified are')}</p>
 <h2>Scope of testing</h2>
 <p class="meta">Each test carries one or more scope tags. Click a tag to show only those tests.</p>
 <ul class="legend">
@@ -362,12 +422,15 @@ buttons.forEach((b) => b.addEventListener('click', () => {
 `;
   }
 
-  private markdown(rows: Row[], totals: { passed: number; failed: number; known: number }, failures: Item[], known: Item[],
-    notAutomated: Feature[], info: ReturnType<OverviewReporter['runInfo']>, result: FullResult): string {
+  private markdown(rows: Row[], totals: Totals, failures: Item[], known: Item[],
+    notAutomated: Feature[], info: ReturnType<OverviewReporter['runInfo']>, result: FullResult, base: Baseline | null): string {
+    const chg = (v: number) => (base ? String(v) : '–');
     const out = [`### VICARIO feature tests: ${result.status === 'passed' ? 'passed' : '**failed**'}`, '',
       `${totals.passed} passed, ${totals.failed} failed (${info.tier} tier, ${info.duration})`, '',
-      '| Feature | Passed | Failed |', '|---|---:|---:|',
-      ...rows.map((r) => `| ${r.name} | ${r.passed} | ${r.failed ? `**${r.failed}**` : 0} |`)];
+      '| Feature | Passed | Failed | New | Modified |', '|---|---:|---:|---:|---:|',
+      ...rows.map((r) => `| ${r.name} | ${r.passed} | ${r.failed ? `**${r.failed}**` : 0} | ${chg(r.added)} | ${chg(r.modified)} |`),
+      `| **Total** | ${totals.passed} | ${totals.failed ? `**${totals.failed}**` : 0} | ${chg(totals.added)} | ${chg(totals.modified)} |`,
+      '', baselineNote(base, (b) => `[${b.tag}](${b.url})`).replace(/<\/?code>/g, '`')];
     if (failures.length) out.push('', '**Failures**', '', ...failures.map((f) => `- ${f.feature}: ${f.title}: ${f.review ? `needs review (${f.review}): ` : ''}${f.error ?? ''}`));
     if (known.length) {
       const issues = [...new Set(known.map((k) => `${k.issue}: ${k.why}`))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));

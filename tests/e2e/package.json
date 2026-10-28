@@ -11,7 +11,8 @@
     "test:full": "playwright test --project full",
     "goldens:update": "cross-env UPDATE_GOLDENS=1 playwright test --project full --workers 1",
     "report": "playwright show-report report/playwright",
-    "guard": "bash scripts/check-data-sensitivity.sh"
+    "guard": "bash scripts/check-data-sensitivity.sh",
+    "check:dates": "node scripts/check-test-dates.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",

@@ -31,22 +31,23 @@ open report/index.html                             # feature overview; full Play
 
 - **Feature registry.** [`tests/e2e/features.yml`](../tests/e2e/features.yml) lists every capability (`vicar-io`, `pds3`, `pds4-images`, `output-formats`, ...) with a name and description, its code paths, keywords, tickets and status (`active`, `planned` with a milestone, or `excluded` with a reason). `features/registry.spec.ts` fails if a spec has no feature, an active feature has no spec, or a manifest asset is unpinned or unused.
 - **Specs.** One spec per feature in `tests/e2e/features/`. Each `test.describe` carries the feature tag and a tier tag (`@fast` or `@full`), so the HTML report groups results by feature. Specs import `test` and `expect` from `support/test.ts`, which adds a `source` annotation linking each test to its line on GitHub.
-- **Describing tests.** Every test passes `about(description, ...scopes)` as its details:
+- **Describing tests.** Every test passes `about(description, ...scopes, history)` as its details:
 
   ```ts
   test('SOURCE_REGION running past the image edge is clipped, not an error', about(
     'Asks for a 20 x 20 region at (40,60) of the 48 x 64 image ... Passes when the output is clipped to 8 x 4 ...',
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-22', modified: '2026-10-28' },
   ), async ({}, testInfo) => { ... });
   ```
 
   - **The description** says what the test does and what makes it pass. It is plain text; `` `backticks` `` mark code. It appears as the "what it checks" annotation in the Playwright report and on the procedures page.
   - **The scope tags** say what kind of testing it is. They are defined in `SCOPES` in `support/features.ts`: `@nominal`, `@off-nominal`, `@malformed-input`, `@lossless`, `@mission-data`, `@regression`, `@security`, `@legacy`, `@suite` and `@unit`. Filter by one with `--grep @off-nominal`.
-  - **Enforcement:** `registry.spec.ts` fails if any test lacks a description or a scope tag.
+  - **The history** says when the test was added and last modified (see [Test history](#test-history)).
+  - **Enforcement:** `registry.spec.ts` fails if any test lacks a description, a scope tag or an `added` date.
 - **Running the product.** Specs run the real CLI (`java -cp vicario-*-FAT.jar jpl.mipl.io.jConvertIIO ...`). Command lines and logs are attached to the report. `jConvertIIO` can exit 0 after an error, so `expectConverted()` also requires a non-empty output and a log free of exceptions.
 - **Oracle.** `jpl.mipl.io.testsupport.ImageProbe` (in `src/test/java`) decodes any readable image and reports its dimensions, data type, statistics and a format-independent `pixelSha256`. Lossless conversions must keep the hash; lossy ones are compared by statistics. A contrast-stretched PNG preview of every image is attached to the report.
 - **Unit tests in the report.** `features/junit.spec.ts` imports `target/surefire-reports`, one report entry per JUnit test, grouped under the feature whose `junit:` list names the class (an unlisted class fails).
-- **Synthetic data.** `jpl.mipl.io.testsupport.SyntheticGen` replaces VICAR `gen`: every data type × organization, plus the legacy 1×1024 / 1024×1 / REAL 100×100 cases.
+- **Synthetic data.** `jpl.mipl.io.testsupport.SyntheticGen` replaces VICAR `gen`: every data type × organization, plus the legacy 1×1024 / 1024×1 / REAL 100×100 cases. The 64 × 48 images hold `line + 2·sample + 30·band`, so BYTE values stay below 256 and every band is a smooth gradient; a sudden jump in a preview means the conversion changed the data. The legacy shapes keep the `gen` defaults, which wrap.
 - **Public data.** [`tests/e2e/data/manifest.json`](../tests/e2e/data/manifest.json) pins every downloaded file by URL, SHA-256 and license. `scripts/fetch-test-data.mjs` refuses any of the following:
   - unpinned files
   - non-HTTPS URLs
@@ -95,7 +96,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
   test('SOURCE_REGION running past the image edge is clipped, not an error', about(
     'Asks for a 20 x 20 region at (40,60) of the 48 x 64 image, which runs past both edges. '
       + 'Passes when the output is clipped to 8 x 4 with exactly those pixels, rather than an error.',
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-22' },       // the date you write the test
   ), async ({}, testInfo) => {
     issue('IDS-7560', 'EOF exception when the region is not fully inside the image');
     const r = await convert(testInfo, SRC, 'region_edge.png', { format: 'png', SOURCE_REGION: '(40,60,20,20)' });
@@ -107,9 +108,10 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
 ```
 
 - **`feature('<id>')`** on the `describe` tags the tests with their feature, so they are grouped and counted under it. Use `feature('<id>', 'full')` for tests that need the large downloads.
-- **`about(description, ...scopes)`** is required (`registry.spec.ts` fails without it):
+- **`about(description, ...scopes, history)`** is required (`registry.spec.ts` fails without it):
   - **Description:** one or two sentences, in the form "Does X. Passes when Y." It is plain text in the spec; `` `backticks` `` mark code.
   - **Scope tags:** one or more of the tags defined in `SCOPES` in `support/features.ts`.
+  - **History:** `{ added: 'YYYY-MM-DD' }` last, with today's date for a new test; see [Test history](#test-history).
 
   | Tag | Use for |
   |---|---|
@@ -124,14 +126,33 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
   | `@suite` | checks the test suite itself |
   | `@unit` | imported JUnit results |
 - **`issue(...)` / `knownFailure(...)`** attach the ticket.
+- **Image previews:** `probe()` attaches a preview of every image it decodes. The procedures page shows them with the test (up to 8 distinct images per test).
 - **Check content, not exit codes:** `jConvertIIO` can exit 0 after an error, so check the content. Compare pixels with `expectSamePixels` or the generator formula in `support/synthetic.ts`; check labels with `support/labels.ts`; for public products, compare against goldens with `expectGolden`.
+
+### Test history
+
+Every test records when it was added and when it last changed, so the report can show what each release added to or changed in the suite:
+
+- **New test:** `{ added: '<today>' }`.
+- **Changed test:** set `modified` to today, `{ added: '2026-10-22', modified: '<today>' }`, whenever you change what it does or checks: the code from `test(` to its closing parenthesis, title and description included. Keep `added` as it is. A renamed test counts as changed.
+- **Imported JUnit tests** need nothing: their dates come from `git blame` of the test method.
+
+How the report uses the dates:
+- **Baseline:** the newest published GitHub release older than the commit under test. On the build for a release that is the previous release, so the counts show what the new release added; on later builds of `main` it is the new release, so they show the work since. `publish.yml` runs when a release is published, so the site updates as soon as you release.
+- **New:** `added` is after the baseline's publication date. **Modified:** `added` is on or before it and `modified` after it. A test added or changed on the release day counts as part of that release.
+- **Offline:** if the release list cannot be read (no network, rate limit), the New and Modified columns show "–". `VICARIO_BASELINE_RELEASE=<tag>@<YYYY-MM-DD>` sets the baseline by hand, and `none` makes every test new.
+
+Checks:
+- **`registry.spec.ts`** fails if a test has no `added` date, a date is not YYYY-MM-DD or is in the future, or `modified` is not after `added`.
+- **`npm run check:dates`** (`scripts/check-test-dates.mjs`) compares each test's source with the merge base of `origin/main` and fails if a changed test's `modified` (or `added`, for a test added since) is older than that commit, if a new or renamed test has old dates, or if `added` of an existing test changed. The `e2e-fast` job runs it on every pull request against the base branch.
+- **Limit:** a change to a shared helper in `support/` changes what many tests do but is not attributed to them; the check only sees each test's own code.
 
 ### Where the description ends up
 
 The description is plain text in the spec; nothing else feeds it. At the end of a run the reporter (`support/overview-reporter.ts`) reads each test's annotations and tags and writes them out in three places:
 - **Playwright report:** shown as the "what it checks" and "source" annotations (plain text, with links).
-- **`report/procedures.html`:** rendered as HTML, with code formatting, scope chips, the result and links.
-- **Report overview and website:** counted for its feature, and listed in the feature's drop-down test table, which links to the test's procedure.
+- **`report/procedures.html`:** rendered as HTML, with code formatting, scope chips, its added and modified dates, the result, the image previews it made and links.
+- **Report overview and website:** counted for its feature (and as new or modified since the last release), and listed in the feature's drop-down test table, which links to the test's procedure.
 
 Changing the description in the spec changes all three on the next run.
 
@@ -148,6 +169,7 @@ Only publicly released data from the allowlisted archives (see [Data sensitivity
 ```bash
 mvn -B -P shade package test-compile
 cd tests/e2e && npx playwright test --project fast   # and --project full if you touched full-tier features
+npm run check:dates                                   # changed tests carry today's modified date
 open report/procedures.html                           # check your tests read well
 ```
 
@@ -161,11 +183,11 @@ open report/procedures.html                           # check your tests read we
 | `security-scan.yml` | pull requests to `main`/`develop`, push to `main`, manual | CodeQL (Java, Python, workflows) and SonarQube Cloud analysis; see [Security scanning](#security-scanning) |
 
 The report has three parts:
-- **`report/index.html`**, the feature overview: each feature's description, status and pass/fail counts, a drop-down table of its tests (each linked to its procedure), a gallery of image previews from its tests, the failures (with any "needs review" note), ticketed known failures grouped by ticket when there are any, and the features not yet automated. Each feature and image links into the full report.
-- **`report/procedures.html`**, the test procedures: every test grouped by feature, with its description, scope tags, issue notes and latest result, plus links to its run details and its source on GitHub. A scope legend at the top filters the list.
+- **`report/index.html`**, the feature overview: the overall result, then a summary table with each feature's test, passed, failed, known-issue, skipped, new and modified counts and a total row (new and modified are since the last release; see [Test history](#test-history)). Below it: the failures (with any "needs review" note), each feature's description, status and a drop-down table of its tests (each linked to its procedure and marked New or Modified, ending with a "Detailed procedures" link to the feature's section), ticketed known failures grouped by ticket when there are any, and the features not yet automated. Each feature links into the full report.
+- **`report/procedures.html`**, the test procedures: every test grouped by feature, with its description, scope tags, added and modified dates, issue notes, latest result and the image previews it read or wrote (copied to `report/images/`), plus links to its run details and its source on GitHub. A scope legend at the top filters the list.
 - **`report/playwright/`**, the Playwright HTML report: every test with its command line, logs, label text and image previews, including the JUnit results.
 
-`features/report-pages.spec.ts` checks the overview and the site: it runs a few sample tests through the reporter, builds the site from that report, and checks every drop-down link reaches a test on the procedures page.
+`features/report-pages.spec.ts` checks the overview and the site: it runs a few sample tests through the reporter with a fixed baseline release, builds the site from that report, and checks the summary's counts (including new and modified), that every drop-down link reaches a test on the procedures page, the "Detailed procedures" link, and that image previews appear with their test on the procedures page and not on the overview.
 
 Where to find it:
 - **Pull requests:** `ci.yml` uploads it as the `feature-report-fast` artifact, kept for **5 days**. GitHub serves artifacts as zip downloads, so unzip it and open `report/index.html`. The job summary also shows the feature table inline.

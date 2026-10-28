@@ -23,7 +23,7 @@ async function treeInfo(testInfo: import('@playwright/test').TestInfo, file: str
 test.describe('XML metadata and parser security', feature('xml-security'), () => {
   test('XML=true writes the label DOM as XML debug documents', about(
     `Converts the synthetic image to PDS3 with \`XML=true\`, which writes the label DOM as XML debug files. Passes when at least one XML file is written and each is well formed (opens and closes its root element).`,
-    '@nominal',
+    '@nominal', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_byte_bsq.vic'), 'xml_debug.pds', { format: 'pds', XML: 'true' });
     expectConverted(r);
@@ -40,7 +40,7 @@ test.describe('XML metadata and parser security', feature('xml-security'), () =>
 
   test('a DOCTYPE with a missing external DTD parses; the DTD is never loaded', about(
     `Parses, with the TreeInfo tool, an XML document whose DOCTYPE points at a DTD that does not exist. Passes when there is no exception: the hardened parser never loads external DTDs.`,
-    '@security', '@malformed-input', '@regression',
+    '@security', '@malformed-input', '@regression', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     issue('IDS-10406', 'before the fix this failed with FileNotFoundException for the DTD');
     const doc = testInfo.outputPath('label.xml');
@@ -52,7 +52,7 @@ test.describe('XML metadata and parser security', feature('xml-security'), () =>
 
   test('external entities are not resolved (no file read, no error)', about(
     `Parses a hostile XML document with external general and parameter entities: one reads a local "secret" file, another points at a missing file. Passes when the secret text never appears in the output and nothing tries to open the missing file.`,
-    '@security', '@malformed-input',
+    '@security', '@malformed-input', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     issue('IDS-10406', 'XXE: external general and parameter entities must be ignored');
     const secret = testInfo.outputPath('secret.txt');
@@ -72,7 +72,7 @@ test.describe('XML metadata and parser security', feature('xml-security'), () =>
 
   test('an XSL stylesheet cannot read files through external entities', about(
     `Converts the synthetic image to PDS3 with \`XSL=\` set to a copy of \`VicarToPDSmer1.xsl\` that declares an external entity reading a local "secret" file and writes it into a \`LEAK\` label item. Passes when the conversion still produces a valid label and the secret text appears in neither the label nor the log.`,
-    '@security', '@malformed-input', '@regression',
+    '@security', '@malformed-input', '@regression', { added: '2026-10-27' },
   ), async ({}, testInfo) => {
     issue('IDS-10406', 'fixed: stylesheets were parsed without XXE protection (Sonar java:S2755 on TransformerFactory), '
       + 'so XSL= could read any local file into the output label');

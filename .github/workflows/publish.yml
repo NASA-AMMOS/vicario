@@ -37,6 +37,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # the report dates imported JUnit tests from git blame
 
       - name: Set up JDK 17
         uses: actions/setup-java@v6
@@ -81,6 +83,9 @@ jobs:
       - name: Feature tests (full tier)
         id: tests
         run: npx playwright test --project full
+        env:
+          # reads the release list, for the new and modified test counts
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Feature summary
         if: ${{ !cancelled() }}
