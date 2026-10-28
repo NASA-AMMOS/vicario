@@ -5,10 +5,18 @@ import path from 'node:path';
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
 import { XSL_DIR, synthetic } from '../support/env';
-import { about, feature, issue, needsReview } from '../support/features';
+import { about, feature, issue } from '../support/features';
 import { expectGolden } from '../support/goldens';
 import { expectValidPds3Label, pdsLabel } from '../support/labels';
 import { convert, expectConverted, expectSamePixels, probe, tryProbe } from '../support/run';
+
+/** The VICAR label text (the first LBLSIZE bytes) of a VICAR file. */
+function vicarLabelText(file: string): string {
+  const text = readFileSync(file, 'latin1');
+  const size = Number(text.match(/^LBLSIZE=\s*(\d+)/)?.[1]);
+  expect(size, `${path.basename(file)} starts with LBLSIZE`).toBeGreaterThan(0);
+  return text.slice(0, size);
+}
 
 test.describe('PDS3 products', feature('pds3'), () => {
   const input = synthetic('gen_byte_bsq.vic');
@@ -36,13 +44,42 @@ test.describe('PDS3 products', feature('pds3'), () => {
   });
 
   test('PDS_FILENAME_IN_LABEL=true puts the output file name in the label', about(
-    `Converts the synthetic image to PDS3 with \`PDS_FILENAME_IN_LABEL=true\`. Passes when the output file name appears in the label.`,
-    '@nominal',
+    `Converts the synthetic image to PDS3 with \`PDS_FILENAME_IN_LABEL=true\`. Passes when the label is valid, its \`^IMAGE\` pointer names the output file by its base name (\`^IMAGE = ("named.pds",n)\`) and the pixels are unchanged.`,
+    '@nominal', '@regression', '@lossless',
   ), async ({}, testInfo) => {
-    needsReview('REVIEW-9', 'the documented keyword PDS_FILENAME_IN_LABEL is parsed as PDS_FILENAME, so it is ignored');
+    issue('REVIEW-9', 'fixed: the documented keyword PDS_FILENAME_IN_LABEL was parsed as PDS_FILENAME and ignored, '
+      + 'and the writer never put the file name in the label');
     const r = await convert(testInfo, input, 'named.pds', { format: 'pds', PDS_FILENAME_IN_LABEL: 'true' });
     expectConverted(r);
-    expect(readFileSync(r.out, 'latin1')).toContain('named.pds');
+    const label = expectValidPds3Label(r.out, dims);
+    expect(label).toMatch(/^\^IMAGE\s*=\s*\("named\.pds",\s*\d+\)\s*$/m);
+    expect(label, 'no directory in the file name').not.toContain(path.dirname(r.out));
+    expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, input));
+  });
+
+  test('PDS_FILENAME (older spelling) still puts the file name in the label', about(
+    `Converts the synthetic image to PDS3 with \`PDS_FILENAME=true\`, the only spelling the parser accepted before. Passes when the \`^IMAGE\` pointer names the output file.`,
+    '@nominal', '@regression',
+  ), async ({}, testInfo) => {
+    issue('REVIEW-9', 'PDS_FILENAME is kept as an alias of PDS_FILENAME_IN_LABEL');
+    const r = await convert(testInfo, input, 'alias.pds', { format: 'pds', PDS_FILENAME: 'true' });
+    expectConverted(r);
+    expect(expectValidPds3Label(r.out, dims)).toMatch(/^\^IMAGE\s*=\s*\("alias\.pds",\s*\d+\)\s*$/m);
+  });
+
+  test('without PDS_FILENAME_IN_LABEL, or with =false, the label names no file', about(
+    `Converts the synthetic image to PDS3 without the keyword, and again with \`PDS_FILENAME_IN_LABEL=false\`. Passes when both labels use the record-number pointer \`^IMAGE = n\` and do not contain the output file name.`,
+    '@off-nominal', '@regression',
+  ), async ({}, testInfo) => {
+    issue('REVIEW-9', 'the file name is opt-in; the default attached label is unchanged');
+    const cases: [string, Record<string, string>][] = [['plain.pds', {}], ['nofile.pds', { PDS_FILENAME_IN_LABEL: 'false' }]];
+    for (const [name, kv] of cases) {
+      const r = await convert(testInfo, input, name, { format: 'pds', ...kv });
+      expectConverted(r);
+      const label = expectValidPds3Label(r.out, dims);
+      expect(label).toMatch(/^\^IMAGE\s*=\s*\d+\s*$/m);
+      expect(label).not.toContain(name);
+    }
   });
 
   test('PDS_LABEL_TYPE=ODL3 writes an ODL3 label', about(
@@ -67,13 +104,30 @@ test.describe('PDS3 products', feature('pds3'), () => {
   });
 
   test('reads an MSL Navcam EDR through its detached .LBL', about(
-    `Converts the same MSL thumbnail by giving jConvertIIO its detached \`.LBL\` label instead of the image file. Passes when the conversion succeeds.`,
-    '@mission-data',
+    `Converts the same MSL thumbnail by giving jConvertIIO its detached \`.LBL\` label instead of the image file. Passes when the conversion succeeds and the VICAR output has the same pixels as the \`.IMG\`.`,
+    '@mission-data', '@regression', '@lossless',
   ), async ({}, testInfo) => {
-    needsReview('REVIEW-7', 'PDSImageReader fails on the detached MSL label: "Error reading header: Negative size"');
-    asset('msl-navcam-thumb-img'); // the label points at this file
+    issue('REVIEW-7', 'fixed: the embedded VICAR label (^IMAGE_HEADER in the .IMG) was read from the .LBL before the '
+      + 'data file was opened, and seeking past the end of the .LBL failed with "Negative size"');
+    const img = asset('msl-navcam-thumb-img'); // the label points at this file
     const r = await convert(testInfo, asset('msl-navcam-thumb-lbl'), 'msl_lbl.vic', { format: 'vicar' });
     expectConverted(r);
+    expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, img));
+  });
+
+  test('namespaced PDS3 keywords (MSL:...) become legal VICAR keywords', about(
+    `Converts the MSL thumbnail's detached \`.LBL\`, which uses namespaced keywords such as \`MSL:MODEL_TRANSFORM_VECTOR\`, to VICAR. Passes when no VICAR keyword contains \`:\`, the namespace is dropped (\`MODEL_TRANSFORM_VECTOR=\` is present, as in the mission's own VICAR label) and the output reads back with the \`.IMG\` pixels.`,
+    '@mission-data', '@regression',
+  ), async ({}, testInfo) => {
+    issue('NEW-pds3-2', 'fixed: MSL:... keywords were copied verbatim into the VICAR label, which vicario then could '
+      + 'not read back ("\'=\' expected after label keyword \'MSL\'")');
+    const img = asset('msl-navcam-thumb-img');
+    const r = await convert(testInfo, asset('msl-navcam-thumb-lbl'), 'msl_ns.vic', { format: 'vicar' });
+    expectConverted(r);
+    const label = vicarLabelText(r.out);
+    expect(label.match(/(?:^|\s)[A-Z0-9_]*:[A-Z0-9_]+=/g), 'keywords with a namespace').toBeNull();
+    expect(label).toMatch(/(?:^|\s)MODEL_TRANSFORM_VECTOR=\(/);
+    expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, img));
   });
 
   test('PDS-labelled input to FORMAT=pds with the default stylesheet', about(

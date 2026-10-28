@@ -251,6 +251,21 @@ public class PDSImageWriteParam extends ImageWriteParam {
 	  public void setOutputFileName(String _outputFileName) {
 		outputFileName = _outputFileName;
 	}
+
+	boolean filenameInLabel = false;
+
+	/**
+	 * true (jConvertIIO PDS_FILENAME_IN_LABEL=true) names the output file in the
+	 * attached label's data pointers: ^IMAGE = ("name.pds",n) instead of ^IMAGE = n.
+	 * The name is the base name of getOutputFileName().
+	 */
+	public void setFilenameInLabel(boolean f) {
+		filenameInLabel = f;
+	}
+
+	public boolean getFilenameInLabel() {
+		return filenameInLabel;
+	}
 	
     //	 String inputFileName; // used by the writer to put the filename into the label
 	public String getInputFileName() {

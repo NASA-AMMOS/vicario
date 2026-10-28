@@ -15,7 +15,7 @@ features:
     code: [src/main/java/jpl/mipl/io/vicar/**, src/main/java/jpl/mipl/io/plugins/Vicar*]
     keywords: [FORMAT=vicar]
     specs: [features/vicar-io.spec.ts]
-    junit: [jpl.mipl.io.vicar.VicarLabelTest]
+    junit: [jpl.mipl.io.vicar.VicarLabelTest, jpl.mipl.io.streams.ImageInputStreamStrideTest, jpl.mipl.io.plugins.VicarImageReaderLabelErrorTest]
 
   - id: vicar-binary
     name: VICAR binary headers and prefixes
@@ -23,9 +23,10 @@ features:
     description: >
       Images with binary label headers and per-line prefixes (NLB/NBB): decoding them, and keeping
       the prefix bytes when converting to VICAR or PDS (KEEP_LINE_PREFIX, ADD_BINARY_HEADER).
-    code: [src/main/java/jpl/mipl/io/vicar/**]
+    code: [src/main/java/jpl/mipl/io/vicar/**, src/main/java/jpl/mipl/io/plugins/VicarImageWriter.java]
     keywords: [KEEP_LINE_PREFIX, ADD_BINARY_HEADER, RI]
     specs: [features/vicar-binary.spec.ts]
+    junit: [jpl.mipl.io.plugins.VicarImageWriterBinaryTest]
 
 
   - id: pds3
@@ -37,7 +38,7 @@ features:
     code: [src/main/java/jpl/mipl/io/plugins/PDS*, src/main/java/jpl/mipl/io/vicar/PDS*]
     keywords: [FORMAT=pds, EMBED_VICAR_LABEL, PDS_FILENAME_IN_LABEL, PDS_OBJECT, PDS_DETACHED_LABEL, PDS_DETACHED_ONLY]
     specs: [features/pds3.spec.ts]
-    junit: [jpl.mipl.io.vicar.PDS3ObjectNameTest]
+    junit: [jpl.mipl.io.vicar.PDS3ObjectNameTest, jpl.mipl.io.vicar.PDS3DetachedLabelTest]
     tickets: [IDS-10212, IDS-8497]
 
   - id: xsl-labels
@@ -62,7 +63,7 @@ features:
     status: active
     description: Exporting PDS4 tables (character, delimited) as CSV or fixed-width text, with the bundled ExtractTableJPL tool and jConvertIIO's PDS4_TABLE_* keywords.
     code: [src/main/java/jpl/mipl/io/plugins/PDS4Table*, src/main/java/jpl/mipl/io/util/ExtractTableJPL.java]
-    keywords: [PDS4_TABLE_LIST, PDS4_TABLE_INDEX, PDS4_TABLE_FIELDS, PDS4_TABLE_OUPUT_FORMAT]
+    keywords: [PDS4_TABLE_LIST, PDS4_TABLE_INDEX, PDS4_TABLE_FIELDS, PDS4_TABLE_OUTPUT_FORMAT, PDS4_TABLE_OUPUT_FORMAT, TABLE_FIELD_SEPARATOR]
     specs: [features/pds4-tables.spec.ts]
     tickets: [IDS-6210]
 
@@ -73,6 +74,7 @@ features:
     description: Reading ISIS2 cubes with SFDU labels, such as Cassini VIMS spectral cubes (ISIS3 cubes are not supported).
     code: [src/main/java/jpl/mipl/io/plugins/ISIS*, src/main/java/jpl/mipl/io/vicar/ISIS*]
     specs: [features/isis.spec.ts]
+    junit: [jpl.mipl.io.plugins.ReaderSelectionTest]
 
 
   - id: fits
@@ -96,11 +98,15 @@ features:
     name: Output formats
     status: active
     description: >
-      Every FORMAT= name and alias used by the legacy test (TIFF, PNG, JPEG, JPEG 2000,
-      JPEG-LS, BMP, PNM, RAW, PDS, VICAR, ISIS), for 8-bit, 16-bit and float images.
-    code: [src/main/java/jpl/mipl/io/jConvertIIO.java]
+      Every FORMAT= name and alias used by the legacy test (TIFF, PNG, JPEG/JFIF, JPEG 2000,
+      BMP, PNM, RAW, PDS, VICAR), for 8-bit, 16-bit and float images. The legacy
+      test also listed ISIS, JPEG-LS and JPEG-LOSSLESS; those tests are skipped because this
+      build has no writer for them. RAW is headerless band-sequential; PNM is written by
+      vicario's own PGM/PPM writer. TIFF output can be read back as input.
+    code: [src/main/java/jpl/mipl/io/jConvertIIO.java, src/main/java/jpl/mipl/io/plugins/PNMImageWriter.java, src/main/java/jpl/mipl/io/plugins/PNMImageWriterSpi.java]
     keywords: [FORMAT, OUT]
     specs: [features/output-formats.spec.ts]
+    junit: [jpl.mipl.io.plugins.PNMImageWriterTest]
 
   - id: data-types
     name: Data type conversion

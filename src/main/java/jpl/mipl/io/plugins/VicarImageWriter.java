@@ -107,9 +107,17 @@ public class VicarImageWriter extends ImageWriter {
     
     // need
     public void write(IIOImage iioImage, ImageWriteParam writeParam) throws IIOException {
-        // do something with the writeParams
-        write(iioImage);
+        write(null, iioImage, writeParam);
     }
+
+    /**
+     * The write param of the current write() call.  A PDSImageWriteParam
+     * says whether to keep the input's binary line prefixes
+     * (getAddLinePrefix, jConvertIIO KEEP_LINE_PREFIX) and binary header
+     * (getAddBinaryHeader, jConvertIIO ADD_BINARY_HEADER).  With no param,
+     * or another kind of param, neither is written.
+     */
+    private ImageWriteParam _writeParam = null;
     
     public void write(IIOImage iioImage) throws IIOException {
         if (output == null) {
@@ -150,7 +158,7 @@ public class VicarImageWriter extends ImageWriter {
             if (_debug) System.out.println("VicarImageWriter.write() using VicarMetadata");
             VicarMetadata vm = (VicarMetadata) metadata;
             VicarLabel vicarLabel = vm.getVicarLabel();
-            write(ri, vicarLabel);
+            write(ri, vicarLabel, vm);
         } else {
         
         /* case 2.a)
@@ -175,7 +183,11 @@ public class VicarImageWriter extends ImageWriter {
     
     // since this isn't in the ImageWriter API make this a private method.
     // for testing it is currently public
-    private void write(RenderedImage ri, VicarLabel vicarLabel) {     
+    private void write(RenderedImage ri, VicarLabel vicarLabel) {
+        write(ri, vicarLabel, null);
+    }
+
+    private void write(RenderedImage ri, VicarLabel vicarLabel, VicarMetadata vm) {
             
         if (output == null) {
                 throw new IllegalStateException ("Output must be set");
@@ -198,6 +210,7 @@ public class VicarImageWriter extends ImageWriter {
             
             
              jpl.mipl.io.vicar.SystemLabel systemLabel;
+             byte[] binary; // binary header to write, null for none
             // should check if we have a param and use it
             // VicarLabel vicarLabel = vof.getVicarLabel();
             // SystemLabel systemLabel = vof.getSystemLabel();
@@ -209,6 +222,7 @@ public class VicarImageWriter extends ImageWriter {
                 if (_debug) System.out.println("null VicarLabel creating one from the image");
                 // jpl.mipl.io.vicar.SystemLabel systemLabel = createSystemLabel(sm);
                 systemLabel = createSystemLabel(ri);
+                binary = setupBinary(ri, systemLabel, vm);
                 
                 vof.setSystemLabel(systemLabel);
                 vof.setVicarLabel(vicarLabel);
@@ -227,6 +241,7 @@ public class VicarImageWriter extends ImageWriter {
                 // attributes may have changed after the data was read into memory
 				if (_debug) System.out.println("VicarImageWriter.write() using old vicarLabel + new system");
                 systemLabel = createSystemLabel(ri);
+                binary = setupBinary(ri, systemLabel, vm);
                  vof.setPrimaryInput(systemLabel, vicarLabel );
              }
 
@@ -237,8 +252,15 @@ public class VicarImageWriter extends ImageWriter {
            
             if (_debug) System.out.println("VicarImageWriter.write() vof.open() "+output);
             // vof.open((OutputStream) output); // output stream was supplied to the constructor
+            if (_linePrefix != null)
+                vof.setVicarBinaryLinePrefix(_linePrefix);
             vof.open( output); // output stream was supplied to the constructor
             if (_debug) System.out.println("VicarImageWriter.write() after vof.open");
+            if (binary != null) {
+                VicarBinaryLabel vbl = vof.createBinaryHeader();
+                System.arraycopy(binary, 0, vbl.getBuffer(), 0, binary.length);
+                vof.setBinaryHeader(vbl);
+            }
            
             // ImageWriter.setOutput(Object) which should be ImageOutputStream
             // open writes the label to the file
@@ -363,8 +385,108 @@ public class VicarImageWriter extends ImageWriter {
             // throw new UnsupportedOperationException ();
         } 
         
-        
-        write(image); 
+        _writeParam = param;
+        try {
+            write(image);
+        } finally {
+            _writeParam = null;
+        }
+    }
+
+    /**
+     * Carries the input's binary line prefixes (NBB) and binary header (NLB)
+     * over to the output when the write param asks for them (see
+     * _writeParam) and the reader put them in the VicarMetadata.  Sets NBB,
+     * NLB, RECSIZE and BLTYPE/BHOST/BINTFMT/BREALFMT in the output system
+     * label and the prefixes in the VicarOutputFile (via
+     * setVicarBinaryLinePrefix, done by the caller through vm).
+     * <p>
+     * Prefixes are kept only if the image still has the input's number of
+     * lines and bands (one prefix per output record); after a line or band
+     * subset they are dropped with a warning.
+     * <p>
+     * The binary header is NLB records of the input's RECSIZE.  If the
+     * output RECSIZE differs (e.g. the prefixes were dropped, or the data
+     * type changed), each header record is copied to the start of an output
+     * record and zero-padded, or cut to the output RECSIZE if only zero bytes
+     * are cut.  If non-zero bytes would be cut, the header bytes are instead
+     * written contiguously into as many output records as they need (NLB
+     * grows) and a warning is printed.
+     *
+     * @return the binary header bytes to write (NLB * RECSIZE of the output),
+     * or null for none
+     */
+    byte[] setupBinary(RenderedImage ri, SystemLabel sl, VicarMetadata vm) {
+        _linePrefix = null;
+        if (vm == null || !(_writeParam instanceof PDSImageWriteParam))
+            return null;
+        PDSImageWriteParam p = (PDSImageWriteParam) _writeParam;
+        VicarBinaryLinePrefix vbp = p.getAddLinePrefix() ? vm.getVicarBinaryLinePrefix() : null;
+        VicarBinaryHeader vbh = p.getAddBinaryHeader() ? vm.getVicarBinaryHeader() : null;
+        if (vbh != null && (vbh.get_nlb() <= 0 || vbh.getData() == null))
+            vbh = null;
+
+        if (vbp != null && vbp.get_nbb() > 0) {
+            int bands = ri.getSampleModel().getNumBands();
+            if (vbp.get_nl() == ri.getHeight() && vbp.get_nb() == bands) {
+                sl.setNBB(vbp.get_nbb());
+                sl.calcRecsize();
+                _linePrefix = vbp;
+                setBinaryFormat(sl, vbp.get_bltype(), vbp.get_bhost(),
+                                vbp.get_bintfmt(), vbp.get_brealfmt());
+            } else {
+                System.err.println("VicarImageWriter warning: not writing the "
+                    + vbp.get_nbb() + "-byte line prefixes: the input had "
+                    + vbp.get_nl() + " lines and " + vbp.get_nb()
+                    + " bands, the output has " + ri.getHeight() + " lines and "
+                    + bands + " bands");
+            }
+        }
+        if (vbh == null)
+            return null;
+
+        if (_linePrefix == null)
+            setBinaryFormat(sl, vbh.get_bltype(), vbh.get_bhost(),
+                            vbh.get_bintfmt(), vbh.get_brealfmt());
+        int nlb = vbh.get_nlb();
+        int inRec = vbh.get_recsize();
+        int outRec = sl.getRecsize();
+        byte[] in = vbh.getData();
+        int inSize = Math.min(in.length, nlb * inRec);
+        boolean cutsData = false;
+        for (int r = 0; r < nlb && outRec < inRec; r++)
+            for (int i = r * inRec + outRec; i < Math.min((r + 1) * inRec, inSize); i++)
+                if (in[i] != 0) cutsData = true;
+        byte[] out;
+        if (!cutsData) {
+            out = new byte[nlb * outRec];
+            for (int r = 0; r < nlb; r++) {
+                int n = Math.min(Math.min(inRec, outRec), inSize - r * inRec);
+                if (n > 0) System.arraycopy(in, r * inRec, out, r * outRec, n);
+            }
+        } else {
+            nlb = (inSize + outRec - 1) / outRec;
+            out = new byte[nlb * outRec];
+            System.arraycopy(in, 0, out, 0, inSize);
+            System.err.println("VicarImageWriter warning: the binary header records ("
+                + inRec + " bytes) do not fit the output RECSIZE " + outRec
+                + "; writing the " + inSize + " header bytes contiguously in "
+                + nlb + " records");
+        }
+        sl.setNLB(nlb);
+        return out;
+    }
+
+    /** Line prefixes to write for the current image, set by setupBinary. */
+    private VicarBinaryLinePrefix _linePrefix = null;
+
+    /** Copies the binary data description, needed to interpret the bytes. */
+    private static void setBinaryFormat(SystemLabel sl, String bltype,
+            String bhost, String bintfmt, String brealfmt) {
+        if (bltype != null) sl.setBLType(bltype);
+        if (bhost != null) sl.setBHost(bhost);
+        if (bintfmt != null) sl.setBIntFmt(bintfmt);
+        if (brealfmt != null) sl.setBRealFmt(brealfmt);
     }
 
     

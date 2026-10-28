@@ -10,7 +10,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSyn
 import path from 'node:path';
 import type { FullConfig, FullResult, Reporter, Suite, TestCase } from '@playwright/test/reporter';
 import { E2E_ROOT, sourceUrl } from './env';
-import { ABOUT, NEEDS_REVIEW, SCOPES, features, tagOf, type Feature, type Scope } from './features';
+import { ABOUT, DEFERRED, NEEDS_REVIEW, SCOPES, features, tagOf, type Feature, type Scope } from './features';
 
 interface Row {
   feature?: Feature;
@@ -34,6 +34,13 @@ interface Item { title: string; testId: string; feature: string; issue: string; 
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const PW = 'playwright/index.html';
+/** Product tests first, then imported JUnit results, then suite bookkeeping. */
+const rank = (p: Procedure) => (p.scopes.includes('@suite') ? 2 : p.scopes.includes('@unit') ? 1 : 0);
+const byRank = (ps: Procedure[]) => [...ps].sort((a, b) => rank(a) - rank(b));
+const RESULT: Record<Procedure['result'], [string, string]> =
+  { passed: ['pass', 'Passed'], failed: ['fail', 'Failed'], known: ['warn', 'Known issue'], skipped: ['', 'Skipped'] };
+/** Anchor of a test's entry on the procedures page. */
+const procedureId = (testId: string) => `t-${testId}`;
 
 /** Styles shared by the overview and procedures pages. */
 const CSS = `:root { --bg:#ffffff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --card:#f6f8fa; --link:#0969da;
@@ -125,8 +132,9 @@ export default class OverviewReporter implements Reporter {
       row.procedures.push({
         title: t.title, group: t.parent.title, testId: t.id, scopes, result,
         about: t.annotations.find((a) => a.type === ABOUT)?.description ?? '',
-        issues: [...t.annotations, ...(last?.annotations ?? [])].filter((a) => a.type === 'issue' || a.type === NEEDS_REVIEW)
-          .map((a) => a.type === NEEDS_REVIEW ? `NEEDS REVIEW: ${a.description ?? ''}` : a.description ?? '')
+        issues: [...t.annotations, ...(last?.annotations ?? [])].filter((a) => a.type === 'issue' || a.type === NEEDS_REVIEW || a.type === DEFERRED)
+          .map((a) => a.type === NEEDS_REVIEW ? `NEEDS REVIEW: ${a.description ?? ''}`
+            : a.type === DEFERRED ? `DEFERRED: ${a.description ?? ''}` : a.description ?? '')
           .filter((v, i, a) => a.indexOf(v) === i),
         source: t.annotations.find((a) => a.type === 'junit source')?.description ?? sourceUrl(t.location.file, t.location.line),
       });
@@ -148,7 +156,8 @@ export default class OverviewReporter implements Reporter {
     mkdirSync(this.outDir, { recursive: true });
     writeFileSync(path.join(this.outDir, 'summary.json'), JSON.stringify({
       status: result.status, ...totals, ...info,
-      features: all.map((r) => ({ id: r.key, name: r.name, passed: r.passed, failed: r.failed, known: r.known, scopes: r.scopes })),
+      features: all.map((r) => ({ id: r.key, name: r.name, passed: r.passed, failed: r.failed, known: r.known, scopes: r.scopes,
+        tests: byRank(r.procedures).map((p) => ({ title: p.title, anchor: procedureId(p.testId), result: p.result, scopes: p.scopes })) })),
     }, null, 2));
     writeFileSync(path.join(this.outDir, 'index.html'), this.html(all, totals, failures, known, notAutomated, info, result));
     writeFileSync(path.join(this.outDir, 'procedures.html'), this.procedures(all, info, result));
@@ -212,8 +221,15 @@ export default class OverviewReporter implements Reporter {
       const link = r.feature ? `${PW}#?q=${encodeURIComponent(tagOf(r.feature))}` : `${PW}#?q=${encodeURIComponent('@' + r.key)}`;
       const gallery = r.images.length ? `<div class="gallery">${r.images.map((i) =>
         `<a href="${PW}#?testId=${encodeURIComponent(i.testId)}" title="${esc(i.caption)}"><img src="${i.src}" alt="${esc(i.caption)}" data-public="${!i.synthetic}" loading="lazy"><span>${esc(i.caption)}</span></a>`).join('')}</div>` : '';
+      // a collapsed summary table of the feature's tests, each linking to its procedure
+      const tests = r.procedures.length ? `<details class="tests"><summary>${r.procedures.length} test${r.procedures.length === 1 ? '' : 's'}</summary><div class="scroll"><table>
+<thead><tr><th>Test</th><th>Scope</th><th>Result</th></tr></thead><tbody>
+${byRank(r.procedures).map((p) => `<tr><td><a href="procedures.html#${esc(procedureId(p.testId))}">${esc(p.title)}</a></td>`
+        + `<td>${p.scopes.map((sc) => `<span class="scope">${esc(sc.slice(1))}</span>`).join(' ')}</td>`
+        + `<td><span class="pill ${RESULT[p.result][0]}">${RESULT[p.result][1]}</span></td></tr>`).join('\n')}
+</tbody></table></div></details>` : '';
       return `<tr>
-  <td><a class="fname" href="${link}">${esc(r.name)}</a><div class="desc">${esc(r.description)} <a href="procedures.html#${esc(r.key)}">Procedures</a></div>${gallery}</td>
+  <td><a class="fname" href="${link}">${esc(r.name)}</a><div class="desc">${esc(r.description)} <a href="procedures.html#${esc(r.key)}">Procedures</a></div>${tests}${gallery}</td>
   <td><span class="pill ${state}">${label}</span></td>
   <td class="num">${r.passed}</td><td class="num ${r.failed ? 'bad' : ''}">${r.failed}</td>
 </tr>`;
@@ -244,7 +260,11 @@ ${notAutomated.map((f) => `<tr><td><span class="fname">${esc(f.name)}</span><div
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VICARIO Feature Tests</title>
 <style>
-${CSS}</style></head>
+${CSS}
+details.tests { background:transparent; padding:2px 10px; } details.tests summary { font-size:13px; font-weight:600; }
+details.tests table { font-size:13px; } details.tests th, details.tests td { padding:5px 6px; } details.tests td:first-child { width:60%; }
+details.tests .scope { display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--muted); margin:1px 2px 1px 0; }
+</style></head>
 <body><main>
 <h1>VICARIO feature tests</h1>
 <div class="meta">${meta}</div>
@@ -268,9 +288,6 @@ ${notAutoHtml}
   }
 
   private procedures(rows: Row[], info: ReturnType<OverviewReporter['runInfo']>, result: FullResult): string {
-    const RESULT = { passed: ['pass', 'Passed'], failed: ['fail', 'Failed'], known: ['warn', 'Known issue'], skipped: ['', 'Skipped'] };
-    // product tests first, then imported JUnit results, then suite bookkeeping
-    const rank = (p: Procedure) => (p.scopes.includes('@suite') ? 2 : p.scopes.includes('@unit') ? 1 : 0);
     const chip = (sc: Scope) => `<span class="scope" title="${esc(SCOPES[sc])}">${esc(sc.slice(1))}</span>`;
     const counts = (m: Partial<Record<Scope, number>>) => (Object.keys(SCOPES) as Scope[]).filter((sc) => m[sc])
       .map((sc) => `${chip(sc)}<span class="n">${m[sc]}</span>`).join(' ');
@@ -284,10 +301,10 @@ ${notAutoHtml}
 <p class="desc">${esc(r.description)}</p>
 <p class="counts">${r.procedures.length} tests · ${counts(r.scopes)}</p>
 <ol class="procs">
-${[...r.procedures].sort((a, b) => rank(a) - rank(b)).map((p) => {
+${byRank(r.procedures).map((p) => {
       const [cls, label] = RESULT[p.result];
       const group = p.group && p.group !== r.name ? `<span class="group">${esc(p.group)}</span>` : '';
-      return `<li data-scopes="${esc(p.scopes.map((sc) => sc.slice(1)).join(' '))}">
+      return `<li id="${esc(procedureId(p.testId))}" data-scopes="${esc(p.scopes.map((sc) => sc.slice(1)).join(' '))}">
   <div class="head"><span class="ptitle">${esc(p.title)}</span><span class="pill ${cls}">${label}</span></div>
   <div class="chips">${p.scopes.map(chip).join('')}${group}</div>
   <p>${p.about ? rich(p.about) : '<em>No description.</em>'}</p>

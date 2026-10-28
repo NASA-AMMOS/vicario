@@ -154,7 +154,7 @@ public class PDS4TableReadParam extends ImageReadParam {
 	}
 	
 	public void setIndex(int i) {
-		index = 1;
+		index = i;
 		
 	}
 	

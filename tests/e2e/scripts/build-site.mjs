@@ -6,7 +6,7 @@
 //
 //   node scripts/build-site.mjs [--report report] [--out site]
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 
@@ -14,8 +14,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(root, '..', '..');
 const args = process.argv.slice(2);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
-const reportDir = join(root, opt('--report', 'report'));
-const outDir = join(root, opt('--out', 'site'));
+const reportDir = resolve(root, opt('--report', 'report'));
+const outDir = resolve(root, opt('--out', 'site'));
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const features = parse(readFileSync(join(root, 'features.yml'), 'utf8')).features;
@@ -108,13 +108,23 @@ const formats = [
 // --- capabilities and test results ---
 
 const counts = new Map((summary?.features ?? []).map((f) => [f.id, f]));
+const RESULT = { passed: ['pass', 'Passed'], failed: ['fail', 'Failed'], known: ['warn', 'Known issue'], skipped: ['', 'Skipped'] };
+// a collapsed summary table of a feature's tests, each linking to its procedure
+const testTable = (tests) => `<details class="tests"><summary>${tests.length} test${tests.length === 1 ? '' : 's'}</summary><div class="scroll"><table>
+<thead><tr><th>Test</th><th>Scope</th><th>Result</th></tr></thead><tbody>
+${tests.map((t) => {
+    const [cls, label] = RESULT[t.result] ?? ['', t.result];
+    return `<tr><td><a href="tests/procedures.html#${encodeURIComponent(t.anchor)}">${esc(t.title)}</a></td>`
+      + `<td>${t.scopes.map((sc) => `<span class="scope">${esc(sc.slice(1))}</span>`).join(' ')}</td><td><span class="pill ${cls}">${label}</span></td></tr>`;
+  }).join('\n')}
+</tbody></table></div></details>`;
 const capabilityRows = features.filter((f) => f.status === 'active').map((f) => {
   const c = counts.get(f.id);
   const total = c ? c.passed + c.failed + c.known : null;
   const link = `tests/procedures.html#${encodeURIComponent(f.id)}`;
   const scopes = Object.entries(c?.scopes ?? {}).map(([sc, n]) => `<span class="scope">${esc(sc.slice(1))} ${n}</span>`).join(' ');
   return `<tr>
-  <td><a class="fname" href="${link}">${esc(f.name)}</a><div class="desc">${esc(f.description.trim())}</div>${scopes ? `<div class="scopes">${scopes}</div>` : ''}</td>
+  <td><a class="fname" href="${link}">${esc(f.name)}</a><div class="desc">${esc(f.description.trim())}</div>${scopes ? `<div class="scopes">${scopes}</div>` : ''}${c?.tests?.length ? testTable(c.tests) : ''}</td>
   <td class="num">${total ?? '–'}</td><td class="num">${c ? c.passed : '–'}</td><td class="num ${c?.failed ? 'bad' : ''}">${c ? c.failed : '–'}</td>
 </tr>`;
 }).join('\n');
@@ -176,6 +186,11 @@ td.kw { font-family:ui-monospace,Menlo,monospace; font-size:13px; white-space:no
 .scopes { margin-top:6px; } .scope { display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--muted); margin:2px 2px 0 0; }
 details { border:1px solid var(--line); border-radius:8px; padding:6px 12px; margin:8px 0; }
 summary { cursor:pointer; font-weight:600; padding:4px 0; }
+details.tests { margin:8px 0 0; padding:2px 10px; } details.tests summary { font-size:13px; }
+details.tests table { font-size:13px; } details.tests th, details.tests td { padding:5px 6px; }
+details.tests td:first-child { width:60%; }
+.pill { display:inline-block; font-size:12px; padding:1px 9px; border-radius:999px; white-space:nowrap; color:var(--muted); background:var(--card); }
+.pill.pass { color:var(--pass); } .pill.fail { color:var(--fail); } .pill.warn { color:#9a6700; }
 .recipe { font-size:14px; color:var(--muted); margin:14px 0 0; }
 .results { border:1px solid var(--line); border-radius:10px; padding:16px 20px; background:var(--card); display:flex; flex-wrap:wrap;
   gap:16px; align-items:center; justify-content:space-between; }
@@ -267,7 +282,7 @@ ${formats.map(([f, r, w, n]) => `<tr><td class="fname">${esc(f)}</td><td class="
 <p>Every change runs a feature test suite: the real <code>jConvertIIO</code> command against synthetic images and public mission products from the PDS, with each output decoded and compared pixel for pixel. The full suite runs on every merge to <code>main</code> and nightly, and publishes the report linked here.</p>
 <div class="results"><p>${statusLine}</p><span class="actions" style="margin:0"><a class="button" href="tests/procedures.html">Test procedures</a><a class="button alt" href="tests/index.html">Test report</a></span></div>
 <h3>Capabilities</h3>
-<p class="muted">Each capability is a feature in the test suite. Click one to read its test procedures: what each test does and what makes it pass. The tags count tests by the kind of testing (nominal, off-nominal, malformed input, lossless, mission data, ...). Passed excludes tests that document a known bug.</p>
+<p class="muted">Each capability is a feature in the test suite. Click one to read its test procedures: what each test does and what makes it pass. Open its test list for a summary of every test, linked to that test's procedure. The tags count tests by the kind of testing (nominal, off-nominal, malformed input, lossless, mission data, ...). Passed excludes tests that document a known bug.</p>
 <div class="scroll"><table>
 <thead><tr><th>Capability</th><th class="num">Tests</th><th class="num">Passed</th><th class="num">Failed</th></tr></thead>
 <tbody>

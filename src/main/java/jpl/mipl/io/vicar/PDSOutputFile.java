@@ -106,6 +106,7 @@ public class PDSOutputFile extends VicarOutputFile
 // PDS specific
     Document pdsDOM = null;
     String outputFilename = null;
+    String filenameInLabel = null; // PDS_FILENAME_IN_LABEL: file named in the ^IMAGE pointer
     String inputFilename = null;
     // PDSMetadata pdsMetadata;
     protected VicarLabel _embeddedVicarLabel = null;
@@ -268,6 +269,15 @@ public class PDSOutputFile extends VicarOutputFile
  */
 public void setOutputFilename(String s) {
     outputFilename = s;
+}
+
+/**
+ * The output file to name in an attached label's ^IMAGE (and ^IMAGE_HEADER)
+ * pointer, e.g. ^IMAGE = ("name.pds",22); null (the default) writes ^IMAGE = 22.
+ * Only the base name is used.
+ */
+public void setFilenameInLabel(String s) {
+    filenameInLabel = s;
 }
 
 /**
@@ -498,6 +508,7 @@ public boolean doEmbedVicarLabel() {
 	dom2PDS.setDebug(_debug);
 	dom2PDS.setOutputFilename(outputFilename);
 	dom2PDS.setOutputFilename(inputFilename);
+	dom2PDS.setFilenameInLabel(filenameInLabel);
 	dom2PDS.setPds_ptr(pds_ptr);
 	dom2PDS.setAddBLOB(addBLOB);
 	

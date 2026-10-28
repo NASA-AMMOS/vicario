@@ -153,6 +153,11 @@
 			<xsl:when test="starts-with(@key,'^')">
 			<xsl:attribute name="name"><xsl:value-of select="substring(@key, 2)"/>__PTR</xsl:attribute>
 		</xsl:when>
+		<!-- namespaced PDS3 keyword (MSL:XXX): ':' is not legal in a VICAR keyword, so drop the
+		     namespace as the mission VICAR labels and PDSToVicarMSL1.xsl do (MSL:XXX becomes XXX) -->
+		<xsl:when test="contains(@key,':')">
+			<xsl:attribute name="name"><xsl:value-of select="substring-after(@key, ':')"/></xsl:attribute>
+		</xsl:when>
 		<xsl:otherwise>
 			<xsl:attribute name="name">
 				<xsl:value-of select="@key"/>

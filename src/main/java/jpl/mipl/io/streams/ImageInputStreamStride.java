@@ -105,9 +105,13 @@ public class ImageInputStreamStride
 	    _iis = (ImageInputStream)stream;
 
 	    // Check to see if we can do direct I/O using the IIS.  The
-	    // endian-ness must match what's set in the stream.
+	    // endian-ness must match what's set in the stream, and the
+	    // stream's typed-array methods must actually honour that order
+	    // (see typedArrayIoHonoursByteOrder).
 
-	    if (_iis.getByteOrder() == java.nio.ByteOrder.LITTLE_ENDIAN) {
+	    if (!typedArrayIoHonoursByteOrder(_iis)) {
+		// leave _direct_*_okay false: decode from bytes ourselves
+	    } else if (_iis.getByteOrder() == java.nio.ByteOrder.LITTLE_ENDIAN) {
 		if (_int_order == LOW_ORDER)
 		    _direct_int_okay = true;
 		if (_float_order == LOW_ORDER)
@@ -127,6 +131,56 @@ public class ImageInputStreamStride
 	    throw new IllegalArgumentException("Unrecognized stream type " +
 		(stream == null ? "(null)" : stream.getClass().toString()) +
 		" in ImageInputStreamStride constructor");
+	}
+    }
+
+/***********************************************************************
+ * Returns true if the stream's multi-element reads (and, for an
+ * <code>ImageOutputStream</code>, writes) of shorts, ints, longs, floats
+ * and doubles can be trusted to use the byte order reported by
+ * <code>getByteOrder()</code>.
+ * <p>
+ * Some third-party streams override <code>setByteOrder</code> /
+ * <code>getByteOrder</code> but inherit the typed-array methods from
+ * <code>ImageInputStreamImpl</code>, which use that class's own (never
+ * updated, big-endian) <code>byteOrder</code> field.  imageio-ext's
+ * <code>FileImageInputStreamExtImpl</code>, which <code>ImageIO</code>
+ * hands out for files when imageio-ext is on the classpath, is one: after
+ * <code>setByteOrder(LITTLE_ENDIAN)</code> its <code>readShort()</code> is
+ * little-endian but <code>readFully(short[],...)</code> is big-endian.
+ * <p>
+ * We therefore only trust a typed-array method if it is declared in the
+ * class that declares <code>getByteOrder</code> and
+ * <code>setByteOrder</code>, or in a subclass of it.  Otherwise the
+ * byte-buffer path (which always gives the right answer) is used.
+ */
+    static boolean typedArrayIoHonoursByteOrder(Object stream)
+    {
+	Class<?> c = stream.getClass();
+	try {
+	    Class<?> getter = c.getMethod("getByteOrder").getDeclaringClass();
+	    Class<?> setter = c.getMethod("setByteOrder",
+				java.nio.ByteOrder.class).getDeclaringClass();
+	    Class<?>[] arrays = { short[].class, int[].class, long[].class,
+				  float[].class, double[].class };
+	    String[] writers = { "writeShorts", "writeInts", "writeLongs",
+				 "writeFloats", "writeDoubles" };
+	    for (int i = 0; i < arrays.length; i++) {
+		Class<?> d = c.getMethod("readFully", arrays[i],
+				int.class, int.class).getDeclaringClass();
+		if (!getter.isAssignableFrom(d) || !setter.isAssignableFrom(d))
+		    return false;
+		if (stream instanceof ImageOutputStream) {
+		    d = c.getMethod(writers[i], arrays[i],
+				int.class, int.class).getDeclaringClass();
+		    if (!getter.isAssignableFrom(d) ||
+			!setter.isAssignableFrom(d))
+			return false;
+		}
+	    }
+	    return true;
+	} catch (NoSuchMethodException | SecurityException e) {
+	    return false;
 	}
     }
 

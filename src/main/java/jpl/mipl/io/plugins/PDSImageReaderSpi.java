@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.Locale;
 import javax.imageio.ImageReader;
 import javax.imageio.spi.ImageReaderSpi;
+import javax.imageio.spi.ServiceRegistry;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.FileImageInputStream;
 import java.io.File;
@@ -115,6 +116,16 @@ public class PDSImageReaderSpi extends ImageReaderSpi {
     public void onRegistration() {
         if (debug) {
             System.out.println("PDS reader spi: on registration");
+        }
+    }
+
+    /** ISIS2 qubes go to ISISImageReaderSpi first; see its onRegistration. */
+    @Override
+    public void onRegistration(ServiceRegistry registry, Class<?> category) {
+        super.onRegistration(registry, category);
+        ISISImageReaderSpi isis = registry.getServiceProviderByClass(ISISImageReaderSpi.class);
+        if (isis != null && category == ImageReaderSpi.class) {
+            registry.setOrdering(ImageReaderSpi.class, isis, this);
         }
     }
 

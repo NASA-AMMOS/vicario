@@ -46,6 +46,7 @@ public class PDSImageWriter extends ImageWriter {
     
     
     String outputFilename = null;
+    boolean filenameInLabel = false; // PDS_FILENAME_IN_LABEL: name the output file in ^IMAGE
     String inputFilename = null;
     Node vicarInputDocument = null;
     VicarLabel readerVicarLabel = null;
@@ -271,6 +272,7 @@ public class PDSImageWriter extends ImageWriter {
 			pdsLabelType = pdsWriteParam.getPdsLabelType() ; // default is "PDS3"; // other choices may be MSL_ODL,ODL3
 			
 			outputFilename = pdsWriteParam.getOutputFileName();
+			filenameInLabel = pdsWriteParam.getFilenameInLabel();
 			inputFilename = pdsWriteParam.getInputFileName();
 			readerFormat = pdsWriteParam.getReaderFormat();
 			detachedLabel = pdsWriteParam.getDetachedLabel();
@@ -1897,6 +1899,7 @@ public class PDSImageWriter extends ImageWriter {
             }
             pof.setPdsDOM(doc);
             pof.setOutputFilename(outputFilename);
+            pof.setFilenameInLabel(filenameInLabel ? outputFilename : null);
             pof.setInputFilename(inputFilename);
             
             // if (addBLOB && vbh!= null) {
@@ -2237,6 +2240,7 @@ public class PDSImageWriter extends ImageWriter {
             }
             pof.setPdsDOM(d);
             pof.setOutputFilename(outputFilename);
+            pof.setFilenameInLabel(filenameInLabel ? outputFilename : null);
             // set all the values fed in from the ImageWriteParam
             // these values  are defaults unless overridden by an ImageWriteParam
             

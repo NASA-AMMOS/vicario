@@ -153,11 +153,51 @@ public class VicarLabel implements Cloneable, Serializable
 		_history.add(_currentSet);
 	    }
 	    else {			// Normal label, add to current set
-		_currentSet.add(item);
+		addReadItem(item);
 	    }
 	}
 
 	return lblsize;
+    }
+
+/***********************************************************************
+ * Name of the history task that <code>readLabelChunk</code> creates to hold
+ * history-only items (USER, DAT_TIM) found outside any history task.
+ */
+    public static final String ORPHAN_HISTORY_TASK = "UNKNOWN";
+
+/***********************************************************************
+ * Adds an item read from a file to the current set.  Reading is lenient
+ * where <code>VicarLabelSet.add</code> is strict: some writers (e.g. GDAL
+ * test files) drop a history task's TASK keyword, which leaves its USER
+ * and DAT_TIM items in the system or a property label.  Rather than reject
+ * the whole file, such an item starts a history task named
+ * <code>ORPHAN_HISTORY_TASK</code>, which also takes the items that follow
+ * it until the next TASK or PROPERTY, so the history metadata is kept.
+ * Any other misplaced item (a stray LBLSIZE) is skipped.  Both cases print
+ * a warning.
+ */
+    protected void addReadItem(VicarLabelItem item)
+    {
+	try {
+	    _currentSet.add(item);
+	    return;
+	} catch (IllegalArgumentException e) {
+	    if (item.equals("USER") || item.equals("DAT_TIM")) {
+		System.err.println("VicarLabel warning: " + e.getMessage()
+			+ "; found " + item.getKeyword()
+			+ " outside a history task, keeping it in history task "
+			+ ORPHAN_HISTORY_TASK);
+		_currentSet = new VicarLabelSet(VicarLabelSet.LABEL_HISTORY,
+						ORPHAN_HISTORY_TASK);
+		_history.add(_currentSet);
+		_currentSet.add(item);
+	    } else {
+		System.err.println("VicarLabel warning: " + e.getMessage()
+			+ "; ignoring misplaced label item "
+			+ item.getKeyword());
+	    }
+	}
     }
 
 /***********************************************************************

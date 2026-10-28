@@ -84,24 +84,59 @@ test.describe('VICAR image read/write', feature('vicar-io'), () => {
 
   test('ImageIO API decodes little-endian HALF the same as BYTE 1..24', about(
     `Reads the GDAL little-endian HALF fixture (values 1 to 24) through the Java ImageIO API rather than jConvertIIO, and compares it with the BYTE fixture holding the same values. Passes when the pixel hashes match.`,
-    '@nominal',
+    '@nominal', '@regression',
   ), async ({}, testInfo) => {
-    needsReview('REVIEW-1', 'VicarImageReader via the ImageIO API returns byte-swapped samples for INTFMT=LOW files '
-      + '(256, 512, ... instead of 1, 2, ...); jConvertIIO output is correct');
+    issue('REVIEW-1', 'fixed: VicarImageReader via the ImageIO API returned byte-swapped samples for INTFMT=LOW files '
+      + '(256, 512, ... instead of 1, 2, ...) because the imageio-ext file stream ignores the byte order in its array reads');
     const half = await probe(testInfo, asset('gdal-vicar-int16'));
     const byte = await probe(testInfo, asset('gdal-vicar-byte'));
     expect(half.pixelSha256).toBe(byte.pixelSha256);
   });
 
-  for (const id of ['gdal-vicar-bigendian-int16', 'gdal-vicar-bigendian-float32', 'gdal-vicar-vax-float32']) {
-    test(`reads ${id.replace('gdal-vicar-', '')} (system label with DAT_TIM/BINC)`, about(
-      `Reads the GDAL ${id.replace('gdal-vicar-', '')} fixture, whose system label has \`DAT_TIM\` and \`BINC\` items written by GDAL. Passes when the file decodes.`,
-      '@nominal',
+  for (const id of ['gdal-vicar-int16', 'gdal-vicar-int32', 'gdal-vicar-float32-bsq', 'gdal-vicar-float64']) {
+    test(`ImageIO API decodes little-endian ${id.replace('gdal-vicar-', '')} the same on every input stream`, about(
+      `Reads the GDAL little-endian ${id.replace('gdal-vicar-', '')} fixture (\`INTFMT\`/\`REALFMT\` = LOW) through the Java ImageIO API twice: with the stream \`ImageIO.createImageInputStream\` picks (imageio-ext's file stream in the FAT jar) and with the JDK \`FileImageInputStream\`. Passes when both give the same pixels and the smallest value is 1, the first value stored in the file.`,
+      '@nominal', '@regression',
     ), async ({}, testInfo) => {
-      needsReview('REVIEW-2', 'VICAR reader rejects GDAL-written system labels: "DAT_TIM may only go in history label"');
-      expect(await tryProbe(testInfo, asset(id))).not.toBeNull();
+      issue('REVIEW-1', 'fixed: the imageio-ext file stream returned byte-swapped HALF/FULL/REAL/DOUB samples for little-endian files');
+      const viaImageIO = await probe(testInfo, asset(id));
+      const viaJdkStream = await probe(testInfo, asset(id), { fileStream: true });
+      expect(viaImageIO.min).toBe(1);
+      expectSamePixels(viaImageIO, viaJdkStream);
     });
   }
+
+  // GDAL autotest files whose first history task lost its TASK keyword, so its
+  // items (BINC, DAT_TIM, and USER in the EOL label) sit in the system and
+  // property labels. They hold the same 4 x 3 values 1..24 as the other fixtures.
+  for (const id of ['gdal-vicar-bigendian-int16', 'gdal-vicar-bigendian-float32', 'gdal-vicar-vax-float32']) {
+    test(`reads ${id.replace('gdal-vicar-', '')} (system label with DAT_TIM/BINC)`, about(
+      `Reads the GDAL ${id.replace('gdal-vicar-', '')} fixture, whose system label has \`DAT_TIM\` and \`BINC\` items (a history task whose \`TASK\` keyword is missing), through the ImageIO API and converts it to VICAR. Passes when the file decodes to 4 x 3 values from 1 to 24 with mean 12.5${id.includes('int16') ? ' (the same pixels as the well-formed little-endian HALF fixture)' : ''}, jConvertIIO writes VICAR output with the same pixels, and the output keeps the orphaned \`DAT_TIM\` in a history task named \`UNKNOWN\`.`,
+      '@malformed-input', '@regression',
+    ), async ({}, testInfo) => {
+      issue('REVIEW-2', 'fixed: VICAR reader rejected labels with DAT_TIM/USER outside a history task '
+        + '("DAT_TIM may only go in history label") and then failed with a NullPointerException');
+      const p = await probe(testInfo, asset(id));
+      expect([p.width, p.height, p.bands]).toEqual([4, 3, 1]);
+      expect([p.min, p.max, p.mean]).toEqual([1, 24, 12.5]);
+      if (id.includes('int16')) expectSamePixels(p, await probe(testInfo, asset('gdal-vicar-int16')));
+      const r = await convert(testInfo, asset(id), `${id}.vic`, { format: 'vicar' });
+      expectConverted(r);
+      expectSamePixels(await probe(testInfo, r.out), p);
+      const label = readFileSync(r.out, 'latin1').slice(0, 2048);
+      expect(label).toMatch(/TASK='UNKNOWN'\s+USER='vos'\s+DAT_TIM='Thu Oct 17 16:46:44 2019'/);
+      expect(label).toContain("TASK='TASK'");
+    });
+  }
+
+  test('big-endian and VAX float32 fixtures decode to the same values', about(
+    `Reads the GDAL big-endian IEEE and VAX float32 fixtures (both with the misplaced \`DAT_TIM\` label item). Passes when the two decode to identical pixels.`,
+    '@malformed-input', '@regression',
+  ), async ({}, testInfo) => {
+    issue('REVIEW-2', 'fixed: these files could not be opened at all');
+    expectSamePixels(await probe(testInfo, asset('gdal-vicar-vax-float32')),
+      await probe(testInfo, asset('gdal-vicar-bigendian-float32')));
+  });
 
   test('jConvertIIO decodes little-endian DOUB (float64) and FULL (int32) fixtures', about(
     `Converts the GDAL little-endian DOUB (float64) and FULL (int32) fixtures to VICAR. Passes when each output holds the stored values 1 to 24.`,

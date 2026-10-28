@@ -82,7 +82,10 @@ import org.apache.xalan.templates.OutputProperties;
 // Imported JAVA API for XML Parsing classes
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException; 
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import javax.xml.transform.sax.SAXSource;
 import javax.xml.XMLConstants;
 
 
@@ -221,6 +224,61 @@ public class DOMutils
       // parser does not support JAXP 1.5 properties
     }
     return dFactory;
+  }
+
+  /**
+  * Create a TransformerFactory hardened against XML External Entity (XXE)
+  * attacks. The JAXP 1.5 properties stop the JDK transformer loading external
+  * DTDs and stylesheets. Xalan (the transformer this library ships with)
+  * rejects them, so stylesheets must also be read through
+  * {@link #secureStylesheetSource(StreamSource)}. All code that creates a
+  * Transformer should get its factory from here.
+  *
+  * @return a TransformerFactory with XXE protection where supported
+  **/
+  public static TransformerFactory newTransformerFactory() {
+    TransformerFactory tFactory = TransformerFactory.newInstance();
+    try {
+      tFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+      tFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
+    }
+    catch (IllegalArgumentException iae) {
+      // transformer does not support JAXP 1.5 properties (Xalan)
+    }
+    return tFactory;
+  }
+
+  /**
+  * Wrap an XSL stylesheet so it is parsed with external entities and external
+  * DTD loading disabled, whichever transformer compiles it. A stylesheet with
+  * a DOCTYPE is still accepted, but its external entities are never read.
+  *
+  * @param xsl the stylesheet to read
+  * @return a SAXSource for xsl that uses a hardened XMLReader
+  * @throws TransformerConfigurationException if no hardened parser is available
+  **/
+  public static Source secureStylesheetSource(StreamSource xsl)
+      throws TransformerConfigurationException {
+    try {
+      SAXParserFactory spf = SAXParserFactory.newInstance();
+      spf.setNamespaceAware(true);
+      spf.setFeature("http://xml.org/sax/features/external-general-entities", false);
+      spf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+      spf.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+      spf.setXIncludeAware(false);
+      SAXParser parser = spf.newSAXParser();
+      try {
+        parser.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+        parser.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+      }
+      catch (SAXException se) {
+        // parser does not support JAXP 1.5 properties
+      }
+      return new SAXSource(parser.getXMLReader(), SAXSource.sourceToInputSource(xsl));
+    }
+    catch (ParserConfigurationException | SAXException e) {
+      throw new TransformerConfigurationException(e);
+    }
   }
 
   /**
@@ -1179,7 +1237,7 @@ public class DOMutils
      */
     public Document transformDocument(Node doc, StreamSource xslStreamSource, ErrorListener errorListener) {
     	
-    TransformerFactory tFactory = TransformerFactory.newInstance();
+    TransformerFactory tFactory = newTransformerFactory();
 
     if (debug) {
     	System.out.println("DOMutils.transformDocument  TransformerFactory tFactory="+tFactory );
@@ -1193,7 +1251,7 @@ public class DOMutils
       DOMResult domResult = null;
       try {
       // Transformer transformer = tFactory.newTransformer(new StreamSource(xsl));
-      Transformer transformer = tFactory.newTransformer(xslStreamSource);
+      Transformer transformer = tFactory.newTransformer(secureStylesheetSource(xslStreamSource));
       if (errorListener != null) {
     	  transformer.setErrorListener(errorListener);
       }
@@ -1301,7 +1359,7 @@ public class DOMutils
 	        
 	        out = new FileOutputStream(file);
 	        // if (out != null) {
-	        Transformer serializer = TransformerFactory.newInstance().newTransformer();
+	        Transformer serializer = newTransformerFactory().newTransformer();
 	        serializer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
 	        serializer.setOutputProperty(OutputKeys.INDENT, "yes");
 	        serializer.transform(new DOMSource(node), new StreamResult(new OutputStreamWriter(out)));
@@ -1343,7 +1401,7 @@ public class DOMutils
 		        
 		        out = new FileOutputStream(file);
 		        // if (out != null) {
-		        Transformer serializer = TransformerFactory.newInstance().newTransformer();
+		        Transformer serializer = newTransformerFactory().newTransformer();
 		        serializer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
 		        serializer.setOutputProperty(OutputKeys.INDENT, "yes");
 		        serializer.transform(new DOMSource(doc), new StreamResult(new OutputStreamWriter(out)));
@@ -1386,7 +1444,7 @@ public class DOMutils
 		        // FileOutputStream out = null;		        
 		        // out = new FileOutputStream(file);
 		        
-		        Transformer serializer = TransformerFactory.newInstance().newTransformer();
+		        Transformer serializer = newTransformerFactory().newTransformer();
 		        serializer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
 		        serializer.setOutputProperty(OutputKeys.INDENT, "yes");
 		        serializer.transform(new DOMSource(doc), new StreamResult(new OutputStreamWriter(out)));

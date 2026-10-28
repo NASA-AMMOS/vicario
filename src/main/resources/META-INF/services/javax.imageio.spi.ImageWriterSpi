@@ -3,3 +3,4 @@
  jpl.mipl.io.plugins.VicarImageWriterSpi
  jpl.mipl.io.plugins.PDSImageWriterSpi
 # jpl.mipl.io.plugins.PDS4ImageWriterSpi
+ jpl.mipl.io.plugins.PNMImageWriterSpi

@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.stream.StreamSource;
 
 import org.junit.After;
 import org.junit.Before;
@@ -20,7 +21,8 @@ import org.w3c.dom.Document;
 /**
  * Verifies that DOMutils parses XML with XML External Entity (XXE)
  * protection, for both the JDK built-in parser (used at runtime) and
- * Apache Xerces (on the test classpath).
+ * Apache Xerces (on the test classpath), and reads XSL stylesheets with the
+ * same protection for both the JDK transformer and Xalan.
  */
 public class DOMutilsXXETest {
 
@@ -29,17 +31,24 @@ public class DOMutilsXXETest {
 		"com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl",
 		"org.apache.xerces.jaxp.DocumentBuilderFactoryImpl"
 	};
+	static final String TRANSFORMER_PROPERTY = "javax.xml.transform.TransformerFactory";
+	static final String[] TRANSFORMER_IMPLS = {
+		"com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl",
+		"org.apache.xalan.processor.TransformerFactoryImpl"
+	};
 	static final String SECRET = "XXE-SECRET-CONTENT";
 
 	@Rule
 	public TemporaryFolder tmp = new TemporaryFolder();
 
 	String savedFactory;
+	String savedTransformer;
 	File secretFile;
 
 	@Before
 	public void setUp() throws Exception {
 		savedFactory = System.getProperty(FACTORY_PROPERTY);
+		savedTransformer = System.getProperty(TRANSFORMER_PROPERTY);
 		secretFile = tmp.newFile("secret.txt");
 		try (FileWriter w = new FileWriter(secretFile)) {
 			w.write(SECRET);
@@ -53,6 +62,22 @@ public class DOMutilsXXETest {
 		} else {
 			System.setProperty(FACTORY_PROPERTY, savedFactory);
 		}
+		if (savedTransformer == null) {
+			System.clearProperty(TRANSFORMER_PROPERTY);
+		} else {
+			System.setProperty(TRANSFORMER_PROPERTY, savedTransformer);
+		}
+	}
+
+	/** Transform a one-element document with the stylesheet in xsl. */
+	Document transformWith(String xsl) throws Exception {
+		File xslFile = tmp.newFile();
+		try (FileWriter w = new FileWriter(xslFile)) {
+			w.write(xsl);
+		}
+		DOMutils d = new DOMutils();
+		Document in = d.buildDocument(stream("<label/>"));
+		return d.transformDocument(in, new StreamSource(xslFile), null);
 	}
 
 	static InputStream stream(String xml) {
@@ -133,6 +158,35 @@ public class DOMutilsXXETest {
 			assertEquals(impl, "http://pds.nasa.gov/pds4/pds/v1",
 				doc.getDocumentElement().getNamespaceURI());
 			assertEquals(impl, "test", text(doc));
+		}
+	}
+
+	@Test
+	public void stylesheetExternalEntityIsNotResolved() throws Exception {
+		String xsl = "<?xml version=\"1.0\"?>\n"
+			+ "<!DOCTYPE xsl:stylesheet [ <!ENTITY xxe SYSTEM \"" + secretFile.toURI() + "\"> ]>\n"
+			+ "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">"
+			+ "<xsl:template match=\"/\"><out>&xxe;</out></xsl:template>"
+			+ "</xsl:stylesheet>";
+		for (String impl : TRANSFORMER_IMPLS) {
+			System.setProperty(TRANSFORMER_PROPERTY, impl);
+			assertEquals(impl, DOMutils.newTransformerFactory().getClass().getName());
+			Document doc = transformWith(xsl);
+			assertFalse(impl + " resolved an external entity in a stylesheet", text(doc).contains(SECRET));
+		}
+	}
+
+	@Test
+	public void stylesheetStillTransforms() throws Exception {
+		String xsl = "<?xml version=\"1.0\"?>\n"
+			+ "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">"
+			+ "<xsl:template match=\"/\"><out>transformed</out></xsl:template>"
+			+ "</xsl:stylesheet>";
+		for (String impl : TRANSFORMER_IMPLS) {
+			System.setProperty(TRANSFORMER_PROPERTY, impl);
+			Document doc = transformWith(xsl);
+			assertNotNull(impl + " failed to transform", doc);
+			assertEquals(impl, "transformed", text(doc));
 		}
 	}
 }

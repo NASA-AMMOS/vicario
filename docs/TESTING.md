@@ -25,6 +25,7 @@ open report/index.html                             # feature overview; full Play
 - **Python:** set `VICARIO_PYTHON=/path/to/python` if the default `python3` has no `lxml`.
 - **JDK:** `JAVA_HOME` selects the JDK used for `jConvertIIO`.
 - **Single feature:** `npx playwright test --grep @pds3` (each feature's id is its tag).
+- **Deferred tests:** `VICARIO_RUN_DEFERRED=1 npx playwright test --project fast` also runs the tests marked `deferred(...)`, which are expected to fail.
 
 ## How the feature tests work
 
@@ -54,6 +55,7 @@ open report/index.html                             # feature overview; full Play
   Missing or altered data fails the run; it is never skipped.
 - **Goldens.** `tests/e2e/goldens/goldens.json` records the pixel hash of each public product. Regenerate with `npm run goldens:update` and say why in the PR.
 - **Known failures.** `knownFailure('IDS-8497', why)` marks a test as expected to fail. Use it only for a bug that has a ticket or other record. It shows in the report and the job summary, and turns red once the bug is fixed, so the marker gets removed with the fix.
+- **Deferred.** `deferred('REVIEW-16', why)` marks a reviewed bug or missing capability that we decided not to fix yet. The test still reproduces it, but is skipped by default and the report shows the reason. Run deferred tests with `VICARIO_RUN_DEFERRED=1`: they fail until the behaviour is fixed, and then the marker is removed.
 - **Needs review.** `needsReview('REVIEW-3', why)` flags behaviour a test found that looks wrong but has no ticket or other record yet. The test fails as normal and the report marks it "needs review" until someone decides: a bug (ticket it, then fix it, or use `knownFailure` until it is fixed) or intended (correct the test and say why).
 
 ## Data sensitivity
@@ -79,6 +81,7 @@ Every code change comes with tests, written in the same pull request. Which spec
 | New capability, keyword or format | A `@nominal` test that it works, and an `@off-nominal` test for bad or edge-case input. If it is new behaviour, add or extend a feature in `features.yml`. |
 | Bug fix | A test that fails without the fix and passes with it, tagged `@regression`, with `issue('IDS-NNNN', 'what was wrong')`. If the bug had a `knownFailure` test, delete the marker: the test now passes and documents the fix. |
 | Bug found but not fixed | A test that reproduces it. Without a ticket, mark it `needsReview('REVIEW-N', 'what fails')`: it fails visibly until reviewed. Once ticketed, `knownFailure('IDS-NNNN', 'what fails')`: it reports "expected to fail" until someone fixes the bug, then turns red so the marker gets removed. |
+| Bug reviewed and deliberately left unfixed | A test that reproduces it, marked `deferred('REVIEW-N' or 'IDS-NNNN', 'why it is not fixed')`. It is skipped by default; `VICARIO_RUN_DEFERRED=1` runs it. |
 | Java-level logic | A JUnit test in `src/test/java`. Add its class to the owning feature's `junit:` list in `features.yml`. |
 
 ### Anatomy of a test
@@ -128,7 +131,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
 The description is plain text in the spec; nothing else feeds it. At the end of a run the reporter (`support/overview-reporter.ts`) reads each test's annotations and tags and writes them out in three places:
 - **Playwright report:** shown as the "what it checks" and "source" annotations (plain text, with links).
 - **`report/procedures.html`:** rendered as HTML, with code formatting, scope chips, the result and links.
-- **Website:** counted in the capabilities table.
+- **Report overview and website:** counted for its feature, and listed in the feature's drop-down test table, which links to the test's procedure.
 
 Changing the description in the spec changes all three on the next run.
 
@@ -158,9 +161,11 @@ open report/procedures.html                           # check your tests read we
 | `security-scan.yml` | pull requests to `main`/`develop`, push to `main`, manual | CodeQL (Java, Python, workflows) and SonarQube Cloud analysis; see [Security scanning](#security-scanning) |
 
 The report has three parts:
-- **`report/index.html`**, the feature overview: each feature's description, status and pass/fail counts, a gallery of image previews from its tests, the failures (with any "needs review" note), ticketed known failures grouped by ticket when there are any, and the features not yet automated. Each feature and image links into the full report.
+- **`report/index.html`**, the feature overview: each feature's description, status and pass/fail counts, a drop-down table of its tests (each linked to its procedure), a gallery of image previews from its tests, the failures (with any "needs review" note), ticketed known failures grouped by ticket when there are any, and the features not yet automated. Each feature and image links into the full report.
 - **`report/procedures.html`**, the test procedures: every test grouped by feature, with its description, scope tags, issue notes and latest result, plus links to its run details and its source on GitHub. A scope legend at the top filters the list.
 - **`report/playwright/`**, the Playwright HTML report: every test with its command line, logs, label text and image previews, including the JUnit results.
+
+`features/report-pages.spec.ts` checks the overview and the site: it runs a few sample tests through the reporter, builds the site from that report, and checks every drop-down link reaches a test on the procedures page.
 
 Where to find it:
 - **Pull requests:** `ci.yml` uploads it as the `feature-report-fast` artifact, kept for **5 days**. GitHub serves artifacts as zip downloads, so unzip it and open `report/index.html`. The job summary also shows the feature table inline.
@@ -189,7 +194,7 @@ cd ../.. && mvn -B -P coverage jacoco:merge@merge-all jacoco:report@report-all
 open target/site/jacoco/index.html
 ```
 
-A new spec that starts vicario directly, rather than through `convert()`, should use `PRODUCT_JAVA` instead of `JAVA` so its coverage counts.
+A new spec that starts vicario directly, rather than through `convert()`, should use `PRODUCT_JAVA` instead of `JAVA` so its coverage counts. `run()` decodes stdout as UTF-8; pass `binary: true` when a command writes binary data to stdout (such as `OUT=-`) and read the bytes from `stdoutBytes`.
 
 Results appear on the [SonarQube Cloud project](https://sonarcloud.io/project/overview?id=NASA-AMMOS_vicario). The raw and repaired reports are kept as the `codeql-artifacts` artifact for 14 days.
 

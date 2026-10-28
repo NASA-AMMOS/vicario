@@ -109,9 +109,12 @@ import org.apache.jackrabbit.webdav.client.methods.PutMethod;
 * HELP will cause help info to be displayed <br>
 * no arguments will also cause the help to be printed <br>
 * INP=[inputFileName] <br>
-* OUT=[outputFileName] name of the output file.<br>
+* OUT=[outputFileName] name of the output file. OUT=- writes the image to stdout
+* (messages go to stderr; SILENT suppresses them). Not allowed in an ARGFILE batch.<br>
 * FORMAT=[imageFileFormatName] file format name to save the output to. 
 * The extention of the output filename is not used in any way. <br>
+* FORMAT=raw writes a headerless file of exactly width x height x bands samples, band sequential (BSQ), big-endian. <br>
+* FORMAT=pnm writes binary PGM (1 band) or PPM (3 bands), 8 or 16 bit. <br>
 * OFORM=[outputFormat] convert input data type to the OFORM data type on output <br>
 * OFORM is an optional argument, data type will be preserved if no OFORM is specified <br>
 * OFORM=DEFAULT will preserve data type <br>
@@ -123,7 +126,8 @@ import org.apache.jackrabbit.webdav.client.methods.PutMethod;
 * these Options are only valid for FORMAT=pds <br>
 * EMBED_VICAR_LABEL=[true,false] , will cause VicarLabel to be embedded in PDS label <br>
 * PDS_FILENAME_IN_LABEL=[true,false] only valid for FORMAT=pds, <br>
-* will cause output file name to be embedded in the PDS label
+* will cause output file name to be embedded in the PDS label: the data pointers
+* name the file, ^IMAGE = ("out.pds",n) instead of ^IMAGE = n (PDS_FILENAME is an older spelling)
 * if this Option is absent the filename will NOT be added to the label. <br>
 * 
 * some debugging Options: <br>
@@ -170,7 +174,10 @@ int outputDataType;
 // these are the file names used as arguments. They MAY be full paths, \but could be relative
 // as long as they can be opened we don't care
 String inputFileName = "";
-String outputFileName = "-";
+String outputFileName = "-"; // "-" here also means no OUT was given; outToStdout tells them apart
+boolean outToStdout = false; // OUT=- : write the image to stdout
+/** The process's standard output, kept for the image bytes when OUT=- (main sends messages to stderr). */
+static final java.io.PrintStream imageStdout = System.out;
 
 int imageIndex = 0;
 
@@ -348,7 +355,7 @@ int pds4_table_index = 1; // index of the table to read
 // String pds4_table_index = "1";
 String pds4_table_field_separator = " ";
 // String table_platform = "platform"; // also "unix" "windows"
-String pds4_table_output_format = "csv"; // "fixed-width" or "csv"
+String pds4_table_output_format = "fixed-width"; // "fixed-width" or "csv"; HELP documents fixed-width as the default
 
 // output_filename we will use outputFileName from the out= argument
 // also available String table_line_separator // options are "platform" "unix" "windows"
@@ -460,6 +467,36 @@ static private void setJAIMemory(double amount, boolean debug) {
     if (debug) System.out.printf("set JAI cache to %.2fMB\n", jaiCacheCapacity / (1024.0 * 1024.0));
 }
 
+/**
+ * KEEP_LINE_PREFIX, unless BANDS or READ_BANDS moved a band to a new
+ * position: the prefixes belong to the input's (line, band) records, and the
+ * writer only checks the band count, so it would attach them to other bands.
+ */
+boolean keepLinePrefixes() {
+	if (!keep_line_prefix) return false;
+	if ((bandSelect && !inPlace(bandList)) || (readerBandSelect && !inPlace(readerBandList))) {
+		System.err.println("jConvertIIO warning: not writing the line prefixes: BANDS or READ_BANDS moves bands, "
+			+ "so the prefixes no longer match the output records");
+		return false;
+	}
+	return true;
+}
+
+/** True if every selected band stays at its own position (band i is input band i). */
+static boolean inPlace(int[] bands) {
+	for (int i = 0; i < bands.length; i++) if (bands[i] != i) return false;
+	return true;
+}
+
+/** True if the arguments ask for the image on stdout (OUT=-). */
+static boolean writesToStdout(String[] args) {
+	for (String arg : args) {
+		int eq = arg.indexOf('=');
+		if (eq != -1 && arg.substring(0, eq).equalsIgnoreCase("OUT") && arg.substring(eq + 1).equals("-")) return true;
+	}
+	return false;
+}
+
 static private int runParallelBatch(ExecutorService executor, List<Callable<Integer>> tasks)
     throws InterruptedException, ExecutionException {
 
@@ -555,6 +592,22 @@ static public void main(String args[])
 	// have a flag for testing reuse the jConvertIIO or create a new one. force garbage collection ?
 	
 	if (argFile.equalsIgnoreCase("") ) {
+		// OUT=- writes the image to stdout, so messages go to stderr; SILENT drops them
+		boolean toStdout = writesToStdout(args), silentRun = false;
+		for (String arg : args) {
+			int eq = arg.indexOf('=');
+			String k = eq == -1 ? arg : arg.substring(0, eq);
+			String v = eq == -1 ? "true" : arg.substring(eq + 1);
+			if (k.equalsIgnoreCase("SILENT") && v.equalsIgnoreCase("true")) silentRun = true;
+		}
+		if (silentRun) {
+			System.setOut(new PrintStream(new OutputStream() {
+				@Override public void write(int b) { }
+				@Override public void write(byte[] b, int off, int len) { }
+			}));
+		} else if (toStdout) {
+			System.setOut(System.err);
+		}
 		jConvertIIO convert = new jConvertIIO(args);
 		if (convert.convStatus == false) {
 			System.exit(1); // 1 is error return
@@ -595,6 +648,13 @@ static public void main(String args[])
 				continue;
 			} else {
 				String[] theArgs = lineTrimmed.split("\\s+");
+				// batch progress is printed to stdout, and several lines could each
+				// write an image there, so a batch line may not use OUT=-
+				if (writesToStdout(theArgs)) {
+					System.err.println("line "+argFileLine+") error: OUT=- (write the image to stdout) is not supported in an ARGFILE batch");
+					System.err.println(lineTrimmed);
+					System.exit(1);
+				}
 				boolean status = false;
                 if (parallelBatchSize > 0) {
                     final int lineNum = argFileLine;
@@ -889,6 +949,9 @@ public void printHelp() {
 	
     System.out.println("HELP:");
     System.out.println("jConvert INP=[inputFileName] OUT=[outputFileName] FORMAT=[imageFileFormatName] OFORM=<outputFormat>");
+    System.out.println("FORMAT must name a registered image writer (FORMAT=jfif uses the JPEG writer); any other name fails with an error");
+    System.out.println("FORMAT=raw writes a headerless file of exactly width x height x bands samples, band sequential (BSQ), big-endian");
+    System.out.println("FORMAT=pnm writes binary PGM (1 band) or PPM (3 bands), 8 or 16 bit");
     System.out.println("ARGFILE=F or ARG=f read command line arguments for a batch run one line at a time from given file");
     System.out.println("PARALLEL_BATCH=N run batches in parallel groups of up to N tasks at a time.  If N is the string AVAILABLE_CORES then detect and use the number of available cores.  Non-positive N disables parallelism.");
     System.out.println("OFORM is the only optional argument, data type will be preserved if no OFORM is specified");
@@ -910,7 +973,9 @@ public void printHelp() {
 	System.out.println("EMBED_VICAR_LABEL=[true,false] only valid for FORMAT=pds, ");	
 	System.out.println(" Will cause a Vicar Label to be embedded in the PDS label.");
 	System.out.println("PDS_FILENAME_IN_LABEL=[true,false] only valid for FORMAT=pds, ");
-	System.out.println(" Will cause output file name to be embedded in the PDS label.");
+	System.out.println(" Will cause output file name to be embedded in the PDS label: the data pointers");
+	System.out.println(" name the file, ^IMAGE = (\"out.pds\",n) instead of ^IMAGE = n. Default false.");
+	System.out.println(" PDS_FILENAME is accepted as an older spelling.");
 	System.out.println("PDS_OBJECT=<name> only used when READING a PDS3 input file. Selects which OBJECT");
 	System.out.println(" block in the label to read (e.g. PDS_OBJECT=RFL_IMAGE for Moon Mineralogy Mapper).");
 	System.out.println(" Defaults to IMAGE / SPECTRAL_QUBE / QUBE; an image-shaped OBJECT is auto-detected");
@@ -930,8 +995,11 @@ public void printHelp() {
 	System.out.println("XML=[true,false] output xml files used for debugging");
 	System.out.println("KEEP_LINE_PREFIX=[true,false] if line prefix data is present it will be read and passed");
 	System.out.println(" along in the image metadata to a writer. Default is true. The prefix is not part of the");
-	System.out.println(" displayed image. KEEP_LINE_PREFIX controls if it will be wrtten to an output file");
-	System.out.println(" VICAR, PDS and ISIS can have line prefix data. Currently vicar and PDS support writing line prefixs");
+	System.out.println(" displayed image. KEEP_LINE_PREFIX controls if it will be written to an output file");
+	System.out.println(" VICAR, PDS and ISIS can have line prefix data. Currently vicar and PDS support writing line prefixes.");
+	System.out.println(" VICAR to VICAR keeps the prefixes (NBB) by default; use KEEP_LINE_PREFIX=false to strip them.");
+	System.out.println(" Prefixes are not written if the output has a different number of lines or bands than the input.");
+	System.out.println(" They are also dropped when BANDS or READ_BANDS moves a band to a new position.");
 	// ImageReadParam modifies how the data is read
 	System.out.println("ImageReadParam arguments applied to the reader");
 	System.out.println("READ_BANDS=1,2,3 will only read in the bads listed. bands start at 0 ");
@@ -960,9 +1028,14 @@ public void printHelp() {
 	System.out.println("  An image with selected bands may be written to PDS or Vicar, It will fail to tif or jpg");
 	System.out.println("  Write to vicar or PDS then to jpg or tif.");
 	System.out.println("SCALE=(Xfactor,Yfactor,Xtranslation,Ytranslation) values are floats, no spaces allowed");
-	System.out.println("CROP=(cropX,cropY,cropHeight,cropWidth) values are floats, no spaces allowed");
+	System.out.println("CROP=(x,y,width,height) values are floats, no spaces allowed. Applied after the image is read.");
+	System.out.println("  CROP=(x,y) crops from x,y to the image edge. An area running past the edge is clipped.");
 	System.out.println("CLAMP=(minValue,MaxValue) values are floats, no spaces allowed");
 	System.out.println("RESCALE=[true/false] default is TRUE, only used if OFORM is to a new data type");
+	System.out.println("  The automatic stretch to the output range applies only when OFORM narrows the data type");
+	System.out.println("  (e.g. HALF or REAL to BYTE). OFORM to the same or a wider type keeps the values unless");
+	System.out.println("  VALID_MINIMUM/VALID_MAXIMUM or RESCALE_CONSTANT/RESCALE_OFFSET are given; that rescale");
+	System.out.println("  is done in the output data type, so it is not clipped to the input range.");
 	System.out.println("  for all keywords which are [true/false] the keyword alone sets the the flag to TRUE");
 	System.out.println("RESCALE_CONSTANT=constant  float value. default is 1.0, only used if OFORM is to a new data type");
 	System.out.println("RESCALE_OFFSET=offset  float value. default is 0.0, only used if OFORM is to a new data type");
@@ -980,8 +1053,9 @@ public void printHelp() {
 	System.out.println("argument names are NOT case sensitive, except filenames and FORMAT names");
 	System.out.println("an argument without a value will default to \"true\" (only for [true,false] args");
 	System.out.println("PLUGINS registered reader and writer names are printed ");
-	System.out.println("SILENT eliminate all printing to stdout, could be useful when OUT=- which writes output");
-	System.out.println(" file to stdout. Useful for piping to another process like ImageMagick \"convert\" ");
+	System.out.println("OUT=- writes the output image to stdout, for piping to another process like ImageMagick \"convert\". Not allowed in an ARGFILE batch.");
+	System.out.println(" FORMAT is required. Messages then go to stderr. Formats that need a second file (detached labels) are not supported.");
+	System.out.println("SILENT eliminate all printing to stdout (errors still go to stderr), useful with OUT=-");
 	System.out.println("IMAGE_INDEX=n sets the image index to read from the file. Defaults to 0.");	
 	System.out.println("  Few files will contain more than one image. "); 
 	
@@ -989,6 +1063,8 @@ public void printHelp() {
 	System.out.println("PDS_LABEL_TYPE=[MSL_ODL,ODL3,PDS3,PDS4] default is PDS3. Applys only to a PDS output file. Controls if ");
 	System.out.println("  the label is ODL or PDS or PDS4 (XML).  ");
 	System.out.println("ADD_BINARY_HEADER=[true,false] default is false. Useful only for PDS and vicar output formats"	);
+	System.out.println("    For vicar output the input's binary header (NLB records) is written. If the output record");
+	System.out.println("    size differs, each record is zero-padded, or cut if only zero bytes are cut, else re-blocked.");
 	System.out.println("ADD_BLOB=[true,false] default is false. Controls output of a vicar binary header blob into a PDS header");
 	System.out.println("    Useful only for PDS output formats"	);
 	
@@ -1013,7 +1089,9 @@ public void printHelp() {
 	System.out.println("PDS4_TABLE_INDEX=n - index n starts at 1, default is 1. Specify the index of the table to access.");
 	System.out.println("PDS4_TABLE_FIELDS=1,2,3  comma separated list of filed names or numbers. Default is all fields.");
 	System.out.println("	Run once with PDS4_TABLE_LIST to get a list of the field names.");
-	System.out.println("PDS4_TABLE_OUPUT_FORMAT=[csv,fixed-width]  default is fixed-width.");
+	System.out.println("PDS4_TABLE_OUTPUT_FORMAT=[csv,fixed-width]  default is fixed-width.");
+	System.out.println("	The older spelling PDS4_TABLE_OUPUT_FORMAT is also accepted.");
+	System.out.println("TABLE_FIELD_SEPARATOR=c  output field separator. Default is a comma for csv, a space for fixed-width.");
 	System.out.println("The only output available at this time for PDS4 Tables is as a text file. ");
 	System.out.println("The output filename for PDS4 Tables is out filename (out=filename) ");
 	System.out.println("CSV (Comma Separated Value) or fixed width.");
@@ -1706,6 +1784,7 @@ public boolean conv(String argv[]) {
 	    }
 	    else if (key.equalsIgnoreCase("OUT") ) {
 	        outputFileName = value;
+	        outToStdout = value.equals("-");
 	        if (value.equalsIgnoreCase("DISPLAY") ) {
 	            displayImage = true;
 	        }
@@ -1716,7 +1795,7 @@ public boolean conv(String argv[]) {
 		}	    
 		else if (key.equalsIgnoreCase("SILENT") ) {
 	    	
-						silent = true;
+						silent = value == null || value.equalsIgnoreCase("true");
 	    	
 				}
 	    else if (key.equalsIgnoreCase("RI") ) {
@@ -1818,7 +1897,7 @@ public boolean conv(String argv[]) {
 						// it to the metadata
 					}
 				}
-		//		USE_FILENAME_IN_LABEL
+		//		USE_FILENAME (reader input; unrelated to PDS_FILENAME_IN_LABEL)
 		else if (key.equalsIgnoreCase("USE_FILENAME")) {
 				 if (value == null || value.equalsIgnoreCase("true")) {
 					 use_filename = true;
@@ -1827,11 +1906,9 @@ public boolean conv(String argv[]) {
 					 // most readers will die
 				 }
 			 }
-	    // PDS_FILENAME_IN_LABEL
-	    else if (key.equalsIgnoreCase("PDS_FILENAME")) {
-	    	if (value == null || value.equalsIgnoreCase("true")) {
-	        	useOutputFilename = true;
-	    	}
+	    // PDS_FILENAME_IN_LABEL (documented name); PDS_FILENAME is the older spelling, still accepted
+	    else if (key.equalsIgnoreCase("PDS_FILENAME_IN_LABEL") || key.equalsIgnoreCase("PDS_FILENAME")) {
+	    	useOutputFilename = (value == null || value.equalsIgnoreCase("true"));
 	    }	
 //	  PDS_DETACHED_LABEL
 	    else if (key.equalsIgnoreCase("PDS_DETACHED_LABEL")) {
@@ -2048,7 +2125,7 @@ public boolean conv(String argv[]) {
 	    	if (debug) System.out.println("VALID_MAXIMUM "+validMaximum);	
 	    } 
 	    else if (key.equalsIgnoreCase("CROP") ) {
-	    	// CROP=(cropX,cropY,cropHeight,cropWidth) values are floats, no spaces allowed");
+	    	// CROP=(x,y,width,height) or CROP=(x,y) values are floats, no spaces allowed");
 	    	if (debug) System.out.println("CROP "+value);
 	    	cropImage=true;
 	    	float[] ff = getValuesFloat(value);
@@ -2195,7 +2272,7 @@ public boolean conv(String argv[]) {
 	    	if (debug) System.out.println("TIF_WRITE_TILE_SIZE "+value+",  "+tileSizeX+" x "+tileSizeY);
 	    }
 	    else if (key.equalsIgnoreCase("SOURCE_REGION") ) {
-	    	// CROP=(cropX,cropY,cropHeight,cropWidth) values are floats, no spaces allowed");
+	    	// SOURCE_REGION=(startX,startY,width,height) values are ints, no spaces allowed");
 	    	if (debug) System.out.println("SOURCE_REGION "+value);
 	    	sourceRegion=true;
 	    	// useRawReader = true;
@@ -2343,7 +2420,8 @@ public boolean conv(String argv[]) {
 	    	} 
 	    	pds4_table_is_the_output = true;
 	    	if (debug) System.out.println("PDS4_TABLE_FIELDS "+value);
-	    }  else if (key.equalsIgnoreCase("PDS4_TABLE_OUTPUT_FORMAT") ) { 
+	    }  else if (key.equalsIgnoreCase("PDS4_TABLE_OUTPUT_FORMAT") || key.equalsIgnoreCase("PDS4_TABLE_OUPUT_FORMAT") ) { 
+	    	// PDS4_TABLE_OUPUT_FORMAT is the misspelling earlier HELP text documented; keep accepting it
 	    	 // could also use format or just ignore it if any table values are seen
 		    // if we are reading a Table but creating a PDS4 label (not available yet)
 		    // we could want to have format useable ??
@@ -2520,6 +2598,11 @@ public boolean conv(String argv[]) {
 		
 		// for some output formats fullRead will tolerate read exceptions and continue anyway
 	    iioImage = imUtil.fullRead(inputFileName, irp);
+	    if (iioImage == null) {
+	    	// the reader's error was printed above; stop here instead of a NullPointerException
+	    	System.out.println("ERROR: could not read "+inputFileName);
+	    	return false;
+	    }
 	    // check if metadata is being read in??
 	    reader = imUtil.getImageReader();
 	    readerFormat = reader.getFormatName();
@@ -2609,6 +2692,7 @@ public boolean conv(String argv[]) {
 			pds4TableReadParam.setFields(pds4_table_fields);
 			pds4TableReadParam.setFieldSeparator(pds4_table_field_separator);
 			pds4TableReadParam.setOutput_format(pds4_table_output_format);
+			pds4TableReadParam.setIndex(pds4_table_index);
 			// pds4TableReadParam.setOutputFileName(outputFileName);
 			pds4TableReadParam.setOutputFileName("string");
 			
@@ -2630,7 +2714,14 @@ public boolean conv(String argv[]) {
 			// now do the read using readAsString()
 			int imageIndex = pds4_table_index; // does this get used at all??
 			// probably the read param does the work
-			String table = ((PDS4TableReader) reader).readAsString(imageIndex, pds4TableReadParam);
+			String table;
+			try {
+				table = ((PDS4TableReader) reader).readAsString(imageIndex, pds4TableReadParam);
+			} catch (UnsupportedOperationException e) {
+				// e.g. delimited tables, which this build's opencsv cannot read
+				System.err.println("jConvertIIO: " + e.getMessage());
+				return false;
+			}
 			// the string may be used for something ??
 			// write to a file for now
 			if (debug) { 
@@ -2973,6 +3064,9 @@ public boolean conv(String argv[]) {
 	 if (debug) System.out.println("calling processFilters ***************************");
 	 imageHasBeenProcessed = false;
 	  filteredImage = processFilters(sourceImage);
+	  if (filteredImage == null) {
+		  return false; // processFilters printed the error
+	  }
 	  if (debug) {
 	  	System.out.println("after calling processFilters filteredImage "+filteredImage);			
 	  	System.out.println("filteredImage "+filteredImage.getWidth()+" "+filteredImage.getHeight());
@@ -3268,12 +3362,16 @@ public boolean conv(String argv[]) {
 	
 	
 	IIOImage iioImageOut = null;
-	if (outputFormat == null  && (outputFileName.equalsIgnoreCase("-") == false) &&
+	if (outputFormat == null  && (outToStdout || outputFileName.equalsIgnoreCase("-") == false) &&
 			outputFileName.equalsIgnoreCase("DISPLAY") == false ) {
-	  	System.out.println("no output format specified. use FORMAT=[format]");
+	  	System.err.println("no output format specified. use FORMAT=[format]");
 	  	System.exit(1); // error return
-	}  
-	else if (  outputFileName.equalsIgnoreCase("-") == false ) {
+	}
+	else if (outputFormat != null && outputFileName.equals("-") && !outToStdout) {
+		System.err.println("ERROR: FORMAT="+outputFormat+" given but no output file. use OUT=[file], or OUT=- to write to stdout");
+		return false;
+	}
+	else if (  outToStdout || outputFileName.equalsIgnoreCase("-") == false ) {
 		// the file should be written out
 	   
 	   if (debug) {
@@ -3399,7 +3497,7 @@ public boolean conv(String argv[]) {
 	}
 	    processSave(iioImageOut, inputFileName, outputFileName, outputFormat); 
 	    if (writeFailed) {
-	    	System.out.println("Image write failed: "+outputFileName);
+	    	System.err.println("Image write failed: "+outputFileName);
 	    	return false;
 	    }
 	    System.out.println("Image write Done");
@@ -3899,20 +3997,26 @@ public void jediTest(String inputFileName, boolean displayImage) {
         DOMutils domUtils = new DOMutils();
         // the button for this option should ONLY be created if we have a BufferedImage
         // so a check for a non-null image is not needed
-        try {
-          Iterator writers = ImageIO.getImageWritersByFormatName( format );
-          
-          /* if there are multiple writers how do we choose???
-           * could put all the writers into the imageWriteParam
-           * 	if there is a ParmaController the user could be allowed to choose the Writer
-           * */
-           if (debug) System.out.println( "jConvertIIO.processSave() writers.next() "); 
-           writer = (ImageWriter) writers.next();
-        } catch ( NoSuchElementException e) {
-			System.out.println( "jConvertIIO.processSave()  NoSuchElementException " +e );
-			e.printStackTrace();
-		}
-       
+        // jai_imageio's PNM writer cannot load on Java 17+; let vicario's PNM writer serve "pnm"
+        PNMImageWriterSpi.preferOver(IIORegistry.getDefaultInstance());
+        Iterator writers = ImageIO.getImageWritersByFormatName( format );
+        // jfif was only registered by jai_imageio's native CLib JPEG writer, which unregisters
+        // itself without its native library. The standard JPEG writer also writes JFIF files.
+        if (!writers.hasNext() && format.equalsIgnoreCase("jfif")) {
+        	writers = ImageIO.getImageWritersByFormatName( "jpeg" );
+        }
+        if (!writers.hasNext()) {
+        	System.out.println( "jConvertIIO.processSave() no ImageWriter for FORMAT="+format+"; this format cannot be written");
+        	writeFailed = true;
+        	return;
+        }
+        /* if there are multiple writers how do we choose???
+         * could put all the writers into the imageWriteParam
+         * 	if there is a ParmaController the user could be allowed to choose the Writer
+         * */
+        if (debug) System.out.println( "jConvertIIO.processSave() writers.next() ");
+        writer = (ImageWriter) writers.next();
+
                 
         
         
@@ -4005,7 +4109,9 @@ public void jediTest(String inputFileName, boolean displayImage) {
         	// long size = fc.getSize();
         	// on webdavOutputStream
         	// set content to 0, write flush, close, reopen
-        	
+
+        } else if (outToStdout) {
+        	// OUT=- : the image goes to stdout below; no file is created
         } else {   
         	/***
         	 * Changed from using fout as a File to creating a FileOutputStream
@@ -4102,7 +4208,7 @@ public void jediTest(String inputFileName, boolean displayImage) {
 			((PDSImageWriteParam)writeParam).setAddStatistics(addStatistics);
 			((PDSImageWriteParam)writeParam).setCalculateStatistics(calculateStatistics);
 			
-			((PDSImageWriteParam)writeParam).setAddLinePrefix(keep_line_prefix);
+			((PDSImageWriteParam)writeParam).setAddLinePrefix(keepLinePrefixes());
 			
 			((PDSImageWriteParam)writeParam).setPdsLabelType(pdsLabelType);
 			((PDSImageWriteParam)writeParam).setAddBinaryHeader(addBinaryHeader);
@@ -4326,6 +4432,8 @@ public void jediTest(String inputFileName, boolean displayImage) {
             		// fname is just the filename, no path.
             		// outputFileName is the full path
             	}
+            	// PDS_FILENAME_IN_LABEL: the writer puts the base name in ^IMAGE = ("name",n)
+            	((PDSImageWriteParam)  writeParam).setFilenameInLabel(useOutputFilename);
                 ((PDSImageWriteParam)  writeParam).setDebug(debug);
                 ((PDSImageWriteParam)  writeParam).setOutputXML(outputXML)	 ;
                 ((PDSImageWriteParam)  writeParam).setEmbedVicarLabel(embedVicarLabel) ;      	
@@ -4343,7 +4451,7 @@ public void jediTest(String inputFileName, boolean displayImage) {
             	 ((PDSImageWriteParam)writeParam).setAddStatistics(addStatistics);
     			 ((PDSImageWriteParam)writeParam).setCalculateStatistics(calculateStatistics);
             	 
-				((PDSImageWriteParam)writeParam).setAddLinePrefix(keep_line_prefix);
+				((PDSImageWriteParam)writeParam).setAddLinePrefix(keepLinePrefixes());
 				
 				((PDSImageWriteParam)writeParam).setPds_ptr(pds_ptr); 
 				
@@ -4534,6 +4642,8 @@ public void jediTest(String inputFileName, boolean displayImage) {
          }
         
         
+        // RAW and BMP need a particular raster layout (see prepareForWriter)
+        iioImage = prepareForWriter(iioImage, format);
         
    try { 
         
@@ -4559,24 +4669,24 @@ public void jediTest(String inputFileName, boolean displayImage) {
             
             // -------------- add support for standard out so the output could be piped
             
-            if (fout != null && fout.equals("-")) {
-            	// OutputStream os = System.out;
-				// writer.setOutput( os );
-				writer.setOutput( System.out );
+            if (outToStdout) {
+				// writers need an ImageOutputStream; it caches so writers can seek back (e.g. VICAR labels)
+				ImageOutputStream sos = ImageIO.createImageOutputStream(imageStdout);
+				writer.setOutput( sos );
 				// first null is streamMetadata, might check for it in general case, most readers WILL return NULL
 				// // writer.write(null, iioImage, writeParam);
 				if (debug) System.out.println( "write iioImage "+iioImage);
 				if (format.equalsIgnoreCase("vicar") == true || format.equalsIgnoreCase("pds") == true ||
 					format.equalsIgnoreCase("tif") == true  || format.equalsIgnoreCase("tiff") == true ||
                     format.equalsIgnoreCase("btf") || format.equalsIgnoreCase("btiff") ||
-				 	format.equalsIgnoreCase("vic") == true) {
+				 	format.equalsIgnoreCase("vic") == true || format.toLowerCase().startsWith("pds")) {
 					writer.write(null, iioImage, writeParam); // PDS NEEDS WriteParam
 				}
 				else {
 					writer.write(iioImage); // don't bother with WriteParam now
 				}
-				//		can we close System.out ??
-				// os.close(); // writer does NOT close the stream 
+				sos.close(); // flushes the cache; does not close stdout
+				imageStdout.flush();
             	
             } else {
             	
@@ -4718,9 +4828,71 @@ public void jediTest(String inputFileName, boolean displayImage) {
 	    ioe.printStackTrace();
 	    writeFailed = true;
 	  } 
+	  catch (RuntimeException | Error e) {
+	    // a writer that crashes (e.g. on a raster layout it does not handle) fails the write cleanly
+	    System.out.println("jConvertIIO.processSave() the "+format+" writer failed: "+e);
+	    if (debug) e.printStackTrace(System.err);
+	    writeFailed = true;
+	  }
 	  
     } 
     
+    /**
+     * Gives writers that need a particular raster layout an image they can write.
+     * <ul>
+     * <li>RAW: jai_imageio's raw writer writes every tile whole, so an image that is not a
+     * multiple of the tile size (256 by default) was padded with zeros, and the sample order
+     * followed the tiles. The image is copied into one band-sequential (BSQ) tile, so the file
+     * holds exactly width x height x bands samples, band after band (VICAR BSQ order), in the
+     * writer's (big-endian) byte order. This holds the whole image in memory.</li>
+     * <li>BMP: the BMP writers only handle pixel-interleaved multi-band rasters; VICAR BSQ and
+     * BIL images (banded or line-interleaved) made them throw. Such 8-bit images are re-laid
+     * out pixel-interleaved.</li>
+     * </ul>
+     * Other formats are returned unchanged.
+     */
+    IIOImage prepareForWriter(IIOImage iioImage, String format) {
+        RenderedImage src = iioImage.getRenderedImage();
+        if (src == null) return iioImage;
+        SampleModel sm = src.getSampleModel();
+        int nb = sm.getNumBands();
+        SampleModel target;
+        int tileW = src.getTileWidth();
+        int tileH = src.getTileHeight();
+        if (format.equalsIgnoreCase("raw")) {
+            tileW = src.getWidth();
+            tileH = src.getHeight();
+            target = new BandedSampleModel(sm.getDataType(), tileW, tileH, nb);
+            if (src.getNumXTiles() == 1 && src.getNumYTiles() == 1 && sm instanceof BandedSampleModel
+                && src.getTileWidth() == tileW && src.getTileHeight() == tileH) {
+                return iioImage;
+            }
+        } else if (format.equalsIgnoreCase("bmp") && nb > 1 && sm.getDataType() == DataBuffer.TYPE_BYTE
+                   && !(sm instanceof PixelInterleavedSampleModel)) {
+            // only 8-bit: an interleaved 16-bit image would be written truncated to 8 bits
+            // instead of refused (BMP has no 16-bit-per-sample RGB)
+            int[] offsets = new int[nb];
+            for (int i = 0; i < nb; i++) offsets[i] = i;
+            target = new PixelInterleavedSampleModel(sm.getDataType(), tileW, tileH, nb, nb * tileW, offsets);
+        } else {
+            return iioImage;
+        }
+        if (debug) System.out.println("jConvertIIO.prepareForWriter() "+format+": "+sm+" -> "+target);
+        ImageLayout il = new ImageLayout();
+        il.setTileGridXOffset(src.getMinX());
+        il.setTileGridYOffset(src.getMinY());
+        il.setTileWidth(tileW);
+        il.setTileHeight(tileH);
+        il.setSampleModel(target);
+        ColorModel cm = src.getColorModel();
+        if (cm != null && cm.isCompatibleSampleModel(target)) il.setColorModel(cm);
+        ParameterBlock pb = new ParameterBlock();
+        pb.addSource(src);
+        pb.add(sm.getDataType());
+        RenderedImage out = JAI.create("format", pb, new RenderingHints(JAI.KEY_IMAGE_LAYOUT, il));
+        return new IIOImage(out, iioImage.getThumbnails(), iioImage.getMetadata());
+    }
+
     /**
      * adds JAI RenederedOps to the image. The Operators are controlled from 
      * the command line arguments. By default this method does nothing.
@@ -4825,12 +4997,26 @@ public void jediTest(String inputFileName, boolean displayImage) {
     		}
     		
     		if (debug) System.out.println("processFilters CROP "+cropX+","+cropY+"  "+cropWidth+"x"+cropHeight);
+			// CROP=(x,y) or a width/height of 0 means "to the image edge"; clip to the image like SOURCE_REGION
+			java.awt.geom.Rectangle2D.Float imageBounds = new java.awt.geom.Rectangle2D.Float(
+					temp.getMinX(), temp.getMinY(), temp.getWidth(), temp.getHeight());
+			float cw = cropWidth  > 0 ? cropWidth  : (float) imageBounds.getMaxX() - cropX;
+			float ch = cropHeight > 0 ? cropHeight : (float) imageBounds.getMaxY() - cropY;
+			java.awt.geom.Rectangle2D cropArea = new java.awt.geom.Rectangle2D.Float(cropX, cropY, cw, ch)
+					.createIntersection(imageBounds);
+			if (cropArea.isEmpty()) {
+				System.err.println("ERROR: CROP=("+cropX+","+cropY+","+cropWidth+","+cropHeight
+						+") is outside the "+temp.getWidth()+" x "+temp.getHeight()+" image. CROP=(x,y,width,height)");
+				return null;
+			}
+			float cx = (float) cropArea.getX();
+			float cy = (float) cropArea.getY();
 			ParameterBlockJAI PBc=new ParameterBlockJAI("crop");
 			PBc.setSource(temp,0);
-			PBc.setParameter("x", cropX);
-			PBc.setParameter("y", cropX);
-			PBc.setParameter("width", cropWidth);
-			PBc.setParameter("height", cropHeight);
+			PBc.setParameter("x", cx);
+			PBc.setParameter("y", cy);
+			PBc.setParameter("width", (float) cropArea.getWidth());
+			PBc.setParameter("height", (float) cropArea.getHeight());
 			cropped = JAI.create("crop",PBc);
 			
 			if (debug) System.out.println("after crop cropped "+cropped);
@@ -4844,8 +5030,8 @@ public void jediTest(String inputFileName, boolean displayImage) {
 			
 			
 			
-			float x = (float) (cropX*-1.0);
-			float y = (float) (cropY*-1.0);
+			float x = (float) (cx*-1.0);
+			float y = (float) (cy*-1.0);
 			// float x = (float) (cropX);
 			// float y = (float) (cropY);
 			// x=0.0F; y=0.0F;
@@ -4867,7 +5053,11 @@ public void jediTest(String inputFileName, boolean displayImage) {
 			int w = trans.getWidth();
 			int h = trans.getHeight();
 			if (debug) System.out.println("tiledImage  "+w+"x"+h);
-			RenderedImage tiled = new TiledImage(trans, w, h );
+			// put the tile grid at the image origin: the VICAR writer assumes a tile grid offset of 0
+			TiledImage tiled = new TiledImage(trans.getMinX(), trans.getMinY(), w, h,
+					trans.getMinX(), trans.getMinY(),
+					trans.getSampleModel().createCompatibleSampleModel(w, h), trans.getColorModel());
+			tiled.set(trans);
 			// TiledImage tiled = new TiledImage(trans, false );
 			
 			temp = tiled;
@@ -4971,12 +5161,13 @@ public void jediTest(String inputFileName, boolean displayImage) {
       * then the dats should be rescaled even if the data type doesn't change.
       * 
       */   
-    // don't check if we should do this or not. Even of the data type is the same a rescale may help the data look better
-    /**
-    if (rescaleOnFormat == true && validMinimum == 0.0 && validMaximum == 0.0 && rescale_constant == 1.0 && rescale_offset == 0.0) {
+    // The automatic stretch applies only to narrowing conversions (see the HELP text for RESCALE).
+    // Same-type and widening conversions keep their values unless the user asked for a
+    // rescale with VALID_MINIMUM/VALID_MAXIMUM or RESCALE_CONSTANT/RESCALE_OFFSET.
+    boolean explicitRescale = validMinimum != 0.0 || validMaximum != 0.0 || rescale_constant != 1.0 || rescale_offset != 0.0;
+    if (rescaleOnFormat && !explicitRescale) {
          	rescaleOnFormat =  checkRescaleOnFormat(oldDataType, newDataType);
          }
-	***/
     if (rescaleOnFormat) {
     	// this will be for BYTE output
     	double constant[] = new double[]{1.0};
@@ -5106,6 +5297,16 @@ public void jediTest(String inputFileName, boolean displayImage) {
 			}
     	}
 	
+		// rescale clamps its result to the type of its source. For a widening conversion
+		// convert first, so the rescale runs in the output type and is not clipped to the input range.
+		if (oldDataType != newDataType && !checkRescaleOnFormat(oldDataType, newDataType)) {
+			// SHORT to USHORT: work in INT so negative input survives a positive offset
+			int workType = (oldDataType == DataBuffer.TYPE_SHORT && newDataType == DataBuffer.TYPE_USHORT)
+					? DataBuffer.TYPE_INT : newDataType;
+			ParameterBlock pbw = new ParameterBlock();
+			pbw.addSource(temp).add(workType);
+			temp = JAI.create("format", pbw);
+		}
 		PB=new ParameterBlock();
 		// PB.addSource(temp).add(new double[]{ceiling/(max-min)}).add(new double[]{ceiling*min/(min-max)});
 		PB.addSource(temp).add(constant).add(offset);
@@ -5273,13 +5474,13 @@ public void jediTest(String inputFileName, boolean displayImage) {
     	
     	double max = 0.0;
     	if (dataType == DataBuffer.TYPE_BYTE) {
-    		max = Byte.MAX_VALUE * 2;//used as unsigned
+    		max = 255.0; // used as unsigned (Byte.MAX_VALUE * 2 is 254)
 	        }
 	    else if (dataType == DataBuffer.TYPE_SHORT) {
 	    	max = Short.MAX_VALUE;
 	        }	    
 	    else if (dataType == DataBuffer.TYPE_USHORT) {	    	
-	    	max = Short.MAX_VALUE * 2;
+	    	max = 65535.0; // Short.MAX_VALUE * 2 is 65534
 	        }
 	    else if (dataType == DataBuffer.TYPE_INT) {
 	    	max = Integer.MAX_VALUE; // or 0.0 ?? // assume unsigned ???

@@ -82,13 +82,29 @@ public class ExtractTableJPL {
 	
 	boolean debug = false;
 
+	/** True when run from main(): showHelp() then ends the program with its exit code. */
+	private boolean exitOnHelp = false;
+
 	/**
 	 * Runs the application with given command-line arguments.
 	 *
 	 * @param args the command-line arguments
 	 */
 	public static void main(String[] args) {
-		(new ExtractTableJPL()).run(args);
+		ExtractTableJPL extractor = new ExtractTableJPL();
+		extractor.exitOnHelp = true;
+		try {
+			extractor.run(args);
+		} catch (UnsupportedOperationException e) {
+			System.err.println(e.getMessage());
+			System.exit(1);
+		}
+		if (extractor.outputFile == null) {
+			// No -o: run() buffers the table (or the --list-tables output) so that
+			// library callers can collect it; on the command line it goes to stdout.
+			System.out.print(extractor.getOutputAsString());
+			System.out.flush();
+		}
 	}
 
 	/**
@@ -209,6 +225,13 @@ public class ExtractTableJPL {
 			TableReader reader = null;
 			try {
 				reader = ExporterFactory.getTableReader(obj, dataFile);
+			} catch (LinkageError ex) {
+				// pds4-jparser 2.12.1 reads delimited tables with CSVParserBuilder.withKeepQuotations,
+				// which exists only in the unpublished gov.nasa.pds:opencsv fork, not in the public
+				// com.opencsv:opencsv this build uses (see pom.xml).
+				out.close();
+				String what = (tableType == TableType.DELIMITED) ? "delimited PDS4 tables are" : "this PDS4 table type is";
+				throw new UnsupportedOperationException(what + " not supported in this build: " + ex, ex);
 			} catch (Exception ex) {
 				System.err.println("Cannot create a table reader for the table: " + ex.getMessage());
 				ex.printStackTrace();
@@ -534,7 +557,14 @@ public class ExtractTableJPL {
 
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.printHelp(programName + " [-f field,...] [-o outputfile] [options] labelfile", options);
-		// System.exit(exitCode);
+		if (exitOnHelp) {
+			System.exit(exitCode);
+		}
+		// Library use (PDS4TableReader, TableUtils): do not end the JVM. An error
+		// becomes an exception instead of falling through to a later crash.
+		if (exitCode != 0) {
+			throw new IllegalArgumentException(errorMessage);
+		}
 	}
 
 	/**

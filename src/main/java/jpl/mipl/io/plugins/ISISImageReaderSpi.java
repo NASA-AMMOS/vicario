@@ -17,6 +17,7 @@ import java.util.Iterator;
 import java.util.Locale;
 import javax.imageio.ImageReader;
 import javax.imageio.spi.ImageReaderSpi;
+import javax.imageio.spi.ServiceRegistry;
 import javax.imageio.stream.ImageInputStream;
 
 /**
@@ -92,6 +93,21 @@ public class ISISImageReaderSpi extends ImageReaderSpi {
     public void onRegistration() {
         if (debug) {
             System.out.println("ISIS reader spi: on registration");
+        }
+    }
+
+    /**
+     * An ISIS2 qube (SFDU_LABEL) has a PDS-style label that PDSImageReaderSpi also
+     * accepts. Without an ordering ImageIO picks either reader, in an order that can
+     * change from run to run, and the PDS reader turns the qube into a 1x1 BYTE image.
+     * Order this reader first (PDSImageReaderSpi does the same if it registers later).
+     */
+    @Override
+    public void onRegistration(ServiceRegistry registry, Class<?> category) {
+        super.onRegistration(registry, category);
+        PDSImageReaderSpi pds = registry.getServiceProviderByClass(PDSImageReaderSpi.class);
+        if (pds != null && category == ImageReaderSpi.class) {
+            registry.setOrdering(ImageReaderSpi.class, this, pds);
         }
     }
 

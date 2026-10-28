@@ -8,7 +8,7 @@ import { E2E_ROOT } from '../support/env';
 import { ABOUT, SCOPES, about, features, tagOf } from '../support/features';
 
 const specFiles = readdirSync(path.join(E2E_ROOT, 'features'))
-  .filter((f) => f.endsWith('.spec.ts') && !['registry.spec.ts', 'junit.spec.ts'].includes(f))
+  .filter((f) => f.endsWith('.spec.ts') && !['registry.spec.ts', 'junit.spec.ts', 'report-pages.spec.ts'].includes(f))
   .map((f) => `features/${f}`);
 
 test.describe('Feature registry', { tag: ['@registry', '@fast'] }, () => {
