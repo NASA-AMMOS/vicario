@@ -161,9 +161,11 @@ open report/procedures.html                           # check your tests read we
 | `security-scan.yml` | pull requests to `main`/`develop`, push to `main`, manual | CodeQL (Java, Python, workflows) and SonarQube Cloud analysis; see [Security scanning](#security-scanning) |
 
 The report has three parts:
-- **`report/index.html`**, the feature overview: each feature's description, status and pass/fail counts, a gallery of image previews from its tests, the failures (with any "needs review" note), ticketed known failures grouped by ticket when there are any, and the features not yet automated. Each feature and image links into the full report.
+- **`report/index.html`**, the feature overview: each feature's description, status and pass/fail counts, a drop-down table of its tests (each linked to its procedure), a gallery of image previews from its tests, the failures (with any "needs review" note), ticketed known failures grouped by ticket when there are any, and the features not yet automated. Each feature and image links into the full report.
 - **`report/procedures.html`**, the test procedures: every test grouped by feature, with its description, scope tags, issue notes and latest result, plus links to its run details and its source on GitHub. A scope legend at the top filters the list.
 - **`report/playwright/`**, the Playwright HTML report: every test with its command line, logs, label text and image previews, including the JUnit results.
+
+`features/report-pages.spec.ts` checks the overview and the site: it runs a few sample tests through the reporter, builds the site from that report, and checks every drop-down link reaches a test on the procedures page.
 
 Where to find it:
 - **Pull requests:** `ci.yml` uploads it as the `feature-report-fast` artifact, kept for **5 days**. GitHub serves artifacts as zip downloads, so unzip it and open `report/index.html`. The job summary also shows the feature table inline.

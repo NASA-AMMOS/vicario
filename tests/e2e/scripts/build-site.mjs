@@ -6,7 +6,7 @@
 //
 //   node scripts/build-site.mjs [--report report] [--out site]
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 
@@ -14,8 +14,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(root, '..', '..');
 const args = process.argv.slice(2);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
-const reportDir = join(root, opt('--report', 'report'));
-const outDir = join(root, opt('--out', 'site'));
+const reportDir = resolve(root, opt('--report', 'report'));
+const outDir = resolve(root, opt('--out', 'site'));
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const features = parse(readFileSync(join(root, 'features.yml'), 'utf8')).features;
