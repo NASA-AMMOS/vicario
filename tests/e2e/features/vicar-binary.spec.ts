@@ -2,7 +2,7 @@
 // label header (NLB=1) and a 24-byte prefix on every line (NBB=24). The pixels
 // must decode the same through every read path, and KEEP_LINE_PREFIX must carry
 // the prefix bytes into VICAR and PDS output unchanged.
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
 import { about, feature, issue } from '../support/features';
@@ -42,6 +42,29 @@ function pdsPrefixes(file: string, n: number): Buffer[] {
   const prefix = Number(text.match(/LINE_PREFIX_BYTES\s*=\s*(\d+)/)?.[1] ?? 0);
   const start = (imageRec - 1) * recBytes;
   return Array.from({ length: n }, (_, i) => data.subarray(start + i * recBytes, start + i * recBytes + prefix));
+}
+
+/**
+ * A 3-band BSQ BYTE VICAR image (8 x 4) with a 4-byte prefix on every record:
+ * 'B', band, 'L', line. Pixel (band b, line l, sample s) is 50b + 10l + s.
+ */
+function prefixedBands(file: string) {
+  const [ns, nl, nb, nbb] = [8, 4, 3, 4];
+  const rec = nbb + ns;
+  const items = `FORMAT='BYTE' TYPE='IMAGE' BUFSIZ=${rec} DIM=3 EOL=0 RECSIZE=${rec} ORG='BSQ' NL=${nl} NS=${ns} NB=${nb} `
+    + `N1=${ns} N2=${nl} N3=${nb} N4=0 NBB=${nbb} NLB=0 HOST='JAVA' INTFMT='HIGH' REALFMT='IEEE' `
+    + `BHOST='JAVA' BINTFMT='HIGH' BREALFMT='IEEE' BLTYPE='TEST'`;
+  const size = Math.ceil((items.length + 20) / rec) * rec;
+  const label = Buffer.alloc(size, ' ');
+  label.write(`LBLSIZE=${size}  ${items}`, 'latin1');
+  const data = Buffer.alloc(nb * nl * rec);
+  for (let b = 0; b < nb; b++) for (let l = 0; l < nl; l++) {
+    const at = (b * nl + l) * rec;
+    data.set([0x42, b, 0x4c, l], at);
+    for (let s = 0; s < ns; s++) data[at + nbb + s] = 50 * b + 10 * l + s;
+  }
+  writeFileSync(file, Buffer.concat([label, data]));
+  return { nl, nb };
 }
 
 test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () => {
@@ -169,4 +192,39 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
     expect([l.NBB, l.NLB]).toEqual(['0', '0']);
     expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, src));
   });
+
+  test('prefixes do not follow the wrong band when BANDS reorders the bands', about(
+    `Converts a synthetic 3-band VICAR image whose line prefixes name their band and line to VICAR with \`BANDS=(2,1,0)\` and \`KEEP_LINE_PREFIX=true\`. The band count is unchanged but the bands are reversed. Passes when no output record carries a prefix from a different band: either the prefixes are dropped with a warning (\`NBB=0\`) or each record's prefix names the input band now in that position.`,
+    '@off-nominal', '@regression',
+  ), async ({}, testInfo) => {
+    issue('REVIEW-13', 'fixed: with BANDS reordering the bands, the line prefixes were written in the input band order');
+    const src = testInfo.outputPath('prefixed_bands.vic');
+    const { nl, nb } = prefixedBands(src);
+    const r = await convert(testInfo, src, 'reordered.vic', { format: 'vicar', BANDS: '(2,1,0)', KEEP_LINE_PREFIX: 'true' });
+    expectConverted(r);
+    const p = await probe(testInfo, r.out);
+    expect([p.width, p.height, p.bands]).toEqual([8, 4, 3]);
+    if (vicarLabel(r.out).NBB === '0') {
+      expect(`${r.stdout}\n${r.stderr}`).toMatch(/not writing the line prefixes/);
+    } else {
+      const prefixes = vicarPrefixes(r.out, nb * nl);
+      for (let b = 0; b < nb; b++) for (let l = 0; l < nl; l++) {
+        expect([...prefixes[b * nl + l]], `output band ${b} line ${l}`).toEqual([0x42, nb - 1 - b, 0x4c, l]);
+      }
+    }
+  });
+
+  test('BANDS that keeps every band in place keeps the prefixes', about(
+    `Converts the same synthetic 3-band prefixed image to VICAR with \`BANDS=(0,1,2)\` and \`KEEP_LINE_PREFIX=true\`. Passes when the output keeps \`NBB=4\` and every record's prefix is the input's for the same band and line.`,
+    '@nominal', '@lossless',
+  ), async ({}, testInfo) => {
+    const src = testInfo.outputPath('prefixed_bands.vic');
+    const { nl, nb } = prefixedBands(src);
+    const r = await convert(testInfo, src, 'same_order.vic', { format: 'vicar', BANDS: '(0,1,2)', KEEP_LINE_PREFIX: 'true' });
+    expectConverted(r);
+    expect(vicarLabel(r.out).NBB).toBe('4');
+    expect(vicarPrefixes(r.out, nb * nl)).toEqual(vicarPrefixes(src, nb * nl));
+    expectSamePixels(await probe(testInfo, r.out), await probe(testInfo, src));
+  });
 });
+

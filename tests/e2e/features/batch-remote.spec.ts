@@ -116,6 +116,23 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
       expect(existsSync(testInfo.outputPath('-')), 'no file named "-"').toBe(false);
     }
   });
+
+  for (const parallel of [undefined, '2']) {
+    test(`OUT=- on an ARGFILE line is refused${parallel ? ` (PARALLEL_BATCH=${parallel})` : ''}`, about(
+      `Runs an \`ARGFILE\` batch${parallel ? ` with \`PARALLEL_BATCH=${parallel}\`` : ''} whose second line converts to PNG with \`OUT=-\`. Passes when the run exits non-zero with an error naming \`OUT=-\` and \`ARGFILE\` on stderr, and no PNG data reaches stdout (it would be mixed with the batch progress text).`,
+      '@off-nominal', '@regression',
+    ), async ({}, testInfo) => {
+      issue('REVIEW-12', 'fixed: in an ARGFILE batch, OUT=- wrote the image to stdout mixed with the batch progress text');
+      const src = synthetic('gen_byte_bsq.vic');
+      const file = testInfo.outputPath('args.txt');
+      writeFileSync(file, `inp=${src} out=${testInfo.outputPath('first.png')} format=png\ninp=${src} out=- format=png\n`);
+      const r = await jconvert(testInfo, [`ARGFILE=${file}`, ...(parallel ? [`PARALLEL_BATCH=${parallel}`] : [])]);
+      await testInfo.attach('batch.log', { body: `exit ${r.exitCode}\n${r.stdout}\n${r.stderr}`, contentType: 'text/plain' });
+      expect(r.exitCode).not.toBe(0);
+      expect(r.stderr).toMatch(/OUT=-.*ARGFILE/);
+      expect(r.stdoutBytes!.includes(Buffer.from('\x89PNG', 'latin1')), 'no PNG on stdout').toBe(false);
+    });
+  }
 });
 
 test.describe('Batch, streaming and remote input (network)', feature('batch-remote', 'full'), () => {

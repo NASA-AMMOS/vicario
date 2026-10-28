@@ -110,7 +110,7 @@ import org.apache.jackrabbit.webdav.client.methods.PutMethod;
 * no arguments will also cause the help to be printed <br>
 * INP=[inputFileName] <br>
 * OUT=[outputFileName] name of the output file. OUT=- writes the image to stdout
-* (messages go to stderr; SILENT suppresses them).<br>
+* (messages go to stderr; SILENT suppresses them). Not allowed in an ARGFILE batch.<br>
 * FORMAT=[imageFileFormatName] file format name to save the output to. 
 * The extention of the output filename is not used in any way. <br>
 * FORMAT=raw writes a headerless file of exactly width x height x bands samples, band sequential (BSQ), big-endian. <br>
@@ -467,6 +467,36 @@ static private void setJAIMemory(double amount, boolean debug) {
     if (debug) System.out.printf("set JAI cache to %.2fMB\n", jaiCacheCapacity / (1024.0 * 1024.0));
 }
 
+/**
+ * KEEP_LINE_PREFIX, unless BANDS or READ_BANDS moved a band to a new
+ * position: the prefixes belong to the input's (line, band) records, and the
+ * writer only checks the band count, so it would attach them to other bands.
+ */
+boolean keepLinePrefixes() {
+	if (!keep_line_prefix) return false;
+	if ((bandSelect && !inPlace(bandList)) || (readerBandSelect && !inPlace(readerBandList))) {
+		System.err.println("jConvertIIO warning: not writing the line prefixes: BANDS or READ_BANDS moves bands, "
+			+ "so the prefixes no longer match the output records");
+		return false;
+	}
+	return true;
+}
+
+/** True if every selected band stays at its own position (band i is input band i). */
+static boolean inPlace(int[] bands) {
+	for (int i = 0; i < bands.length; i++) if (bands[i] != i) return false;
+	return true;
+}
+
+/** True if the arguments ask for the image on stdout (OUT=-). */
+static boolean writesToStdout(String[] args) {
+	for (String arg : args) {
+		int eq = arg.indexOf('=');
+		if (eq != -1 && arg.substring(0, eq).equalsIgnoreCase("OUT") && arg.substring(eq + 1).equals("-")) return true;
+	}
+	return false;
+}
+
 static private int runParallelBatch(ExecutorService executor, List<Callable<Integer>> tasks)
     throws InterruptedException, ExecutionException {
 
@@ -563,12 +593,11 @@ static public void main(String args[])
 	
 	if (argFile.equalsIgnoreCase("") ) {
 		// OUT=- writes the image to stdout, so messages go to stderr; SILENT drops them
-		boolean toStdout = false, silentRun = false;
+		boolean toStdout = writesToStdout(args), silentRun = false;
 		for (String arg : args) {
 			int eq = arg.indexOf('=');
 			String k = eq == -1 ? arg : arg.substring(0, eq);
 			String v = eq == -1 ? "true" : arg.substring(eq + 1);
-			if (k.equalsIgnoreCase("OUT") && v.equals("-")) toStdout = true;
 			if (k.equalsIgnoreCase("SILENT") && v.equalsIgnoreCase("true")) silentRun = true;
 		}
 		if (silentRun) {
@@ -619,6 +648,13 @@ static public void main(String args[])
 				continue;
 			} else {
 				String[] theArgs = lineTrimmed.split("\\s+");
+				// batch progress is printed to stdout, and several lines could each
+				// write an image there, so a batch line may not use OUT=-
+				if (writesToStdout(theArgs)) {
+					System.err.println("line "+argFileLine+") error: OUT=- (write the image to stdout) is not supported in an ARGFILE batch");
+					System.err.println(lineTrimmed);
+					System.exit(1);
+				}
 				boolean status = false;
                 if (parallelBatchSize > 0) {
                     final int lineNum = argFileLine;
@@ -963,6 +999,7 @@ public void printHelp() {
 	System.out.println(" VICAR, PDS and ISIS can have line prefix data. Currently vicar and PDS support writing line prefixes.");
 	System.out.println(" VICAR to VICAR keeps the prefixes (NBB) by default; use KEEP_LINE_PREFIX=false to strip them.");
 	System.out.println(" Prefixes are not written if the output has a different number of lines or bands than the input.");
+	System.out.println(" They are also dropped when BANDS or READ_BANDS moves a band to a new position.");
 	// ImageReadParam modifies how the data is read
 	System.out.println("ImageReadParam arguments applied to the reader");
 	System.out.println("READ_BANDS=1,2,3 will only read in the bads listed. bands start at 0 ");
@@ -1016,7 +1053,7 @@ public void printHelp() {
 	System.out.println("argument names are NOT case sensitive, except filenames and FORMAT names");
 	System.out.println("an argument without a value will default to \"true\" (only for [true,false] args");
 	System.out.println("PLUGINS registered reader and writer names are printed ");
-	System.out.println("OUT=- writes the output image to stdout, for piping to another process like ImageMagick \"convert\".");
+	System.out.println("OUT=- writes the output image to stdout, for piping to another process like ImageMagick \"convert\". Not allowed in an ARGFILE batch.");
 	System.out.println(" FORMAT is required. Messages then go to stderr. Formats that need a second file (detached labels) are not supported.");
 	System.out.println("SILENT eliminate all printing to stdout (errors still go to stderr), useful with OUT=-");
 	System.out.println("IMAGE_INDEX=n sets the image index to read from the file. Defaults to 0.");	
@@ -4171,7 +4208,7 @@ public void jediTest(String inputFileName, boolean displayImage) {
 			((PDSImageWriteParam)writeParam).setAddStatistics(addStatistics);
 			((PDSImageWriteParam)writeParam).setCalculateStatistics(calculateStatistics);
 			
-			((PDSImageWriteParam)writeParam).setAddLinePrefix(keep_line_prefix);
+			((PDSImageWriteParam)writeParam).setAddLinePrefix(keepLinePrefixes());
 			
 			((PDSImageWriteParam)writeParam).setPdsLabelType(pdsLabelType);
 			((PDSImageWriteParam)writeParam).setAddBinaryHeader(addBinaryHeader);
@@ -4414,7 +4451,7 @@ public void jediTest(String inputFileName, boolean displayImage) {
             	 ((PDSImageWriteParam)writeParam).setAddStatistics(addStatistics);
     			 ((PDSImageWriteParam)writeParam).setCalculateStatistics(calculateStatistics);
             	 
-				((PDSImageWriteParam)writeParam).setAddLinePrefix(keep_line_prefix);
+				((PDSImageWriteParam)writeParam).setAddLinePrefix(keepLinePrefixes());
 				
 				((PDSImageWriteParam)writeParam).setPds_ptr(pds_ptr); 
 				
