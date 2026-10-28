@@ -4794,7 +4794,7 @@ public void jediTest(String inputFileName, boolean displayImage) {
 	  catch (RuntimeException | Error e) {
 	    // a writer that crashes (e.g. on a raster layout it does not handle) fails the write cleanly
 	    System.out.println("jConvertIIO.processSave() the "+format+" writer failed: "+e);
-	    if (debug) e.printStackTrace();
+	    if (debug) e.printStackTrace(System.err);
 	    writeFailed = true;
 	  }
 	  

@@ -36,7 +36,7 @@ public class ImageInputStreamStrideTest {
 		for (int i = 1; i <= 4; i++) b.putInt(i);
 		for (int i = 1; i <= 4; i++) b.putFloat(i);
 		for (int i = 1; i <= 4; i++) b.putDouble(i);
-		File f = File.createTempFile("stride", ".bin");
+		File f = Files.createTempFile("stride", ".bin").toFile();
 		Files.write(f.toPath(), b.array());
 		return f;
 	}

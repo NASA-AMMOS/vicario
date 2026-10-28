@@ -63,7 +63,7 @@ public class ReaderSelectionTest {
     }
 
     private static File vicarFile() throws Exception {
-        File f = File.createTempFile("random-easy", ".vic");
+        File f = Files.createTempFile("random-easy", ".vic").toFile();
         f.deleteOnExit();
         // 2-record label (RECSIZE=64), then 2 lines of 64 BYTE pixels
         byte[] label = new byte[128];
