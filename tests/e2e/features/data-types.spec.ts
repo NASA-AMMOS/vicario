@@ -67,7 +67,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
   });
 
   test('BYTE to HALF with the default RESCALE keeps the values', about(
-    `Converts the synthetic BYTE image (values 0 to 255) to HALF with the default rescaling. A widening conversion is not stretched unless asked for. Passes when the output is 16-bit with pixels equal to the input.`,
+    `Converts the synthetic BYTE image (values 0 to 217) to HALF with the default rescaling. A widening conversion is not stretched unless asked for. Passes when the output is 16-bit with pixels equal to the input.`,
     '@nominal', '@regression', '@lossless',
   ), async ({}, testInfo) => {
     issue('REVIEW-6', 'fixed: the default rescale ran in the source type, so BYTE to HALF saturated to 3 distinct values');
@@ -92,7 +92,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
   });
 
   test('HALF to HALF with the default RESCALE keeps the values', about(
-    `Converts the synthetic HALF image (values 0 to 284) with \`OFORM=HALF\`, its own data type. RESCALE applies only when OFORM changes to a narrower type. Passes when the output pixels equal the input.`,
+    `Converts the synthetic HALF image (values 0 to 217) with \`OFORM=HALF\`, its own data type. RESCALE applies only when OFORM changes to a narrower type. Passes when the output pixels equal the input.`,
     '@nominal', '@regression', '@lossless',
   ), async ({}, testInfo) => {
     issue('REVIEW-6', 'fixed: the same data type was stretched to the full 16-bit range');
@@ -105,7 +105,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
   });
 
   test('BYTE to HALF with RESCALE_CONSTANT and RESCALE_OFFSET is not clipped to the byte range', about(
-    `Converts the synthetic BYTE image (0 to 255) to HALF with \`RESCALE_CONSTANT=10 RESCALE_OFFSET=3\`. The rescale must run in the 16-bit output type. Passes when the output spans exactly 3 to 2553 (255 x 10 + 3) with mean equal to the input mean x 10 + 3.`,
+    `Converts the synthetic BYTE image (0 to 217) to HALF with \`RESCALE_CONSTANT=10 RESCALE_OFFSET=3\`. The rescale must run in the 16-bit output type. Passes when the output spans exactly 3 to 2173 (217 x 10 + 3, past the byte range) with mean equal to the input mean x 10 + 3.`,
     '@nominal', '@regression',
   ), async ({}, testInfo) => {
     issue('REVIEW-6', 'fixed: an explicit rescale on a widening OFORM was clipped to the source (byte) range');
@@ -114,16 +114,16 @@ test.describe('Data type conversion', feature('data-types'), () => {
       { format: 'vicar', OFORM: 'HALF', RESCALE_CONSTANT: '10', RESCALE_OFFSET: '3' });
     expectConverted(r);
     const p = await probe(testInfo, r.out);
-    expect([p.dataType, p.min, p.max]).toEqual(['SHORT', 3, 2553]);
+    expect([p.dataType, p.min, p.max]).toEqual(['SHORT', 3, 2173]);
     expect(p.mean!).toBeCloseTo(src.mean! * 10 + 3, 1);
   });
 
   test('HALF to BYTE with VALID_MINIMUM and VALID_MAXIMUM stretches that range to 0..255', about(
-    `Converts the synthetic HALF image (0 to 284) to BYTE with \`VALID_MINIMUM=0 VALID_MAXIMUM=142\`. Passes when the output is BYTE, spans exactly 0 to 255, and values above 142 are clipped to 255.`,
+    `Converts the synthetic HALF image (0 to 217) to BYTE with \`VALID_MINIMUM=0 VALID_MAXIMUM=108\`. Passes when the output is BYTE, spans exactly 0 to 255, and values above 108 are clipped to 255.`,
     '@off-nominal',
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_half_bsq.vic'), 'half_byte_valid.vic',
-      { format: 'vicar', OFORM: 'BYTE', VALID_MINIMUM: '0', VALID_MAXIMUM: '142' });
+      { format: 'vicar', OFORM: 'BYTE', VALID_MINIMUM: '0', VALID_MAXIMUM: '108' });
     expectConverted(r);
     const p = await probe(testInfo, r.out);
     expect([p.dataType, p.min, p.max]).toEqual(['BYTE', 0, 255]);
@@ -131,7 +131,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
   });
 
   test('HALF to BYTE with the default RESCALE reaches 255', about(
-    `Converts the synthetic HALF image (0 to 284) to BYTE with the default rescaling. Passes when the output spans exactly 0 to 255 (the full unsigned byte range, not 0 to 254).`,
+    `Converts the synthetic HALF image (0 to 217) to BYTE with the default rescaling. Passes when the output spans exactly 0 to 255 (the full unsigned byte range, not 0 to 254).`,
     '@nominal', '@regression',
   ), async ({}, testInfo) => {
     issue('NEW-cli-1', 'fixed: the BYTE rescale ceiling was Byte.MAX_VALUE * 2 = 254, not 255');
@@ -142,7 +142,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
   });
 
   test('BYTE to BYTE with OFORM=BYTE keeps the values', about(
-    `Converts the synthetic gray BYTE image (values 0 to 204) with \`OFORM=BYTE\`, its own data type. Passes when the output pixels equal the input (no stretch).`,
+    `Converts the synthetic gray BYTE image (values 0 to 157) with \`OFORM=BYTE\`, its own data type. Passes when the output pixels equal the input (no stretch).`,
     '@nominal', '@regression', '@lossless',
   ), async ({}, testInfo) => {
     issue('NEW-cli-1', 'fixed: OFORM=BYTE on BYTE input stretched the data to 0..254');

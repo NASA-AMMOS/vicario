@@ -49,7 +49,7 @@ const SCOPES_FOR: Record<Mode, Scope[]> = { lossless: ['@lossless'], lossy: ['@n
 
 /** A SyntheticGen image and its sample type. */
 type Gen = SyntheticSpec & { file: string; type: 'byte' | 'half' | 'real' };
-const gen = (file: string, type: Gen['type'], nl: number, ns: number, nb: number, linc = 1, sinc = 3, binc = 40): Gen =>
+const gen = (file: string, type: Gen['type'], nl: number, ns: number, nb: number, linc = 1, sinc = 2, binc = 30): Gen =>
   ({ file, type, nl, ns, nb, linc, sinc, binc });
 const BYTE_BSQ = gen('gen_byte_bsq.vic', 'byte', 64, 48, 3);
 const BYTES = { byte: 1, half: 2, real: 4 } as const;
@@ -128,7 +128,7 @@ test.describe('Output formats', feature('output-formats'), () => {
   for (const [g, what, scope] of [
     [gen('gen_byte_bil.vic', 'byte', 64, 48, 3), '3-band BYTE band-interleaved-by-line (BIL) image', '@nominal'],
     [gen('gen_byte_bip.vic', 'byte', 64, 48, 3), '3-band BYTE band-interleaved-by-pixel (BIP) image', '@nominal'],
-    [gen('gen_byte_gray.vic', 'byte', 64, 48, 1, 1, 3, 0), '1-band BYTE image', '@nominal'],
+    [gen('gen_byte_gray.vic', 'byte', 64, 48, 1, 1, 2, 0), '1-band BYTE image', '@nominal'],
     [gen('gen_half_bsq.vic', 'half', 64, 48, 3), '3-band HALF (16-bit) image', '@nominal'],
     [gen('gen_real_100x100.vic', 'real', 100, 100, 1, 0.5, 0.25, 0), '100 x 100 REAL (float) image, which is not a multiple of the 256-pixel tile size,', '@off-nominal'],
     [gen('gen_byte_ns1_nl1024.vic', 'byte', 1024, 1, 1, 1, 1, 0), '1024-line by 1-sample BYTE image, four 256-line tiles tall,', '@off-nominal'],
@@ -180,7 +180,7 @@ test.describe('Output formats', feature('output-formats'), () => {
 
   // PNM: P5 for one band, P6 for three; 8-bit or 16-bit
   for (const [g, magic, maxval, what] of [
-    [gen('gen_byte_gray.vic', 'byte', 64, 48, 1, 1, 3, 0), 'P5', 255, '1-band BYTE image as an 8-bit PGM (`P5`, maxval 255)'],
+    [gen('gen_byte_gray.vic', 'byte', 64, 48, 1, 1, 2, 0), 'P5', 255, '1-band BYTE image as an 8-bit PGM (`P5`, maxval 255)'],
     [gen('gen_half_bsq.vic', 'half', 64, 48, 3), 'P6', 65535, '3-band HALF (16-bit) image as a 16-bit PPM (`P6`, maxval 65535, big-endian)'],
   ] as const) {
     test(`PNM output of ${g.file} keeps its pixels`, about(
