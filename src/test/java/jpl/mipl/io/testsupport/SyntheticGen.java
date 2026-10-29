@@ -8,7 +8,10 @@ import jpl.mipl.io.vicar.test.TestGen;
  * Writes the synthetic VICAR images used by the feature tests in tests/e2e,
  * replacing the VICAR `gen` program the legacy tstjConvertIIO.csh relied on.
  * Pixel value = line*LINC + sample*SINC + band*BINC (as in gen), written
- * with jpl.mipl.io.vicar.test.TestGen.
+ * with jpl.mipl.io.vicar.test.TestGen. The 64 x 48 images use LINC=1, SINC=2,
+ * BINC=30, so BYTE values stay below 256 (at most 247, for the 4-band image)
+ * and every band is a smooth gradient: a wrapped value would look like an
+ * overflow in the output. The legacy shapes keep the gen defaults, which wrap.
  * <p>
  * Usage: java -cp FAT.jar:target/test-classes jpl.mipl.io.testsupport.SyntheticGen outdir
  * <p>
@@ -31,14 +34,14 @@ public class SyntheticGen {
 		dir.mkdirs();
 		for (String type : TYPES) {
 			for (String org : ORGS) {
-				gen(dir, "gen_" + type + "_" + org + ".vic", 64, 48, 3, type, org, 1, 3, 40);
+				gen(dir, "gen_" + type + "_" + org + ".vic", 64, 48, 3, type, org, 1, 2, 30);
 			}
 		}
 		gen(dir, "gen_real_100x100.vic", 100, 100, 1, "real", "bsq", 0.5, 0.25, 0);
 		gen(dir, "gen_byte_ns1_nl1024.vic", 1024, 1, 1, "byte", "bsq", 1, 1, 0);
 		gen(dir, "gen_byte_ns1024_nl1.vic", 1, 1024, 1, "byte", "bsq", 1, 1, 0);
-		gen(dir, "gen_byte_gray.vic", 64, 48, 1, "byte", "bsq", 1, 3, 0);
-		gen(dir, "gen_byte_rgba.vic", 64, 48, 4, "byte", "bsq", 1, 3, 40);
+		gen(dir, "gen_byte_gray.vic", 64, 48, 1, "byte", "bsq", 1, 2, 0);
+		gen(dir, "gen_byte_rgba.vic", 64, 48, 4, "byte", "bsq", 1, 2, 30);
 	}
 
 	static void gen(File dir, String name, int nl, int ns, int nb, String type, String org,

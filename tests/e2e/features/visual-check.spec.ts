@@ -21,7 +21,7 @@ function expectDisplayable(p: Probe, like: Probe) {
 test.describe('Visual check (replaces JADE review)', feature('visual-check'), () => {
   test('legacy step 18: PNG converted to JPEG displays', about(
     `Legacy step 18, once checked by eye in JADE: converts the synthetic image to PNG, then the PNG to JPEG. Passes when the JPEG displays: BYTE, the same size as the PNG, not blank (standard deviation over 3), not black (mean over 2) and not saturated (mean under 253). The preview is attached for a person to look at.`,
-    '@legacy', '@nominal',
+    '@legacy', '@nominal', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const png = await convert(testInfo, synthetic('gen_byte_bsq.vic'), 'image.png', { format: 'png' });
     expectConverted(png);
@@ -33,7 +33,7 @@ test.describe('Visual check (replaces JADE review)', feature('visual-check'), ()
   for (const id of ['msl-navcam-thumb-img', 'm2020-navcam-thumb-img', 'cassini-iss-img', 'astropy-horsehead-fits']) {
     test(`browse image of ${id} displays`, about(
       `Makes an 8-bit PNG browse image (\`OFORM=BYTE\`) of ${id}, as a reviewer once viewed it in JADE. Passes when it displays: the source's size, BYTE, and not blank, black or saturated. The preview is attached.`,
-      '@mission-data', '@legacy',
+      '@mission-data', '@legacy', { added: '2026-10-23' },
     ), async ({}, testInfo) => {
       const src = asset(id);
       const source = await probe(testInfo, src, { preview: false });
@@ -48,7 +48,7 @@ test.describe('Visual check (full-size products)', feature('visual-check', 'full
   for (const id of ['mer1-navcam-edr', 'msl-navcam-edr-img', 'm2020-navcam-edr-img']) {
     test(`browse image of ${id} displays`, about(
       `Makes an 8-bit PNG browse image (\`OFORM=BYTE\`) of ${id}, as a reviewer once viewed it in JADE. Passes when it displays: the source's size, BYTE, and not blank, black or saturated. The preview is attached.`,
-      '@mission-data', '@legacy',
+      '@mission-data', '@legacy', { added: '2026-10-23' },
     ), async ({}, testInfo) => {
       const src = asset(id);
       const source = await probe(testInfo, src, { preview: false });

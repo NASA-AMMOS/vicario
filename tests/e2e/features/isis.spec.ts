@@ -18,7 +18,7 @@ test.describe('ISIS cubes', feature('isis'), () => {
   for (const c of CUBES) {
     test(`reads the ${c.label} and converts it to VICAR`, about(
       `Converts the ${c.label} to VICAR. Passes when the output has the dimensions and data type given by the label's \`CORE_ITEMS\` (${c.dims.join(' x ')}, ${c.type}).`,
-      '@nominal', '@regression', ...(c.id.startsWith('cassini') ? ['@mission-data' as const] : []),
+      '@nominal', '@regression', ...(c.id.startsWith('cassini') ? ['@mission-data' as const] : []), { added: '2026-10-23', modified: '2026-10-24' },
     ), async ({}, testInfo) => {
       issue('REVIEW-14', 'fixed: CORE_ITEMS / SUFFIX_ITEMS values with blanks (" 352", "1  ") were not trimmed '
         + '(NumberFormatException, then a NullPointerException and no output)');
@@ -34,7 +34,7 @@ test.describe('ISIS cubes', feature('isis'), () => {
 
   test('a cube whose CORE_ITEMS is not a list of integers fails with a clear error', about(
     `Copies the GDAL ISIS2 cube with \`CORE_ITEMS = (43,1  ,1)\` changed to \`(43,x  ,1)\` and converts it to VICAR. Passes when jConvertIIO exits non-zero and reports that the ISIS reader cannot read the label, without a NullPointerException.`,
-    '@off-nominal', '@malformed-input', '@regression',
+    '@off-nominal', '@malformed-input', '@regression', { added: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-14', 'fixed: a header the ISIS reader could not parse was only printed, and the read then '
       + 'failed later with a NullPointerException');

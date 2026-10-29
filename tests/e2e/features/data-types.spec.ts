@@ -9,7 +9,7 @@ import { convert, expectConverted, expectSamePixels, probe } from '../support/ru
 test.describe('Data type conversion', feature('data-types'), () => {
   test('REAL to PNG with OFORM=BYTE is stretched, not blank', about(
     `Converts the legacy REAL 100 x 100 image to PNG with \`OFORM=BYTE\`. Passes when the PNG is BYTE, stretched to the byte range (maximum at least 250) and not blank (standard deviation over 10).`,
-    '@nominal', '@legacy', '@regression',
+    '@nominal', '@legacy', '@regression', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     issue('IDS-7610', 'float VICAR to PNG came out blank');
     const r = await convert(testInfo, synthetic('gen_real_100x100.vic'), 'real.png', { format: 'png', OFORM: 'BYTE' });
@@ -22,7 +22,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
 
   test('REAL to BYTE with RESCALE=false keeps the values (0..74)', about(
     `Converts the REAL image (values 0 to 74) to BYTE with \`RESCALE=false\`. Passes when the output values are exactly 0 to 74.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_real_100x100.vic'), 'real_norescale.vic',
       { format: 'vicar', OFORM: 'BYTE', RESCALE: 'false' });
@@ -33,7 +33,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
 
   test('HALF to BYTE with the default RESCALE fills the byte range', about(
     `Converts the synthetic HALF image to BYTE with the default rescaling. Passes when the output is BYTE and fills the byte range (maximum at least 250).`,
-    '@nominal',
+    '@nominal', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_half_bsq.vic'), 'half_byte.vic', { format: 'vicar', OFORM: 'BYTE' });
     expectConverted(r);
@@ -44,7 +44,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
 
   test('BYTE to HALF with RESCALE=false is exact', about(
     `Converts the synthetic BYTE image to HALF with \`RESCALE=false\`. Passes when the output is 16-bit with pixels equal to the input.`,
-    '@nominal', '@lossless',
+    '@nominal', '@lossless', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const src = synthetic('gen_byte_bsq.vic');
     const r = await convert(testInfo, src, 'byte_half.vic', { format: 'vicar', OFORM: 'HALF', RESCALE: 'false' });
@@ -56,7 +56,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
 
   test('BYTE to REAL with RESCALE=false keeps the values', about(
     `Converts the synthetic BYTE image to REAL with \`RESCALE=false\`. Passes when the output is floating point with the input's minimum, maximum and mean.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const src = await probe(testInfo, synthetic('gen_byte_bsq.vic'));
     const r = await convert(testInfo, synthetic('gen_byte_bsq.vic'), 'byte_real.vic',
@@ -67,8 +67,8 @@ test.describe('Data type conversion', feature('data-types'), () => {
   });
 
   test('BYTE to HALF with the default RESCALE keeps the values', about(
-    `Converts the synthetic BYTE image (values 0 to 255) to HALF with the default rescaling. A widening conversion is not stretched unless asked for. Passes when the output is 16-bit with pixels equal to the input.`,
-    '@nominal', '@regression', '@lossless',
+    `Converts the synthetic BYTE image (values 0 to 217) to HALF with the default rescaling. A widening conversion is not stretched unless asked for. Passes when the output is 16-bit with pixels equal to the input.`,
+    '@nominal', '@regression', '@lossless', { added: '2026-10-24', modified: '2026-10-28' },
   ), async ({}, testInfo) => {
     issue('REVIEW-6', 'fixed: the default rescale ran in the source type, so BYTE to HALF saturated to 3 distinct values');
     const src = synthetic('gen_byte_bsq.vic');
@@ -81,7 +81,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
 
   test('BYTE to REAL with the default RESCALE keeps the values', about(
     `Converts the synthetic BYTE image to REAL with the default rescaling. Passes when the output is floating point with the input's minimum, maximum and mean (no stretch to the float range, no saturation).`,
-    '@nominal', '@regression',
+    '@nominal', '@regression', { added: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-6', 'fixed: BYTE to REAL with the default rescale saturated to 2 distinct values');
     const src = await probe(testInfo, synthetic('gen_byte_bsq.vic'));
@@ -92,8 +92,8 @@ test.describe('Data type conversion', feature('data-types'), () => {
   });
 
   test('HALF to HALF with the default RESCALE keeps the values', about(
-    `Converts the synthetic HALF image (values 0 to 284) with \`OFORM=HALF\`, its own data type. RESCALE applies only when OFORM changes to a narrower type. Passes when the output pixels equal the input.`,
-    '@nominal', '@regression', '@lossless',
+    `Converts the synthetic HALF image (values 0 to 217) with \`OFORM=HALF\`, its own data type. RESCALE applies only when OFORM changes to a narrower type. Passes when the output pixels equal the input.`,
+    '@nominal', '@regression', '@lossless', { added: '2026-10-24', modified: '2026-10-28' },
   ), async ({}, testInfo) => {
     issue('REVIEW-6', 'fixed: the same data type was stretched to the full 16-bit range');
     const src = synthetic('gen_half_bsq.vic');
@@ -105,8 +105,8 @@ test.describe('Data type conversion', feature('data-types'), () => {
   });
 
   test('BYTE to HALF with RESCALE_CONSTANT and RESCALE_OFFSET is not clipped to the byte range', about(
-    `Converts the synthetic BYTE image (0 to 255) to HALF with \`RESCALE_CONSTANT=10 RESCALE_OFFSET=3\`. The rescale must run in the 16-bit output type. Passes when the output spans exactly 3 to 2553 (255 x 10 + 3) with mean equal to the input mean x 10 + 3.`,
-    '@nominal', '@regression',
+    `Converts the synthetic BYTE image (0 to 217) to HALF with \`RESCALE_CONSTANT=10 RESCALE_OFFSET=3\`. The rescale must run in the 16-bit output type. Passes when the output spans exactly 3 to 2173 (217 x 10 + 3, past the byte range) with mean equal to the input mean x 10 + 3.`,
+    '@nominal', '@regression', { added: '2026-10-22', modified: '2026-10-28' },
   ), async ({}, testInfo) => {
     issue('REVIEW-6', 'fixed: an explicit rescale on a widening OFORM was clipped to the source (byte) range');
     const src = await probe(testInfo, synthetic('gen_byte_bsq.vic'));
@@ -114,16 +114,16 @@ test.describe('Data type conversion', feature('data-types'), () => {
       { format: 'vicar', OFORM: 'HALF', RESCALE_CONSTANT: '10', RESCALE_OFFSET: '3' });
     expectConverted(r);
     const p = await probe(testInfo, r.out);
-    expect([p.dataType, p.min, p.max]).toEqual(['SHORT', 3, 2553]);
+    expect([p.dataType, p.min, p.max]).toEqual(['SHORT', 3, 2173]);
     expect(p.mean!).toBeCloseTo(src.mean! * 10 + 3, 1);
   });
 
   test('HALF to BYTE with VALID_MINIMUM and VALID_MAXIMUM stretches that range to 0..255', about(
-    `Converts the synthetic HALF image (0 to 284) to BYTE with \`VALID_MINIMUM=0 VALID_MAXIMUM=142\`. Passes when the output is BYTE, spans exactly 0 to 255, and values above 142 are clipped to 255.`,
-    '@off-nominal',
+    `Converts the synthetic HALF image (0 to 217) to BYTE with \`VALID_MINIMUM=0 VALID_MAXIMUM=108\`. Passes when the output is BYTE, spans exactly 0 to 255, and values above 108 are clipped to 255.`,
+    '@off-nominal', { added: '2026-10-24', modified: '2026-10-28' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_half_bsq.vic'), 'half_byte_valid.vic',
-      { format: 'vicar', OFORM: 'BYTE', VALID_MINIMUM: '0', VALID_MAXIMUM: '142' });
+      { format: 'vicar', OFORM: 'BYTE', VALID_MINIMUM: '0', VALID_MAXIMUM: '108' });
     expectConverted(r);
     const p = await probe(testInfo, r.out);
     expect([p.dataType, p.min, p.max]).toEqual(['BYTE', 0, 255]);
@@ -131,8 +131,8 @@ test.describe('Data type conversion', feature('data-types'), () => {
   });
 
   test('HALF to BYTE with the default RESCALE reaches 255', about(
-    `Converts the synthetic HALF image (0 to 284) to BYTE with the default rescaling. Passes when the output spans exactly 0 to 255 (the full unsigned byte range, not 0 to 254).`,
-    '@nominal', '@regression',
+    `Converts the synthetic HALF image (0 to 217) to BYTE with the default rescaling. Passes when the output spans exactly 0 to 255 (the full unsigned byte range, not 0 to 254).`,
+    '@nominal', '@regression', { added: '2026-10-24', modified: '2026-10-28' },
   ), async ({}, testInfo) => {
     issue('NEW-cli-1', 'fixed: the BYTE rescale ceiling was Byte.MAX_VALUE * 2 = 254, not 255');
     const r = await convert(testInfo, synthetic('gen_half_bsq.vic'), 'half_byte_255.vic', { format: 'vicar', OFORM: 'BYTE' });
@@ -142,8 +142,8 @@ test.describe('Data type conversion', feature('data-types'), () => {
   });
 
   test('BYTE to BYTE with OFORM=BYTE keeps the values', about(
-    `Converts the synthetic gray BYTE image (values 0 to 204) with \`OFORM=BYTE\`, its own data type. Passes when the output pixels equal the input (no stretch).`,
-    '@nominal', '@regression', '@lossless',
+    `Converts the synthetic gray BYTE image (values 0 to 157) with \`OFORM=BYTE\`, its own data type. Passes when the output pixels equal the input (no stretch).`,
+    '@nominal', '@regression', '@lossless', { added: '2026-10-22', modified: '2026-10-28' },
   ), async ({}, testInfo) => {
     issue('NEW-cli-1', 'fixed: OFORM=BYTE on BYTE input stretched the data to 0..254');
     const src = synthetic('gen_byte_gray.vic');
@@ -156,7 +156,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
 
   test('CLAMP=(10,100) limits the output range', about(
     `Converts the synthetic HALF image with \`CLAMP=(10,100)\`. Passes when the output values span exactly 10 to 100.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_half_bsq.vic'), 'clamp.vic', { format: 'vicar', CLAMP: '(10,100)' });
     expectConverted(r);
@@ -168,7 +168,7 @@ test.describe('Data type conversion', feature('data-types'), () => {
 test.describe('Data type conversion (mission products)', feature('data-types', 'full'), () => {
   test('12-bit MER EDR to an 8-bit PNG browse image', about(
     `Converts a public 12-bit MER Navcam EDR to an 8-bit PNG browse image with \`OFORM=BYTE\`. Passes when the PNG is a 512 x 512 BYTE image that is not blank.`,
-    '@mission-data', '@nominal',
+    '@mission-data', '@nominal', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, asset('mer1-navcam-edr'), 'mer_browse.png', { format: 'png', OFORM: 'BYTE' });
     expectConverted(r);

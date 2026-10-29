@@ -29,14 +29,8 @@ rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 if (existsSync(reportDir)) cpSync(reportDir, join(outDir, 'tests'), { recursive: true });
 
-// a strip of real products from the latest run's galleries (synthetic test patterns excluded)
-const heroImgs = [];
-const overview = existsSync(join(reportDir, 'index.html')) ? readFileSync(join(reportDir, 'index.html'), 'utf8') : '';
-for (const m of overview.matchAll(/<img src="(images\/[0-9a-f]+\.png)" alt="([^"]*)" data-public="true"/g)) {
-  if (!heroImgs.some((h) => h.src === `tests/${m[1]}`)) {
-    heroImgs.push({ src: `tests/${m[1]}`, alt: m[2] });
-  }
-}
+// a strip of real products decoded by the latest run (synthetic test patterns excluded)
+const heroImgs = (summary?.images ?? []).map((i) => ({ src: `tests/${i.src}`, alt: i.caption }));
 
 // --- help content (from jConvertIIO HELP and the README; every recipe was run against the FAT jar) ---
 

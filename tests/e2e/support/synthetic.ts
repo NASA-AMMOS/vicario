@@ -8,9 +8,9 @@ import { createHash } from 'node:crypto';
 export interface SyntheticSpec { nl: number; ns: number; nb: number; linc: number; sinc: number; binc: number }
 
 /** gen_byte_<org>.vic, gen_byte_gray.vic and gen_byte_rgba.vic as written by SyntheticGen. */
-export const BYTE_3BAND: SyntheticSpec = { nl: 64, ns: 48, nb: 3, linc: 1, sinc: 3, binc: 40 };
-export const BYTE_GRAY: SyntheticSpec = { nl: 64, ns: 48, nb: 1, linc: 1, sinc: 3, binc: 0 };
-export const BYTE_RGBA: SyntheticSpec = { nl: 64, ns: 48, nb: 4, linc: 1, sinc: 3, binc: 40 };
+export const BYTE_3BAND: SyntheticSpec = { nl: 64, ns: 48, nb: 3, linc: 1, sinc: 2, binc: 30 };
+export const BYTE_GRAY: SyntheticSpec = { nl: 64, ns: 48, nb: 1, linc: 1, sinc: 2, binc: 0 };
+export const BYTE_RGBA: SyntheticSpec = { nl: 64, ns: 48, nb: 4, linc: 1, sinc: 2, binc: 30 };
 
 export const range = (start: number, end: number, step = 1) =>
   Array.from({ length: Math.max(0, Math.ceil((end - start) / step)) }, (_, i) => start + i * step);

@@ -19,7 +19,7 @@ const pngColorType = (file: string) => readFileSync(file)[25];
 test.describe('Regions, subsampling and bands', feature('regions-bands'), () => {
   test('SOURCE_REGION=(x,y,width,height) cuts out exactly that region', about(
     `Cuts out \`SOURCE_REGION=(10,20,16,8)\` from the synthetic image. Passes when the output is 16 x 8 x 3 and its pixel hash equals the hash computed from the generator formula for exactly that region. The region is outlined on the source preview.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, SRC, 'region.vic', { format: 'vicar', SOURCE_REGION: '(10,20,16,8)' });
     expectConverted(r);
@@ -33,7 +33,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
 
   test('SOURCE_REGION running past the image edge is clipped, not an error', about(
     `Asks for a 20 x 20 region at (40,60) of the 48 x 64 image, which runs past both edges. Passes when the output is clipped to 8 x 4 with exactly those pixels, rather than an error.`,
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     issue('IDS-7560', 'EOF exception when the region is not fully inside the image');
     const r = await convert(testInfo, SRC, 'region_edge.png', { format: 'png', SOURCE_REGION: '(40,60,20,20)' });
@@ -49,7 +49,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
   ] as const) {
     test(`SUBSAMPLING=${args} keeps every Nth sample and line`, about(
       `Subsamples with \`SUBSAMPLING=${args}\` (x step, y step, x offset, y offset). Passes when the output size and pixel hash match the samples and lines the formula selects. The kept pixels are marked on the source preview.`,
-      '@nominal', '@regression',
+      '@nominal', '@regression', { added: '2026-10-23' },
     ), async ({}, testInfo) => {
       issue('IDS-7098', 'subsampling factor did not work');
       const r = await convert(testInfo, SRC, 'sub.vic', { format: 'vicar', SUBSAMPLING: args });
@@ -66,7 +66,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
   for (const [format, ext] of [['png', 'png'], ['vicar', 'vic']] as const) {
     test(`CROP=(x,y,width,height) to ${format} cuts out exactly that area`, about(
       `Crops the 48 x 64 gray image with \`CROP=(1,5,11,7)\` (x, y, width, height) and writes ${format}. Passes when the output is 11 wide by 7 high and its pixel hash equals the hash computed from the generator formula for columns 1 to 11 and rows 5 to 11.`,
-      '@nominal', '@regression',
+      '@nominal', '@regression', { added: '2026-10-24' },
     ), async ({}, testInfo) => {
       issue('REVIEW-11', 'fixed: CROP used x as the y offset, and CROP to VICAR failed with a raster bounds error');
       const r = await convert(testInfo, synthetic('gen_byte_gray.vic'), `crop.${ext}`, { format, CROP: '(1,5,11,7)' });
@@ -79,7 +79,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
 
   test('CROP=(x,y) crops from (x,y) to the image edge', about(
     `Crops the 48 x 64 gray image with the two-value form \`CROP=(40,60)\` and writes VICAR. Passes when the output is the 8 x 4 corner from (40,60) to the image edge, with exactly those pixels.`,
-    '@nominal', '@regression',
+    '@nominal', '@regression', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-11', 'fixed: the two-value CROP form always failed with "rectangular crop area must not be empty"');
     const r = await convert(testInfo, synthetic('gen_byte_gray.vic'), 'crop_xy.vic', { format: 'vicar', CROP: '(40,60)' });
@@ -91,7 +91,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
 
   test('CROP outside the image is refused with a clear error', about(
     `Crops the 48 x 64 gray image with \`CROP=(100,100,5,5)\`, which lies outside the image. Passes when jConvertIIO exits non-zero with a message naming CROP and no Java stack trace.`,
-    '@off-nominal',
+    '@off-nominal', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_byte_gray.vic'), 'crop_out.vic', { format: 'vicar', CROP: '(100,100,5,5)' });
     expect(r.exitCode, 'jConvertIIO exit code').not.toBe(0);
@@ -102,7 +102,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
 
   test('SCALE=(2,2,0,0) doubles the image size', about(
     `Scales the synthetic image with \`SCALE=(2,2,0,0)\`. Passes when the output is 96 x 128 x 3 with the source's value range.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, SRC, 'scale.vic', { format: 'vicar', SCALE: '(2,2,0,0)' });
     expectConverted(r);
@@ -114,7 +114,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
 
   test('READ_BANDS selects bands on read', about(
     `Reads only some bands, with \`READ_BANDS=2\` and with \`READ_BANDS=0,2\`. Passes when each output has exactly those bands, with the pixel hash computed for them.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     for (const [bands, expected] of [['2', [2]], ['0,2', [0, 2]]] as const) {
       const r = await convert(testInfo, SRC, `read_bands_${bands.replace(',', '_')}.vic`, { format: 'vicar', READ_BANDS: bands });
@@ -127,7 +127,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
 
   test('BANDS reorders bands (2,1,0 twice restores the original)', about(
     `Reverses the bands with \`BANDS=2,1,0\`, then reverses the result again. Passes when the first output has the bands reversed and the second equals the original.`,
-    '@nominal', '@lossless',
+    '@nominal', '@lossless', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const once = await convert(testInfo, SRC, 'bgr.vic', { format: 'vicar', BANDS: '2,1,0' });
     expectConverted(once);
@@ -140,7 +140,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
 
   test('2RGB=true turns a single band into gray RGB', about(
     `Writes a single-band image to PNG with \`2RGB=true\` and with \`2RGB=false\`. Passes when the first PNG is RGB with the gray value in all three bands and the second is a gray PNG.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const gray = synthetic('gen_byte_gray.vic');
     const r = await convert(testInfo, gray, 'rgb.png', { format: 'png', '2RGB': 'true' });
@@ -156,7 +156,7 @@ test.describe('Regions, subsampling and bands', feature('regions-bands'), () => 
 
   test('WRITE_TRANSPARENCY writes the fourth band as PNG alpha', about(
     `Writes a 4-band image to PNG with \`WRITE_TRANSPARENCY=true\`. Passes when the PNG is RGBA and the fourth band is the alpha channel, pixel for pixel.`,
-    '@nominal', '@lossless',
+    '@nominal', '@lossless', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_byte_rgba.vic'), 'rgba.png', { format: 'png', WRITE_TRANSPARENCY: 'true' });
     expectConverted(r);

@@ -70,7 +70,7 @@ function prefixedBands(file: string) {
 test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () => {
   test('Cassini ISS image (NLB=1, NBB=24) decodes identically with RI=true', about(
     `Reads a public Cassini ISS image with a binary label header (\`NLB=1\`) and a 24-byte prefix on every line (\`NBB=24\`), then converts it to VICAR with \`RI=true\` (read as a RenderedImage). Passes when the pixels match the recorded golden hash and the output has the same pixels.`,
-    '@mission-data', '@lossless',
+    '@mission-data', '@lossless', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const img = asset('cassini-iss-img');
     const l = vicarLabel(img);
@@ -84,7 +84,7 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
 
   test('KEEP_LINE_PREFIX=true carries the prefixes into PDS output', about(
     `Converts the Cassini ISS image to PDS3 with \`KEEP_LINE_PREFIX=true\`. Passes when the label declares \`LINE_PREFIX_BYTES = 24\`, the first 8 line prefixes are byte for byte those of the input, and the pixels are unchanged.`,
-    '@mission-data', '@lossless',
+    '@mission-data', '@lossless', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const img = asset('cassini-iss-img');
     const r = await convert(testInfo, img, 'cassini.pds', { format: 'pds', KEEP_LINE_PREFIX: 'true' });
@@ -96,7 +96,7 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
 
   test('KEEP_LINE_PREFIX=true carries the prefixes into VICAR output', about(
     `Converts the Cassini ISS image to VICAR with \`KEEP_LINE_PREFIX=true\`. Passes when the output label has \`NBB=24\`, \`RECSIZE=2072\` and the input's \`BLTYPE\`/\`BHOST\`/\`BINTFMT\`/\`BREALFMT\`, the first 8 and the last line prefixes are byte for byte those of the input, no binary header is written (\`NLB=0\`, the \`ADD_BINARY_HEADER\` default), and the pixels are unchanged.`,
-    '@mission-data', '@lossless', '@regression',
+    '@mission-data', '@lossless', '@regression', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-13', 'fixed: VICAR output dropped the line prefixes (NBB=0) even with KEEP_LINE_PREFIX=true');
     const img = asset('cassini-iss-img');
@@ -113,7 +113,7 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
 
   test('VICAR output keeps the line prefixes by default', about(
     `Converts the Cassini ISS image to VICAR without \`KEEP_LINE_PREFIX\`, which the help documents as defaulting to true. Passes when the output has \`NBB=24\` and the input's first 8 line prefixes, and the pixels are unchanged.`,
-    '@mission-data', '@lossless', '@regression',
+    '@mission-data', '@lossless', '@regression', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-13', 'fixed: the documented KEEP_LINE_PREFIX default (true) was ignored for VICAR output');
     const img = asset('cassini-iss-img');
@@ -126,7 +126,7 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
 
   test('KEEP_LINE_PREFIX=false strips the prefixes from VICAR output', about(
     `Converts the Cassini ISS image to VICAR with \`KEEP_LINE_PREFIX=false\`. Passes when the output has \`NBB=0\` and \`RECSIZE=2048\` (1024 HALF samples, no prefix) and the pixels are unchanged.`,
-    '@mission-data', '@lossless',
+    '@mission-data', '@lossless', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     const img = asset('cassini-iss-img');
     const r = await convert(testInfo, img, 'cassini_strip.vic', { format: 'vicar', KEEP_LINE_PREFIX: 'false' });
@@ -138,7 +138,7 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
 
   test('ADD_BINARY_HEADER=true writes the binary header to VICAR output', about(
     `Converts the Cassini ISS image to VICAR with \`ADD_BINARY_HEADER=true\`. Passes when the output label has \`NLB=1\`, the binary header record is byte for byte the input's, the line prefixes are kept, and the pixels are unchanged.`,
-    '@mission-data', '@lossless', '@regression',
+    '@mission-data', '@lossless', '@regression', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-13', 'fixed: VICAR output had no binary header (NLB=0) even with ADD_BINARY_HEADER=true');
     const img = asset('cassini-iss-img');
@@ -153,7 +153,7 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
 
   test('ADD_BINARY_HEADER=true with KEEP_LINE_PREFIX=false fits the header to the shorter records', about(
     `Converts the Cassini ISS image to VICAR with \`ADD_BINARY_HEADER=true KEEP_LINE_PREFIX=false\`, so the records shrink from 2072 to 2048 bytes. Passes when the output has \`NLB=1\`, \`NBB=0\`, \`RECSIZE=2048\`, its header record equals the first 2048 bytes of the input's (the 24 bytes cut are all zero), and the pixels are unchanged.`,
-    '@mission-data', '@lossless', '@regression',
+    '@mission-data', '@lossless', '@regression', { added: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-13', 'fixed: the binary header was not written to VICAR output');
     const img = asset('cassini-iss-img');
@@ -170,7 +170,7 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
 
   test('prefixes are not written when SOURCE_REGION drops lines', about(
     `Converts the first 100 lines of the Cassini ISS image to VICAR with \`SOURCE_REGION=(0,0,1024,100) KEEP_LINE_PREFIX=true\`. The line prefixes describe 1024 lines, so they can no longer be matched to output lines. Passes when the conversion succeeds with \`NBB=0\`, a warning saying the prefixes were not written, and the output is 1024 x 100.`,
-    '@mission-data', '@off-nominal',
+    '@mission-data', '@off-nominal', { added: '2026-10-24' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, asset('cassini-iss-img'), 'cassini_region.vic',
       { format: 'vicar', SOURCE_REGION: '(0,0,1024,100)', KEEP_LINE_PREFIX: 'true' });
@@ -183,7 +183,7 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
 
   test('KEEP_LINE_PREFIX and ADD_BINARY_HEADER are harmless without binary data', about(
     `Converts a synthetic VICAR image with no prefixes and no binary header to VICAR with \`KEEP_LINE_PREFIX=true ADD_BINARY_HEADER=true\`. Passes when the output has \`NBB=0\` and \`NLB=0\` and the pixels are unchanged.`,
-    '@off-nominal', '@lossless',
+    '@off-nominal', '@lossless', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     const src = synthetic('gen_half_bsq.vic');
     const r = await convert(testInfo, src, 'plain.vic', { format: 'vicar', KEEP_LINE_PREFIX: 'true', ADD_BINARY_HEADER: 'true' });
@@ -195,7 +195,7 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
 
   test('prefixes do not follow the wrong band when BANDS reorders the bands', about(
     `Converts a synthetic 3-band VICAR image whose line prefixes name their band and line to VICAR with \`BANDS=(2,1,0)\` and \`KEEP_LINE_PREFIX=true\`. The band count is unchanged but the bands are reversed. Passes when no output record carries a prefix from a different band: either the prefixes are dropped with a warning (\`NBB=0\`) or each record's prefix names the input band now in that position.`,
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-28' },
   ), async ({}, testInfo) => {
     issue('REVIEW-13', 'fixed: with BANDS reordering the bands, the line prefixes were written in the input band order');
     const src = testInfo.outputPath('prefixed_bands.vic');
@@ -216,7 +216,7 @@ test.describe('VICAR binary headers and prefixes', feature('vicar-binary'), () =
 
   test('BANDS that keeps every band in place keeps the prefixes', about(
     `Converts the same synthetic 3-band prefixed image to VICAR with \`BANDS=(0,1,2)\` and \`KEEP_LINE_PREFIX=true\`. Passes when the output keeps \`NBB=4\` and every record's prefix is the input's for the same band and line.`,
-    '@nominal', '@lossless',
+    '@nominal', '@lossless', { added: '2026-10-28' },
   ), async ({}, testInfo) => {
     const src = testInfo.outputPath('prefixed_bands.vic');
     const { nl, nb } = prefixedBands(src);
