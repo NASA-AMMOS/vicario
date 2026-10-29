@@ -86,10 +86,10 @@ for (const f of readdirSync(dir).filter((x) => x.endsWith('.spec.ts'))) {
     const was = before.get(key);
     if (!was) {
       if (added < baseDate && modified < baseDate) problems.push(`${at}\n    new or renamed: set added (new) or modified (renamed) to today; both are before ${baseDate}`);
-    } else if (was.body !== t.body) {
-      // a test added on or after the base date may change again without a modified date
-      if (added < baseDate && modified < baseDate) problems.push(`${at}\n    changed: set modified to today (it is ${modified || 'not set'}, before ${baseDate})`);
+    } else {
       if (was.dates && was.dates.added !== added) problems.push(`${at}\n    added changed from ${was.dates.added} to ${added}; keep the original date`);
+      // a test added on or after the base date may change again without a modified date
+      if (was.body !== t.body && added < baseDate && modified < baseDate) problems.push(`${at}\n    changed: set modified to today (it is ${modified || 'not set'}, before ${baseDate})`);
     }
   }
 }

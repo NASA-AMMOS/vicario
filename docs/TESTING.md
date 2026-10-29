@@ -138,7 +138,7 @@ Every test records when it was added and when it last changed, so the report can
 - **Imported JUnit tests** need nothing: their dates come from `git blame` of the test method.
 
 How the report uses the dates:
-- **Baseline:** the newest published GitHub release older than the commit under test. On the build for a release that is the previous release, so the counts show what the new release added; on later builds of `main` it is the new release, so they show the work since. `publish.yml` runs when a release is published, so the site updates as soon as you release.
+- **Baseline:** on the build for a release (the workflow's `release` event) it is the release before that one, so the counts show what the new release added; on every other build (pushes, nightly, pull requests, local runs) it is the latest published GitHub release, so they show the work since. `publish.yml` runs when a release is published, so the site updates as soon as you release.
 - **New:** `added` is after the baseline's publication date. **Modified:** `added` is on or before it and `modified` after it. A test added or changed on the release day counts as part of that release.
 - **Offline:** if the release list cannot be read (no network, rate limit), the New and Modified columns show "–". `VICARIO_BASELINE_RELEASE=<tag>@<YYYY-MM-DD>` sets the baseline by hand, and `none` makes every test new.
 

@@ -97,6 +97,7 @@ const rich = (s: string) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
  */
 class Images {
   private copied = new Set<string>();
+  private missionSeen = new Set<string>();
   /** Distinct previews of public mission products, in the order first seen. */
   readonly mission: Picture[] = [];
 
@@ -115,10 +116,12 @@ class Images {
       const pic = { src: `images/${name}`, caption: m[1], mission: !!m[2] };
       if (out.some((p) => p.src === pic.src) || out.length >= MAX_IMAGES) continue;
       out.push(pic);
+      // a mission preview counts even when the same pixels were copied earlier
+      // from a converted output, which carries no mission marker
+      if (pic.mission && !this.missionSeen.has(name)) { this.missionSeen.add(name); this.mission.push(pic); }
       if (this.copied.has(name)) continue;
       this.copied.add(name);
       copyFileSync(a.path, path.join(this.dir, name));
-      if (pic.mission) this.mission.push(pic);
     }
     return out;
   }

@@ -59,6 +59,29 @@ function javaHistory(file: string, from: number, to: number) {
 }
 
 /**
+ * Index of the line holding the '}' that closes the method declared at line
+ * `decl` (0-based), skipping comments and string and char literals, so its
+ * history covers the method alone and not the helpers or javadoc after it.
+ */
+function methodEnd(lines: string[], decl: number) {
+  let depth = 0;
+  let block = false;
+  for (let i = decl; i < lines.length; i++) {
+    const l = lines[i];
+    for (let j = 0; j < l.length; j++) {
+      if (block) { if (l.startsWith('*/', j)) { block = false; j++; } continue; }
+      if (l.startsWith('//', j)) break;
+      if (l.startsWith('/*', j)) { block = true; j++; continue; }
+      const c = l[j];
+      if (c === '"' || c === "'") { for (j++; j < l.length && l[j] !== c; j++) if (l[j] === '\\') j++; continue; }
+      if (c === '{') depth++;
+      else if (c === '}' && --depth === 0) return i;
+    }
+  }
+  return lines.length - 1;
+}
+
+/**
  * Adds a "junit source" annotation linking to the Java test class (at the
  * method, when given), which the procedures page uses as the test's source,
  * and the method's (or class's) added and modified dates from git.
@@ -67,9 +90,8 @@ function withJavaSource(cls: string, details: ReturnType<typeof about>, method?:
   const file = path.join(REPO_ROOT, 'src', 'test', 'java', ...cls.split('.')) + '.java';
   const lines = existsSync(file) ? readFileSync(file, 'utf8').split('\n') : [];
   const line = method ? lines.findIndex((l) => new RegExp(`void\\s+${method}\\s*\\(`).test(l)) + 1 : 0;
-  // the method runs to the next @Test (or the end of the class)
-  const next = line ? lines.findIndex((l, i) => i >= line && /^\s*@Test\b/.test(l)) : -1;
-  const history = lines.length ? javaHistory(file, line || 1, next > 0 ? next : lines.length) : null;
+  const end = line ? methodEnd(lines, line - 1) + 1 : lines.length;
+  const history = lines.length ? javaHistory(file, line || 1, end) : null;
   return { ...details, annotation: [...details.annotation, { type: 'junit source', description: sourceUrl(file, line || undefined) }, ...(history ?? [])] };
 }
 

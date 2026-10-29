@@ -1,9 +1,8 @@
-// The release the report counts new and modified tests against: the newest
-// published GitHub release older than the commit under test. On a release build
-// that is the previous release, so the counts show what the new release added;
-// on later builds of main it is the new release, so they show the work since.
-import { execSync } from 'node:child_process';
-import { E2E_ROOT } from './env';
+// The release the report counts new and modified tests against. On the build
+// for a release (the workflow's `release` event) it is the release before that
+// one, so the counts show what the new release added; on every other build it
+// is the latest published release, so they show the work since.
+import { readFileSync } from 'node:fs';
 
 export interface Baseline {
   /** The release tag, or '' when no release precedes the commit (every test is new). */
@@ -15,10 +14,12 @@ export interface Baseline {
 
 const REPO = process.env.GITHUB_REPOSITORY ?? 'NASA-AMMOS/vicario';
 
-function commitDate(): string {
+/** The tag of the release this run was triggered by, if any. */
+function releaseEventTag(): string | undefined {
+  if (process.env.GITHUB_EVENT_NAME !== 'release' || !process.env.GITHUB_EVENT_PATH) return undefined;
   try {
-    return execSync('git log -1 --format=%cI HEAD', { cwd: E2E_ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
-  } catch { return new Date().toISOString(); }
+    return JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')).release?.tag_name;
+  } catch { return undefined; }
 }
 
 /**
@@ -42,10 +43,12 @@ export async function baselineRelease(): Promise<Baseline | null> {
     });
     if (!res.ok) return null;
     type Release = { tag_name: string; html_url: string; published_at: string | null; draft: boolean; prerelease: boolean };
-    const before = commitDate();
-    const latest = ((await res.json()) as Release[])
-      .filter((r) => !r.draft && !r.prerelease && r.published_at && new Date(r.published_at) < new Date(before))
-      .sort((a, b) => b.published_at!.localeCompare(a.published_at!))[0];
+    const releases = ((await res.json()) as Release[])
+      .filter((r) => !r.draft && !r.prerelease && r.published_at)
+      .sort((a, b) => b.published_at!.localeCompare(a.published_at!));
+    const event = releaseEventTag();
+    const current = event ? releases.find((r) => r.tag_name === event) : undefined;
+    const latest = current ? releases.find((r) => r.published_at! < current.published_at!) : releases[0];
     return latest ? { tag: latest.tag_name, date: latest.published_at!.slice(0, 10), url: latest.html_url } : { tag: '', date: '', url: '' };
   } catch { return null; }
 }
