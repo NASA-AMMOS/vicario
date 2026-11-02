@@ -57,13 +57,35 @@ export const ABOUT = 'what it checks';
 /** The annotation type of needsReview notes. */
 export const NEEDS_REVIEW = 'needs review';
 
+/** The annotation types of a test's history dates. */
+export const ADDED = 'added';
+export const MODIFIED = 'modified';
+
 /**
- * Details for test(): what the test does and what makes it pass, plus its
- * scope tags. Write the description as plain text; `backticks` mark code and
- * are rendered as code on the procedures page.
+ * When a test was written and when it last changed, as YYYY-MM-DD. The report
+ * compares them with the latest GitHub release to count new and modified tests
+ * per feature. Set `modified` whenever you change what a test does or checks
+ * (scripts/check-test-dates.mjs enforces it on pull requests).
  */
-export function about(description: string, ...scopes: Scope[]) {
-  return { tag: scopes, annotation: { type: ABOUT, description } };
+export interface History { added: string; modified?: string }
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A test's history as annotations; throws on a malformed date. */
+export function historyAnnotations(h: History) {
+  for (const d of [h.added, h.modified]) if (d !== undefined && !DATE.test(d)) throw new Error(`date ${d} is not YYYY-MM-DD`);
+  return [{ type: ADDED, description: h.added }, ...(h.modified ? [{ type: MODIFIED, description: h.modified }] : [])];
+}
+
+/**
+ * Details for test(): what the test does and what makes it pass, its scope
+ * tags, and its history ({ added, modified }), last. Write the description as
+ * plain text; `backticks` mark code and are rendered as code on the procedures page.
+ */
+export function about(description: string, ...args: (Scope | History)[]) {
+  const scopes = args.filter((a): a is Scope => typeof a === 'string');
+  const history = args.find((a): a is History => typeof a === 'object');
+  return { tag: scopes, annotation: [{ type: ABOUT, description }, ...(history ? historyAnnotations(history) : [])] };
 }
 
 /**

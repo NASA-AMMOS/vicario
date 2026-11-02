@@ -49,7 +49,7 @@ const SCOPES_FOR: Record<Mode, Scope[]> = { lossless: ['@lossless'], lossy: ['@n
 
 /** A SyntheticGen image and its sample type. */
 type Gen = SyntheticSpec & { file: string; type: 'byte' | 'half' | 'real' };
-const gen = (file: string, type: Gen['type'], nl: number, ns: number, nb: number, linc = 1, sinc = 3, binc = 40): Gen =>
+const gen = (file: string, type: Gen['type'], nl: number, ns: number, nb: number, linc = 1, sinc = 2, binc = 30): Gen =>
   ({ file, type, nl, ns, nb, linc, sinc, binc });
 const BYTE_BSQ = gen('gen_byte_bsq.vic', 'byte', 64, 48, 3);
 const BYTES = { byte: 1, half: 2, real: 4 } as const;
@@ -92,7 +92,7 @@ test.describe('Output formats', feature('output-formats'), () => {
     // output directory on case-insensitive file systems (macOS)
     test(`FORMAT=${format} (#${String(i + 1).padStart(2, '0')})`, about(
       `Converts the synthetic 3-band BYTE image with \`FORMAT=${format}\`, one of the 29 format names and aliases in the legacy test. ${CHECKS[mode]}`,
-      '@legacy', ...SCOPES_FOR[mode], ...(fixed ? ['@regression' as Scope] : []),
+      '@legacy', ...SCOPES_FOR[mode], ...(fixed ? ['@regression' as Scope] : []), { added: '2026-10-22', modified: '2026-10-26' },
     ), async ({}, testInfo) => {
       if (mode === 'skip') deferred('REVIEW-19', reason!);
       if (fixed) fixedIssue(fixed);
@@ -128,14 +128,14 @@ test.describe('Output formats', feature('output-formats'), () => {
   for (const [g, what, scope] of [
     [gen('gen_byte_bil.vic', 'byte', 64, 48, 3), '3-band BYTE band-interleaved-by-line (BIL) image', '@nominal'],
     [gen('gen_byte_bip.vic', 'byte', 64, 48, 3), '3-band BYTE band-interleaved-by-pixel (BIP) image', '@nominal'],
-    [gen('gen_byte_gray.vic', 'byte', 64, 48, 1, 1, 3, 0), '1-band BYTE image', '@nominal'],
+    [gen('gen_byte_gray.vic', 'byte', 64, 48, 1, 1, 2, 0), '1-band BYTE image', '@nominal'],
     [gen('gen_half_bsq.vic', 'half', 64, 48, 3), '3-band HALF (16-bit) image', '@nominal'],
     [gen('gen_real_100x100.vic', 'real', 100, 100, 1, 0.5, 0.25, 0), '100 x 100 REAL (float) image, which is not a multiple of the 256-pixel tile size,', '@off-nominal'],
     [gen('gen_byte_ns1_nl1024.vic', 'byte', 1024, 1, 1, 1, 1, 0), '1024-line by 1-sample BYTE image, four 256-line tiles tall,', '@off-nominal'],
   ] as const) {
     test(`RAW output of ${g.file} is exactly its samples, band sequential`, about(
       `Converts the synthetic ${what} with \`FORMAT=raw\`. Passes when the file holds exactly lines x samples x bands samples of ${BYTES[g.type]} byte(s) each and they equal the input pixels in band-sequential (BSQ) order, big-endian.`,
-      scope, '@lossless', '@regression',
+      scope, '@lossless', '@regression', { added: '2026-10-24' },
     ), async ({}, testInfo) => {
       fixedIssue(RAW_FIXED);
       const r = await convert(testInfo, synthetic(g.file), 'out.raw', { format: 'raw' });
@@ -148,7 +148,7 @@ test.describe('Output formats', feature('output-formats'), () => {
 
   test('BMP output of a band-interleaved-by-line (BIL) image keeps its pixels', about(
     'Converts the synthetic 3-band BYTE BIL image (a line-interleaved raster the BMP writers could not handle) with `FORMAT=bmp`. Passes when the BMP decodes to exactly the input pixels.',
-    '@nominal', '@lossless', '@regression',
+    '@nominal', '@lossless', '@regression', { added: '2026-10-24' },
   ), async ({}, testInfo) => {
     fixedIssue(BMP_FIXED);
     const bil = synthetic('gen_byte_bil.vic');
@@ -159,7 +159,7 @@ test.describe('Output formats', feature('output-formats'), () => {
 
   test('HALF input to BMP without OFORM is refused with a non-zero exit', about(
     'Converts the synthetic 3-band HALF (16-bit) image with `FORMAT=bmp`; BMP cannot hold 16-bit samples. Passes when jConvertIIO exits non-zero and reports "Image write failed".',
-    '@off-nominal',
+    '@off-nominal', { added: '2026-10-24' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_half_bsq.vic'), 'half.bmp', { format: 'bmp' });
     expect(r.exitCode, 'jConvertIIO exit code').not.toBe(0);
@@ -168,7 +168,7 @@ test.describe('Output formats', feature('output-formats'), () => {
 
   test('a writer that crashes fails the conversion cleanly', about(
     'Converts the synthetic 3-band BYTE image with `FORMAT=wbmp`; the WBMP writer only takes 1-bit images and throws an IllegalArgumentException. Passes when jConvertIIO exits non-zero, names the failed writer and reports "Image write failed", with no stack trace.',
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-4', 'fixed: a writer throwing a runtime exception or error escaped jConvertIIO as an uncaught stack trace');
     const r = await convert(testInfo, input, 'out.wbmp', { format: 'wbmp' });
@@ -180,12 +180,12 @@ test.describe('Output formats', feature('output-formats'), () => {
 
   // PNM: P5 for one band, P6 for three; 8-bit or 16-bit
   for (const [g, magic, maxval, what] of [
-    [gen('gen_byte_gray.vic', 'byte', 64, 48, 1, 1, 3, 0), 'P5', 255, '1-band BYTE image as an 8-bit PGM (`P5`, maxval 255)'],
+    [gen('gen_byte_gray.vic', 'byte', 64, 48, 1, 1, 2, 0), 'P5', 255, '1-band BYTE image as an 8-bit PGM (`P5`, maxval 255)'],
     [gen('gen_half_bsq.vic', 'half', 64, 48, 3), 'P6', 65535, '3-band HALF (16-bit) image as a 16-bit PPM (`P6`, maxval 65535, big-endian)'],
   ] as const) {
     test(`PNM output of ${g.file} keeps its pixels`, about(
       `Converts the synthetic ${what} with \`FORMAT=pnm\`. Passes when the header gives that type, size and maxval and every sample equals the input pixel.`,
-      '@nominal', '@lossless', '@regression',
+      '@nominal', '@lossless', '@regression', { added: '2026-10-24' },
     ), async ({}, testInfo) => {
       fixedIssue(PNM_FIXED);
       const r = await convert(testInfo, synthetic(g.file), 'out.pnm', { format: 'pnm' });
@@ -204,7 +204,7 @@ test.describe('Output formats', feature('output-formats'), () => {
   ] as const) {
     test(`PNM output of ${file} is refused with a message`, about(
       `Converts the synthetic ${what}, with \`FORMAT=pnm\`. Passes when jConvertIIO exits non-zero, says why ("${message}") and reports "Image write failed".`,
-      '@off-nominal',
+      '@off-nominal', { added: '2026-10-24' },
     ), async ({}, testInfo) => {
       const r = await convert(testInfo, synthetic(file), 'out.pnm', { format: 'pnm' });
       expect(r.exitCode, 'jConvertIIO exit code').not.toBe(0);
@@ -215,7 +215,7 @@ test.describe('Output formats', feature('output-formats'), () => {
 
   test('a PNM file written by jConvertIIO can be read back as input', about(
     'Writes the synthetic 3-band BYTE image as PNM, then converts that PNM to PNG. Passes when the second conversion succeeds and the PNG has exactly the original pixels.',
-    '@off-nominal',
+    '@off-nominal', { added: '2026-10-24' },
   ), async ({}, testInfo) => {
     deferred('NEW-output-3', 'jConvertIIO cannot read PNM input: jai_imageio 1.1\'s PNM reader cannot load on Java 17+ (it uses a JDK-internal class). PNM input is not documented, and a replacement reader is a new feature beyond the PNM output fix');
     const pnm = await convert(testInfo, input, 'out.pnm', { format: 'pnm' });
@@ -227,7 +227,7 @@ test.describe('Output formats', feature('output-formats'), () => {
 
   test('a TIFF file written by jConvertIIO can be read back as input', about(
     'Writes the synthetic 3-band BYTE image as TIFF, then converts that TIFF to PNG. Passes when the second conversion succeeds with no exception and the PNG has exactly the original pixels.',
-    '@nominal', '@lossless', '@regression',
+    '@nominal', '@lossless', '@regression', { added: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('NEW-output-1', 'fixed: reading TIFF input failed with IllegalStateException "seekForwardOnly and allowSearch can\'t both be true"');
     const tif = await convert(testInfo, input, 'out.tif', { format: 'tif' });
@@ -241,7 +241,7 @@ test.describe('Output formats', feature('output-formats'), () => {
     for (const format of formats) {
       test(`${type.toUpperCase()} input to FORMAT=${format} is lossless`, about(
         `Converts the synthetic ${type.toUpperCase()} image with \`FORMAT=${format}\`, which can hold ${type === 'half' ? '16-bit' : 'floating-point'} data. Passes when the output decodes to exactly the input pixels.`,
-        '@nominal', '@lossless',
+        '@nominal', '@lossless', { added: '2026-10-22', modified: '2026-10-23' },
       ), async ({}, testInfo) => {
         const input16 = synthetic(`gen_${type}_bsq.vic`);
         const r = await convert(testInfo, input16, `${type}.${format}`, { format });
@@ -253,7 +253,7 @@ test.describe('Output formats', feature('output-formats'), () => {
 
   test('a FORMAT with no registered writer is refused with a message', about(
     `Converts the synthetic image with \`FORMAT=no-such-format\`, a name no ImageIO writer registers. Passes when jConvertIIO exits non-zero with a "no ImageWriter for FORMAT=" message, no stack trace and no output file.`,
-    '@off-nominal',
+    '@off-nominal', { added: '2026-10-24' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, input, 'out.nsf', { format: 'no-such-format' });
     expect(r.exitCode, 'jConvertIIO exit code').not.toBe(0);
@@ -264,7 +264,7 @@ test.describe('Output formats', feature('output-formats'), () => {
 
   test('REAL input to PNG without OFORM is refused with a non-zero exit', about(
     `Converts a REAL (float) image to PNG without \`OFORM\`; PNG cannot hold floating-point data. Passes when jConvertIIO refuses with a non-zero exit code.`,
-    '@off-nominal',
+    '@off-nominal', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, synthetic('gen_real_bsq.vic'), 'real.png', { format: 'png' });
     expect(r.exitCode).not.toBe(0);
@@ -272,7 +272,7 @@ test.describe('Output formats', feature('output-formats'), () => {
 
   test('HALF input to JPEG without OFORM is refused with a non-zero exit', about(
     `Converts a HALF (16-bit) image to JPEG without \`OFORM\`; the JPEG writer cannot encode 16-bit data. Passes when jConvertIIO exits non-zero instead of leaving an empty file.`,
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     issue('IDS-8497', 'fixed: jConvertIIO used to exit 0 and leave an empty file when the writer could not encode the data type');
     const r = await convert(testInfo, synthetic('gen_half_bsq.vic'), 'half.jpg', { format: 'jpg' });

@@ -33,7 +33,7 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
     const keywords = parallel ? `\`ARGFILE\` and \`PARALLEL_BATCH=${parallel}\`` : '`ARGFILE`';
     test(`ARGFILE batch${parallel ? ` with PARALLEL_BATCH=${parallel}` : ''} runs every line`, about(
       `Runs a batch file of 3 conversions (PNG, TIFF and VICAR from different inputs) with ${keywords}. Passes when the run exits 0 and every output exists with its input's pixels.`,
-      '@nominal', '@lossless',
+      '@nominal', '@lossless', { added: '2026-10-23' },
     ), async ({}, testInfo) => {
       const { file, jobs } = writeArgFile(testInfo);
       const args = [`ARGFILE=${file}`, ...(parallel ? [`PARALLEL_BATCH=${parallel}`] : [])];
@@ -48,7 +48,7 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
 
   test('input and output file names without extensions', about(
     `Converts an input file that has no extension to an output name with no extension. Passes when the output has the input pixels.`,
-    '@off-nominal', '@regression', '@lossless',
+    '@off-nominal', '@regression', '@lossless', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     issue('IDS-10067', 'launchers failed on file names with no extension');
     const noExt = testInfo.outputPath('noext');
@@ -65,7 +65,7 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
 
   test('OUT=- with SILENT writes the image to stdout', about(
     `Converts the synthetic image to PNG with \`OUT=-\` and \`SILENT\`, capturing stdout as raw bytes. Passes when the exit code is 0, stdout starts with the PNG signature, decodes to the input pixels and is byte-identical to the same conversion written to a file, and no file named \`-\` is created.`,
-    '@nominal', '@regression', '@lossless',
+    '@nominal', '@regression', '@lossless', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-12', 'fixed: OUT=- failed with "image == null!", wrote an empty file named "-" and nothing to stdout');
     const src = synthetic('gen_byte_bsq.vic');
@@ -86,7 +86,7 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
 
   test('OUT=- without SILENT keeps messages off stdout', about(
     `Converts the synthetic image to VICAR with \`OUT=-\` and no \`SILENT\`. Passes when the exit code is 0, the progress messages appear on stderr, and stdout holds only the VICAR file (it starts with \`LBLSIZE=\` and decodes to the input pixels).`,
-    '@nominal', '@regression', '@lossless',
+    '@nominal', '@regression', '@lossless', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-12', 'fixed: with OUT=- the messages would have been mixed into the image on stdout');
     const src = synthetic('gen_byte_bsq.vic');
@@ -102,7 +102,7 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
 
   test('FORMAT without OUT, and OUT=- without FORMAT, are refused', about(
     `Runs jConvertIIO with \`FORMAT=png\` but no \`OUT\`, then with \`OUT=-\` but no \`FORMAT\`. Passes when both exit non-zero with a message naming the missing keyword, write nothing to stdout or to a file named \`-\`, and show no Java stack trace.`,
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-12', 'fixed: FORMAT without OUT failed with "image == null!" and left an empty file named "-"');
     const src = synthetic('gen_byte_bsq.vic');
@@ -120,7 +120,7 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
   for (const parallel of [undefined, '2']) {
     test(`OUT=- on an ARGFILE line is refused${parallel ? ` (PARALLEL_BATCH=${parallel})` : ''}`, about(
       `Runs an \`ARGFILE\` batch${parallel ? ` with \`PARALLEL_BATCH=${parallel}\`` : ''} whose second line converts to PNG with \`OUT=-\`. Passes when the run exits non-zero with an error naming \`OUT=-\` and \`ARGFILE\` on stderr, and no PNG data reaches stdout (it would be mixed with the batch progress text).`,
-      '@off-nominal', '@regression',
+      '@off-nominal', '@regression', { added: '2026-10-28' },
     ), async ({}, testInfo) => {
       issue('REVIEW-12', 'fixed: in an ARGFILE batch, OUT=- wrote the image to stdout mixed with the batch progress text');
       const src = synthetic('gen_byte_bsq.vic');
@@ -138,7 +138,7 @@ test.describe('Batch, streaming and remote input', feature('batch-remote'), () =
 test.describe('Batch, streaming and remote input (network)', feature('batch-remote', 'full'), () => {
   test('https input from the public PDS archive matches the local copy', about(
     `Converts an MSL Navcam thumbnail straight from its https URL on the public PDS Imaging Node. Passes when the result has the same pixels as the local copy.`,
-    '@mission-data', '@lossless',
+    '@mission-data', '@lossless', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const local = asset('msl-navcam-thumb-img');
     const url = 'https://planetarydata.jpl.nasa.gov/img/data/msl/MSLNAV_0XXX/DATA/SOL00100/NLA_406359343EDR_T0050104NCAM00505M1.IMG';

@@ -17,7 +17,7 @@ test.describe('PDS label transcoding (XSL)', feature('xsl-labels'), () => {
 
   test('XSL=- uses the default stylesheet from the jar', about(
     `Converts the synthetic image to PDS3 with \`XSL=-\` (the default stylesheet in the jar) and \`EMBED_VICAR_LABEL=true\`. Passes when the label is valid and the pixels are unchanged.`,
-    '@nominal', '@lossless',
+    '@nominal', '@lossless', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, input, 'default_xsl.pds', { format: 'pds', XSL: '-', EMBED_VICAR_LABEL: 'true' });
     expectConverted(r);
@@ -27,7 +27,7 @@ test.describe('PDS label transcoding (XSL)', feature('xsl-labels'), () => {
 
   test('legacy recipe: XML=false, VicarToPDSmer1.xsl, EMBED_VICAR_LABEL=true', about(
     `The legacy normal.pds recipe from tstjConvertIIO.csh (\`XML=false\`, \`XSL=VicarToPDSmer1.xsl\`, \`EMBED_VICAR_LABEL=true\`) on the synthetic image. Passes when the PDS3 label is valid.`,
-    '@legacy', '@nominal',
+    '@legacy', '@nominal', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const r = await convert(testInfo, input, 'normal.pds', {
       format: 'pds', xml: 'false', xsl: path.join(XSL_DIR, 'VicarToPDSmer1.xsl'), embed_vicar_label: 'true' });
@@ -37,7 +37,7 @@ test.describe('PDS label transcoding (XSL)', feature('xsl-labels'), () => {
 
   test(`all ${VICAR_TO_PDS.length} bundled VicarToPDS stylesheets produce valid labels`, about(
     `Converts the synthetic image to PDS3 with each of the ${VICAR_TO_PDS.length} VicarToPDS stylesheets in the jar, one step per stylesheet. Passes when every label is valid and every output has the input pixels.`,
-    '@nominal', '@lossless',
+    '@nominal', '@lossless', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const src = await probe(testInfo, input, { preview: false });
     for (const xsl of VICAR_TO_PDS) {
@@ -54,7 +54,7 @@ test.describe('PDS label transcoding (XSL)', feature('xsl-labels'), () => {
 test.describe('PDS label transcoding (XSL) (mission products)', feature('xsl-labels', 'full'), () => {
   test('legacy normal.pds recipe on a public MER EDR (via VICAR)', about(
     `The legacy normal.pds recipe on real data: converts a public MER EDR to VICAR, then to PDS3 with \`VicarToPDSmer1.xsl\`. Passes when the label is valid for a 512 x 512 image and the pixels match the original EDR.`,
-    '@legacy', '@mission-data', '@lossless',
+    '@legacy', '@mission-data', '@lossless', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const mer = asset('mer1-navcam-edr');
     const vic = await convert(testInfo, mer, 'mer.vic', { format: 'vicar' });
@@ -68,7 +68,7 @@ test.describe('PDS label transcoding (XSL) (mission products)', feature('xsl-lab
 
   test('VICAR-to-PDS stylesheet on a PDS-labelled MER EDR', about(
     `Applies a VICAR-to-PDS stylesheet directly to a PDS-labelled MER EDR (the legacy \`mer_file.vic\` case in runAll.csh). Passes when the conversion succeeds, copying the input label with a warning; before the IDS-8497 fix it crashed.`,
-    '@legacy', '@mission-data', '@off-nominal', '@regression',
+    '@legacy', '@mission-data', '@off-nominal', '@regression', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     issue('IDS-8497', 'fixed: a VICAR-to-PDS stylesheet on PDS-labelled input (the legacy mer_file.vic case) crashed; '
       + 'the input label is now copied with a warning');

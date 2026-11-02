@@ -34,7 +34,7 @@ function expectValidLabel(label: string, imageName: string) {
 test.describe('PDS4 label generation (Labelocity)', feature('velocity-labels'), () => {
   test('Mars 2020 Navcam: generated label matches the archive label and reads back', about(
     `Generates a PDS4 label for a public Mars 2020 Navcam image with Labelocity (Velocity templates plus vicario). Passes when the label is complete XML with no unresolved template references, names the image file, has a \`urn:nasa:pds\` logical identifier, describes the image array exactly as the official archive label does, and reads back to the same pixels.`,
-    '@mission-data', '@nominal',
+    '@mission-data', '@nominal', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const image = asset('m2020-navcam-thumb-img');
     const g = await generatePds4Label(testInfo, image);
@@ -48,7 +48,7 @@ test.describe('PDS4 label generation (Labelocity)', feature('velocity-labels'), 
 
   test('MSL Navcam: generated label describes and reads back the image', about(
     `Generates a PDS4 label for a public MSL Navcam image (MSL has no official PDS4 label to compare with). Passes when the label is valid as above, describes a 64 x 64 array and reads back to the image's pixels.`,
-    '@mission-data', '@nominal',
+    '@mission-data', '@nominal', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const image = asset('msl-navcam-thumb-img');
     const g = await generatePds4Label(testInfo, image);

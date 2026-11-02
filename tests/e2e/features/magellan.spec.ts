@@ -10,7 +10,7 @@ import { convert, expectConverted, expectSamePixels, probe } from '../support/ru
 test.describe('Magellan products', feature('magellan', 'full'), () => {
   test('F-BIDR reader decodes the orbit 378 image strip', about(
     `Reads a public Magellan F-BIDR (orbit 378, file 13) with the F-BIDR ImageIO reader, once through a plain \`FileImageInputStream\` and once through the stream ImageIO picks by default. Passes when both decode to a 1092 x 14672 BYTE image that is not blank and matches the recorded golden hash.`,
-    '@mission-data', '@regression',
+    '@mission-data', '@regression', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-18', 'fixed: only a javax FileImageInputStream counted as random access, so the default stream was refused');
     asset('magellan-fbidr-lbl');
@@ -23,7 +23,7 @@ test.describe('Magellan products', feature('magellan', 'full'), () => {
 
   test('jConvertIIO converts the F-BIDR to VICAR', about(
     `Converts the same F-BIDR to VICAR with jConvertIIO. Passes when the output decodes to the golden pixels (1092 x 14672 BYTE, all 14672 lines).`,
-    '@mission-data', '@regression', '@lossless',
+    '@mission-data', '@regression', '@lossless', { added: '2026-10-23', modified: '2026-10-24' },
   ), async ({}, testInfo) => {
     issue('REVIEW-18', 'fixed: the F-BIDR reader refused jConvertIIO\'s seekable FileChannelImageInputStream '
       + '("must be read from a stream allowing random access") because VicarInputFile only treated a javax '

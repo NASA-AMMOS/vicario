@@ -25,10 +25,15 @@ Read [docs/TESTING.md](docs/TESTING.md) ("Adding tests") before writing tests. R
   - It fails without the fix and passes with it, tagged `@regression`, with `issue('IDS-NNNN', ...)`.
   - Confirm it fails before the fix. If a `knownFailure` covered the bug, remove the marker.
 - **Bugs found but not fixed** get a reproducing test. Without a ticket or other record, mark it `needsReview('REVIEW-N', why)`; it fails visibly until someone decides whether it is a bug or intended. Use `knownFailure('IDS-NNNN', why)` only once a ticket exists. Never delete or skip a failing test to make the suite pass.
-- **Every test has `about(description, ...scopes)`.**
+- **Every test has `about(description, ...scopes, { added, modified })`.**
   - The description says what it does and what makes it pass ("Does X. Passes when Y.").
   - Scope tags come from `SCOPES` in `tests/e2e/support/features.ts`.
   - The description becomes the test procedure in the published report, so keep it accurate when you change a test.
+- **Every test records its history** (YYYY-MM-DD), last in `about()`:
+  - A new test gets `{ added: '<today>' }`.
+  - A test you change (its code, title or description) gets `modified: '<today>'`; never change `added`.
+  - The report counts new and modified tests per feature since the latest GitHub release from these dates.
+  - `registry.spec.ts` requires the dates, and `npm run check:dates` (run on every PR) fails when a changed test's date is stale. See "Test history" in docs/TESTING.md.
 - **Start vicario with `PRODUCT_JAVA`** (from `support/env.ts`), or through `convert()`, so the run counts toward coverage. Use `JAVA` only for test oracles.
 - **Check content, not just exit codes.** `jConvertIIO` can exit 0 after an error. Compare pixels (`expectSamePixels`, `support/synthetic.ts`, goldens) and labels (`support/labels.ts`).
 - **JUnit classes** go under the owning feature's `junit:` list in `features.yml`.
@@ -52,6 +57,7 @@ User-visible changes update the docs in the same change:
 ## Before finishing
 
 - **Run the suites:** `mvn -B test` and `npx playwright test --project fast`. Both must pass, or the only failures are documented known issues.
+- **Check test dates:** `npm run check:dates` in `tests/e2e`.
 - **Read your tests:** open `tests/e2e/report/procedures.html` and check they read well.
 - **Security findings:** the `Security-Scan` workflow reports CodeQL and SonarQube Cloud findings on every PR. Fix new findings in your change rather than suppressing them. If one is a false positive, say why in the PR.
 - **Do not edit** `.github/workflows/*` permissions or the required checks (`junit`, `e2e-fast`, `data-guard`) without being asked.

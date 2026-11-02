@@ -28,7 +28,7 @@ test.describe('Python label scripts', feature('python-scripts'), () => {
 
   test('replace mode swaps one element and keeps the rest', about(
     `Runs \`xml_swap.py\` in replace mode: replaces \`//pds:A\` in a target document with the element from a source document. Passes when the output has the new element, keeps the untouched sibling and no longer has the old value.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const target = testInfo.outputPath('t.xml');
     const source = testInfo.outputPath('s.xml');
@@ -45,7 +45,7 @@ test.describe('Python label scripts', feature('python-scripts'), () => {
 
   test('list mode prints structural XPaths', about(
     `Runs \`xml_swap.py --list-xpaths\` on a PDS4-namespaced document. Passes when it exits 0 and lists the \`pds:A\` element path.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     const file = testInfo.outputPath('l.xml');
     writeFileSync(file, `<?xml version="1.0"?>\n<P ${NS}><pds:A>x</pds:A></P>\n`);
@@ -56,7 +56,7 @@ test.describe('Python label scripts', feature('python-scripts'), () => {
 
   test('show mode does not expand external entities', about(
     `Runs \`xml_swap.py --show-xpath\` on a document with an external entity that would read a local "secret" file. Passes when the element is printed with the entity unexpanded (\`&xxe;\`) and the secret never appears.`,
-    '@security', '@malformed-input', '@regression',
+    '@security', '@malformed-input', '@regression', { added: '2026-10-22', modified: '2026-10-23' },
   ), async ({}, testInfo) => {
     issue('IDS-10407', 'lxml parser must not resolve entities or use the network');
     const secret = testInfo.outputPath('secret.txt');
@@ -72,7 +72,7 @@ test.describe('Python label scripts', feature('python-scripts'), () => {
 
   test('build_mesh_extras.py writes the mesh extras JSON (LabelObj usage)', about(
     `Runs \`build_mesh_extras.py\` on a mesh \`.mtl\` file. Passes when the JSON it writes holds the solar longitude and the texture PNG list from the \`.mtl\`.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     const dir = testInfo.outputPath('work');
     mkdirSync(dir, { recursive: true });
@@ -87,7 +87,7 @@ test.describe('Python label scripts', feature('python-scripts'), () => {
 
   test('build_mesh_extras.py refuses paths outside its folders or of the wrong type', about(
     `Runs \`build_mesh_extras.py\` with four bad paths: an output outside its folders (\`../escaped.json\`), an output that is not \`.json\`, and \`/etc/hosts\` as the \`.mtl\` and as the base JSON. Passes when each run exits non-zero with a \`build_mesh_extras:\` error and writes nothing.`,
-    '@security', '@off-nominal', '@regression',
+    '@security', '@off-nominal', '@regression', { added: '2026-10-23' },
   ), async ({}, testInfo) => {
     issue('S8707', 'SonarCloud pythonsecurity:S8707 path traversal via command-line arguments');
     const dir = testInfo.outputPath('work');

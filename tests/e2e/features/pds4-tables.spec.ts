@@ -78,7 +78,7 @@ function expectCharacterFixedWidth(txtLines: string[], rows: string[][]) {
 test.describe('PDS4 tables', feature('pds4-tables'), () => {
   test('character table to CSV: header plus every record, values intact', about(
     `Exports a PDS4 character table (GDAL fixture: 22 fields, 5 records) to CSV with \`ExtractTableJPL -c\`. Passes when the CSV has a 22-column header including "Event Number" and every record's values equal the source table.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-23', modified: '2026-10-26' },
   ), async ({}, testInfo) => {
     const { label, rows } = characterTable();
     const out = testInfo.outputPath('table.csv');
@@ -90,7 +90,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('character table to fixed-width text', about(
     `Exports the same table to fixed-width text with \`ExtractTableJPL -w\`. Passes when there is a header plus 5 records and the first record's values equal the source.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-23', modified: '2026-10-26' },
   ), async ({}, testInfo) => {
     const { label, rows } = characterTable();
     const out = testInfo.outputPath('table.txt');
@@ -103,7 +103,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('without -o the table is written to stdout', about(
     `Runs \`ExtractTableJPL -c\` without \`-o\`. Passes when exit is 0 and stdout holds the CSV table: a 22-column header including "Event Number" and every record's values equal the source.`,
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-23', modified: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('REVIEW-15', 'fixed: without -o the table went to an internal buffer that main() never printed, so nothing came out');
     const { label, rows } = characterTable();
@@ -114,7 +114,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('--list-tables without -o lists the table and its fields on stdout', about(
     `Runs \`ExtractTableJPL --list-tables\` without \`-o\` on the character table. Passes when exit is 0 and stdout names table 1 as a fixed-width character table followed by its 22 fields, the first being "Event Number".`,
-    '@nominal', '@regression',
+    '@nominal', '@regression', { added: '2026-10-23', modified: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('REVIEW-15', 'fixed: --list-tables without -o printed nothing');
     const r = await extractTable(testInfo, characterTable().label, ['--list-tables']);
@@ -126,7 +126,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('-h prints the usage and exits 0', about(
     `Runs \`ExtractTableJPL -h\`. Passes when exit is 0, stdout holds the usage text (including the \`--output-file\` option) and there is no exception.`,
-    '@nominal', '@regression',
+    '@nominal', '@regression', { added: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('NEW-pds4-1', 'fixed: showHelp did not exit, so -h fell through and ended in ArrayIndexOutOfBoundsException');
     const r = await extractTable(testInfo, '', ['-h']);
@@ -138,7 +138,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('no label file: usage message and a non-zero exit', about(
     `Runs \`ExtractTableJPL -c\` with no label file. Passes when exit is non-zero, stderr says "A label file is required", the usage text is printed and there is no exception.`,
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-23', modified: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('NEW-pds4-1', 'fixed: a missing label file printed the usage and then crashed with ArrayIndexOutOfBoundsException');
     const r = await extractTable(testInfo, '', ['-c']);
@@ -150,7 +150,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('delimited (CSV) table', about(
     `Exports a PDS4 delimited (CSV) table (GDAL fixture: 4 fields, 10 records) with \`ExtractTableJPL -c\`. Passes when the output has a header naming AREA, EAS_ID, PRFEDEA and WKT plus 10 records whose first three values equal the source CSV.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-23', modified: '2026-10-26' },
   ), async ({}, testInfo) => {
     deferred('REVIEW-16', 'pds4-jparser 2.12.1 calls CSVParserBuilder.withKeepQuotations, which exists only in the '
       + 'unpublished gov.nasa.pds:opencsv fork, not in public opencsv; fixing it needs a dependency/JDK-baseline decision '
@@ -170,7 +170,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('delimited table: clean "not supported in this build" error', about(
     `Exports the delimited (CSV) table with \`ExtractTableJPL -c\` and through jConvertIIO, which this build cannot read (REVIEW-16). Passes when both exit non-zero and say "delimited PDS4 tables are not supported in this build", and neither prints a NoSuchMethodError stack trace.`,
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-23', modified: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('REVIEW-16', 'fixed: the missing opencsv method crashed the tool with a raw NoSuchMethodError stack trace instead of a clear error');
     const label = asset('gdal-pds4-table-delimited-xml');
@@ -187,7 +187,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('jConvertIIO PDS4_TABLE_OUTPUT_FORMAT=csv exports the table', about(
     `Exports the character table through jConvertIIO with \`PDS4_TABLE_OUTPUT_FORMAT=csv\`. Passes when exit is 0 and the out= file holds a 22-column CSV header including "Event Number" plus 5 records whose values equal the source.`,
-    '@nominal', '@regression',
+    '@nominal', '@regression', { added: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('REVIEW-17', 'fixed: jConvertIIO stopped with "Cannot read label file" on every PDS4 table, because the reader ran '
       + 'ExtractTableJPL with no label while probing the file');
@@ -199,7 +199,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('jConvertIIO accepts the old PDS4_TABLE_OUPUT_FORMAT spelling', about(
     `Exports the character table through jConvertIIO with \`PDS4_TABLE_OUPUT_FORMAT=csv\`, the misspelling earlier HELP text documented. Passes when exit is 0 and the out= file is CSV (22-column header, 5 records equal to the source), so the keyword took effect rather than being ignored.`,
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('REVIEW-17', 'fixed: HELP documented PDS4_TABLE_OUPUT_FORMAT but only PDS4_TABLE_OUTPUT_FORMAT was accepted; both are now');
     const { label, rows } = characterTable();
@@ -210,7 +210,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('jConvertIIO PDS4_TABLE_OUTPUT_FORMAT=fixed-width exports fixed-width text', about(
     `Exports the character table through jConvertIIO with \`PDS4_TABLE_OUTPUT_FORMAT=fixed-width\`. Passes when exit is 0 and the out= file has a header plus 5 records, no commas, and every record's values equal the source.`,
-    '@nominal', '@regression',
+    '@nominal', '@regression', { added: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('REVIEW-17', 'fixed: jConvertIIO could not export any PDS4 table');
     const { label, rows } = characterTable();
@@ -221,7 +221,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('jConvertIIO table export defaults to fixed-width, as HELP documents', about(
     `Exports the character table through jConvertIIO with no \`PDS4_TABLE_OUTPUT_FORMAT\`. Passes when exit is 0 and the out= file is fixed-width text (no commas, header plus 5 records equal to the source), the default HELP documents.`,
-    '@nominal', '@regression',
+    '@nominal', '@regression', { added: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('REVIEW-17', 'fixed: HELP says the default is fixed-width but jConvertIIO defaulted to csv');
     const { label, rows } = characterTable();
@@ -232,7 +232,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('jConvertIIO PDS4_TABLE_LIST=true lists the tables and fields', about(
     `Runs jConvertIIO with \`PDS4_TABLE_LIST=true\` on the character table. Passes when exit is 0 and the out= file names table 1 as a fixed-width character table followed by its 22 fields.`,
-    '@nominal', '@regression',
+    '@nominal', '@regression', { added: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('REVIEW-17', 'fixed: jConvertIIO could not export or list any PDS4 table');
     const r = await convert(testInfo, characterTable().label, 'jconvert-list.txt', { PDS4_TABLE_LIST: 'true' });
@@ -244,7 +244,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('jConvertIIO PDS4_TABLE_FIELDS selects fields', about(
     `Exports the character table through jConvertIIO with \`PDS4_TABLE_OUTPUT_FORMAT=csv\` and \`PDS4_TABLE_FIELDS=1,3\`. Passes when exit is 0 and the CSV has a 2-column header "Event Number,Day of Year" and every record holds source fields 1 and 3.`,
-    '@nominal',
+    '@nominal', { added: '2026-10-23', modified: '2026-10-26' },
   ), async ({}, testInfo) => {
     const { label, rows } = characterTable();
     const r = await convert(testInfo, label, 'jconvert-fields.csv', { PDS4_TABLE_OUTPUT_FORMAT: 'csv', PDS4_TABLE_FIELDS: '1,3' });
@@ -259,7 +259,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('jConvertIIO PDS4_TABLE_INDEX selects the second table', about(
     `Builds a two-table product from the character table (table 2 covers records 3-5 of the same file) and exports it through jConvertIIO with \`PDS4_TABLE_INDEX=2 PDS4_TABLE_OUTPUT_FORMAT=csv\`. Passes when exit is 0 and the CSV has the 22-column header plus exactly 3 records equal to source records 3-5.`,
-    '@nominal', '@regression',
+    '@nominal', '@regression', { added: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('NEW-pds4-2', 'fixed: PDS4_TABLE_INDEX was parsed but never passed to the extractor, so table 1 was always exported');
     const { label, rows } = twoTableProduct(testInfo);
@@ -275,7 +275,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('jConvertIIO TABLE_FIELD_SEPARATOR sets the field separator', about(
     `Exports the character table through jConvertIIO with \`PDS4_TABLE_OUTPUT_FORMAT=csv TABLE_FIELD_SEPARATOR=|\`. Passes when exit is 0, the output has no commas, and splitting on "|" gives a 22-column header plus 5 records equal to the source.`,
-    '@nominal', '@regression',
+    '@nominal', '@regression', { added: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('NEW-pds4-3', 'fixed: only a comma was ever passed on as the field separator; any other TABLE_FIELD_SEPARATOR was ignored');
     const { label, rows } = characterTable();
@@ -288,7 +288,7 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
 
   test('reading a PDS4 table label logs no XPath namespace error', about(
     `Exports the character table (its label binds the PDS namespace as the default namespace, with no "pds:" prefix) through jConvertIIO. Passes when exit is 0, the output is written and the log has no "Prefix must resolve to a namespace" error or other exception.`,
-    '@off-nominal', '@regression',
+    '@off-nominal', '@regression', { added: '2026-10-23', modified: '2026-10-26' },
   ), async ({}, testInfo) => {
     issue('NEW-pds4-4', 'fixed: labels that do not declare the "pds" prefix logged an XPathExpressionException on every read');
     const r = await convert(testInfo, characterTable().label, 'jconvert-ns.csv', { PDS4_TABLE_OUTPUT_FORMAT: 'csv' });
