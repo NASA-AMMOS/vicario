@@ -194,7 +194,7 @@ test.describe('Test report and site pages', { tag: ['@registry', '@fast'] }, () 
   });
 
   test('the report prints to one PDF', about(
-    `Runs the three sample tests, then \`scripts/report-pdf.mjs\` on their report (it opens the overview and procedures pages in Chromium, opens every drop-down and prints them as one PDF). Passes when the script exits 0 and writes a PDF file (it starts with \`%PDF-\`) of more than 10 kB.`,
+    `Runs the three sample tests, then \`scripts/report-pdf.mjs\` on their report (it opens the overview and procedures pages in Chromium, opens every drop-down and prints them as one PDF). Passes when the script exits 0 and writes a PDF file (it starts with \`%PDF-\`) of more than 10 kB whose links are all either web addresses or jumps inside the PDF: none points at a local file (the overview, the procedures page or the Playwright report, which a downloaded PDF does not have).`,
     '@suite', '@nominal', { added: '2026-11-03' },
   ), async ({}, testInfo) => {
     const report = await sampleReport(testInfo);
@@ -204,6 +204,9 @@ test.describe('Test report and site pages', { tag: ['@registry', '@fast'] }, () 
     const bytes = readFileSync(pdf);
     expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
     expect(bytes.length).toBeGreaterThan(10_000);
+    const uris = [...bytes.toString('latin1').matchAll(/\/URI \(([^)]*)\)/g)].map((m) => m[1]);
+    expect(uris.filter((u) => !/^https?:/.test(u)), 'links to local files').toEqual([]);
+    expect(bytes.toString('latin1'), 'jumps inside the PDF').toContain('/Dest');
     await testInfo.attach('report.pdf', { path: pdf, contentType: 'application/pdf' });
   });
 
@@ -229,6 +232,18 @@ test.describe('Test report and site pages', { tag: ['@registry', '@fast'] }, () 
     const r = await run(['node', path.join(E2E_ROOT, 'scripts', 'build-site.mjs'), '--report', report, '--out', site], { cwd: E2E_ROOT });
     expect(r.exitCode, r.stderr).toBe(0);
     expectLinkedRows(path.join(site, 'index.html'), path.join(site, 'tests', 'procedures.html'), 'tests/');
+  });
+
+  test('the site labels known issues and unexpected passes', about(
+    `Builds the GitHub Pages site from a nested run of two sample known failures: one fails (a known issue) and one passes. Passes when the capability's drop-down lists the first as "Known issue" and the second as "Passed unexpectedly" in failure styling, both linked to existing entries on the published procedures page.`,
+    '@suite', '@off-nominal', { added: '2026-11-03' },
+  ), async ({}, testInfo) => {
+    const report = await sampleReport(testInfo, KNOWN_TESTS);
+    const site = testInfo.outputPath('site');
+    const r = await run(['node', path.join(E2E_ROOT, 'scripts', 'build-site.mjs'), '--report', report, '--out', site], { cwd: E2E_ROOT });
+    expect(r.exitCode, r.stderr).toBe(0);
+    expectLinkedRows(path.join(site, 'index.html'), path.join(site, 'tests', 'procedures.html'), 'tests/', KNOWN_TESTS);
+    expect(readFileSync(path.join(site, 'index.html'), 'utf8')).toContain('<span class="pill fail">Passed unexpectedly</span>');
   });
 
   test('the site builds without test results', about(

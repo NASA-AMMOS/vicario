@@ -102,7 +102,9 @@ const formats = [
 // --- capabilities and test results ---
 
 const counts = new Map((summary?.features ?? []).map((f) => [f.id, f]));
-const RESULT = { passed: ['pass', 'Passed'], failed: ['fail', 'Failed'], known: ['warn', 'Known issue'], skipped: ['', 'Skipped'] };
+// the same results and labels as the report (support/overview-reporter.ts)
+const RESULT = { passed: ['pass', 'Passed'], failed: ['fail', 'Failed'], 'unexpected-pass': ['fail', 'Passed unexpectedly'],
+  known: ['warn', 'Known issue'], skipped: ['', 'Skipped'] };
 // a collapsed summary table of a feature's tests, each linking to its procedure
 const testTable = (tests) => `<details class="tests"><summary>${tests.length} test${tests.length === 1 ? '' : 's'}</summary><div class="scroll"><table>
 <thead><tr><th>Test</th><th>Scope</th><th>Result</th></tr></thead><tbody>

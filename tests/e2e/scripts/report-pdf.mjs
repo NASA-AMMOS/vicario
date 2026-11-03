@@ -56,15 +56,25 @@ try {
     document.head.insertAdjacentHTML('afterbegin', `<style>${extra.style}</style>`);
     document.head.insertAdjacentHTML('beforeend', `<style>${css}</style>`);
     const main = document.querySelector('main') ?? document.body;
-    main.insertAdjacentHTML('beforeend', `<div class="pdf-procedures">${extra.main}</div>`);
+    main.insertAdjacentHTML('beforeend', `<div class="pdf-procedures" id="pdf-procedures">${extra.main}</div>`);
     for (const d of document.querySelectorAll('details')) d.open = true;
-    for (const a of document.querySelectorAll('a[href^="procedures.html#"]')) a.setAttribute('href', a.getAttribute('href').slice('procedures.html'.length));
-    for (const img of document.querySelectorAll('img[loading="lazy"]')) img.loading = 'eager';
     // a test's "Run details" open the Playwright report, which is not in the PDF; keep "Source"
     for (const links of document.querySelectorAll('p.links')) {
       links.querySelectorAll('a[href^="playwright/"]').forEach((a) => a.remove());
       links.innerHTML = links.innerHTML.trim().replace(/^·\s*/, '');
     }
+    // links between the two pages become jumps inside the PDF; other local links (the Playwright
+    // report, images) are not in the PDF, and would carry this machine's paths, so they become text
+    main.id ||= 'pdf-overview';
+    for (const a of document.querySelectorAll('a[href]')) {
+      const href = a.getAttribute('href');
+      if (/^(https?:|mailto:|#)/.test(href)) continue;
+      const [file, frag] = href.split('#');
+      if (file === 'procedures.html') a.setAttribute('href', frag ? `#${frag}` : '#pdf-procedures');
+      else if (file === 'index.html') a.setAttribute('href', frag ? `#${frag}` : `#${main.id}`);
+      else a.replaceWith(...a.childNodes);
+    }
+    for (const img of document.querySelectorAll('img[loading="lazy"]')) img.loading = 'eager';
   }, { extra, css: PRINT_CSS });
   await page.waitForLoadState('load');
   await page.evaluate(() => Promise.all([...document.images].map((i) => (i.complete ? null : new Promise((r) => { i.onload = i.onerror = r; })))));
