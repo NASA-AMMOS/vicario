@@ -87,6 +87,10 @@ jobs:
       - name: Install test dependencies
         run: npm ci
 
+      # prints the report as a PDF (scripts/report-pdf.mjs); report-pages.spec.ts tests it
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
       # a pull request is checked out as a merge commit whose first parent is the base branch
       - name: Changed tests have current dates
         if: github.event_name == 'pull_request'
@@ -114,6 +118,22 @@ jobs:
         if: always()
         run: cat report/overview.md >> "$GITHUB_STEP_SUMMARY" || true
 
+      # one PDF of the overview and procedures, every drop-down open; a failure here never hides test results
+      - name: Print the report as a PDF
+        id: pdf
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: npm run report:pdf
+
+      - name: Upload PDF report
+        if: ${{ !cancelled() && steps.pdf.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: feature-report-pdf-fast
+          path: tests/e2e/report/pdf/
+          retention-days: 5
+          if-no-files-found: warn
+
       # save only after a green run, so a bad download never occupies the key
       - name: Save test data
         if: success() && steps.data-cache.outputs.cache-hit != 'true'
@@ -131,6 +151,7 @@ jobs:
           path: |
             tests/e2e/report/
             tests/e2e/results/
+            !tests/e2e/report/pdf/
           retention-days: 5
           if-no-files-found: warn
 

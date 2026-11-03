@@ -6,7 +6,7 @@ import path from 'node:path';
 import { expect, test } from '../support/test';
 import { asset } from '../support/data';
 import { PRODUCT_JAVA, fatJar } from '../support/env';
-import { about, deferred, feature, issue } from '../support/features';
+import { about, feature, issue, knownFailure } from '../support/features';
 import { convert, run } from '../support/run';
 
 async function extractTable(testInfo: import('@playwright/test').TestInfo, label: string, args: string[]) {
@@ -149,10 +149,10 @@ test.describe('PDS4 tables', feature('pds4-tables'), () => {
   });
 
   test('delimited (CSV) table', about(
-    `Exports a PDS4 delimited (CSV) table (GDAL fixture: 4 fields, 10 records) with \`ExtractTableJPL -c\`. Passes when the output has a header naming AREA, EAS_ID, PRFEDEA and WKT plus 10 records whose first three values equal the source CSV.`,
-    '@nominal', { added: '2026-10-23', modified: '2026-10-26' },
+    `Exports a PDS4 delimited (CSV) table (GDAL fixture: 4 fields, 10 records) with \`ExtractTableJPL -c\`. A known issue (IDS-10429): expected to fail until this build can read delimited tables. Passes when the output has a header naming AREA, EAS_ID, PRFEDEA and WKT plus 10 records whose first three values equal the source CSV.`,
+    '@nominal', { added: '2026-10-23', modified: '2026-11-03' },
   ), async ({}, testInfo) => {
-    deferred('REVIEW-16', 'pds4-jparser 2.12.1 calls CSVParserBuilder.withKeepQuotations, which exists only in the '
+    knownFailure('IDS-10429', 'PDS4 delimited (CSV) tables: pds4-jparser 2.12.1 calls CSVParserBuilder.withKeepQuotations, which exists only in the '
       + 'unpublished gov.nasa.pds:opencsv fork, not in public opencsv; fixing it needs a dependency/JDK-baseline decision '
       + '(pds4-jparser 3.x needs Java 17 and bundles an old copy of vicario)');
     const label = asset('gdal-pds4-table-delimited-xml');

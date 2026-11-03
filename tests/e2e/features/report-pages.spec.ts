@@ -2,7 +2,9 @@
 // the GitHub Pages site (scripts/build-site.mjs). Each feature's drop-down test
 // table must link every test to its entry on the procedures page, the overview's
 // summary must count new and modified tests against the baseline release, and
-// image previews must appear with the test that made them.
+// image previews must appear with the test that made them, known failures
+// must read as known issues (and as failures once they pass), and the report
+// must print to a PDF.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '../support/test';
@@ -23,18 +25,31 @@ const TESTS = [
   { title: 'sample fails', result: 'Failed', added: '2026-03-01', change: 'New', body: 'expect(1).toBe(2);' },
   { title: 'sample is skipped', result: 'Skipped', added: '2026-01-01', change: '', body: 'test.skip();' },
 ];
+type Sample = { title: string; result: string; added: string; modified?: string; change: string; body: string };
+/** knownFailure() as the sample sees it: an issue note, and Playwright's expected failure. */
+const known = (id: string, why = 'sample bug') => `test.info().annotations.push({ type: 'issue', description: '${id}: ${why}' }); test.fail(true, '${id}: ${why}');`;
+/** Two known failures: one still fails (a known issue), one now passes (the behaviour changed). */
+const KNOWN_TESTS: Sample[] = [
+  { title: 'sample known failure', result: 'Known issue', added: '2026-01-01', change: '', body: `${known('IDS-0001')} expect(1).toBe(2);` },
+  { title: 'sample known failure that passes', result: 'Passed unexpectedly', added: '2026-01-01', change: '', body: `${known('IDS-0002')} expect(1).toBe(1);` },
+];
+/** Two known failures under one ticket that covers two different limitations. */
+const SHARED_TICKET: Sample[] = [
+  { title: 'sample limitation A', result: 'Known issue', added: '2026-01-01', change: '', body: `${known('IDS-0003', 'limitation A')} expect(1).toBe(2);` },
+  { title: 'sample limitation B', result: 'Known issue', added: '2026-01-01', change: '', body: `${known('IDS-0003', 'limitation B')} expect(1).toBe(2);` },
+];
 
 /**
  * Runs a nested Playwright run of three sample tests (passed, failed, skipped;
  * one modified and one added since the baseline release, one with an image
  * preview) through the overview reporter. Returns the report folder.
  */
-async function sampleReport(testInfo: import('@playwright/test').TestInfo): Promise<string> {
+async function sampleReport(testInfo: import('@playwright/test').TestInfo, tests: Sample[] = TESTS): Promise<string> {
   const dir = testInfo.outputPath('sample'); // under tests/e2e, so @playwright/test resolves
   mkdirSync(dir, { recursive: true });
   writeFileSync(path.join(dir, 'sample.spec.ts'), `import { writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-${TESTS.map((t) => `test(${JSON.stringify(t.title)}, { tag: ['@${FEATURE}', '@nominal'], annotation: ${JSON.stringify([
+${tests.map((t) => `test(${JSON.stringify(t.title)}, { tag: ['@${FEATURE}', '@nominal'], annotation: ${JSON.stringify([
     { type: ABOUT, description: `Sample: ${t.title}.` }, { type: ADDED, description: t.added },
     ...(t.modified ? [{ type: MODIFIED, description: t.modified }] : [])])} }, async () => {
   ${t.body}
@@ -69,10 +84,10 @@ function summaryRow(html: string, name: RegExp) {
 }
 
 /** Checks the sample tests' rows link to anchors that exist on the procedures page. */
-function expectLinkedRows(page: string, procedures: string, prefix: string) {
+function expectLinkedRows(page: string, procedures: string, prefix: string, tests: Sample[] = TESTS) {
   const rows = dropDownRows(readFileSync(page, 'utf8'), prefix);
   const ids = new Set([...readFileSync(procedures, 'utf8').matchAll(/<li id="([^"]+)"/g)].map((m) => m[1]));
-  for (const t of TESTS) {
+  for (const t of tests) {
     const row = rows.find((r) => r.title === t.title);
     expect(row, `${t.title} is in the drop-down`).toBeTruthy();
     expect(row!.result, t.title).toBe(t.result);
@@ -128,6 +143,81 @@ test.describe('Test report and site pages', { tag: ['@registry', '@fast'] }, () 
     expect(existsSync(path.join(report, img![1])), 'the preview is copied into the report').toBe(true);
     expect(entry('sample fails')).toContain('Added 2026-03-01<');
     for (const t of ['sample fails', 'sample is skipped']) expect(entry(t), t).not.toContain('<img');
+  });
+
+  test('a known failure is reported as a known issue, not a failure', about(
+    `Runs a nested Playwright run of a sample test marked as a known failure (IDS-0001, Playwright's expected failure) that fails. Passes when the overview's summary row counts it under Known issues and not Failed, its drop-down row reads "Known issue" and links to its procedure, and the Known issues section lists it under IDS-0001.`,
+    '@suite', '@nominal', { added: '2026-11-03' },
+  ), async ({}, testInfo) => {
+    const report = await sampleReport(testInfo, KNOWN_TESTS.slice(0, 1));
+    expectLinkedRows(path.join(report, 'index.html'), path.join(report, 'procedures.html'), '', KNOWN_TESTS.slice(0, 1));
+    const html = readFileSync(path.join(report, 'index.html'), 'utf8');
+    const summary = JSON.parse(readFileSync(path.join(report, 'summary.json'), 'utf8'));
+    const name = summary.features.find((f: { id: string }) => f.id === FEATURE).name;
+    // Feature, Tests, Passed, Failed, Known issues, Skipped, New, Modified
+    expect(summaryRow(html, new RegExp(`^${name}$`)).slice(0, 6)).toEqual([name, '1', '0', '0', '1', '0']);
+    expect(html).toMatch(/<h2>Known issues<\/h2>[\s\S]*<span class="issue">IDS-0001<\/span> sample bug/);
+    expect(html, 'no Failures section').not.toContain('<h2>Failures</h2>');
+  });
+
+  test('known failures sharing a ticket each show their own reason', about(
+    `Runs two sample known failures under one ticket (IDS-0003) with different reasons ("limitation A", "limitation B"). Passes when the Known issues section has one IDS-0003 entry counting 2 tests, its heading names neither reason, and each test is listed with its own reason.`,
+    '@suite', '@off-nominal', { added: '2026-11-03' },
+  ), async ({}, testInfo) => {
+    const report = await sampleReport(testInfo, SHARED_TICKET);
+    const html = readFileSync(path.join(report, 'index.html'), 'utf8');
+    const entry = html.match(/<details><summary><span class="issue">IDS-0003<\/span>([\s\S]*?)<\/details>/);
+    expect(entry, 'one IDS-0003 entry').toBeTruthy();
+    const [heading, list] = entry![1].split('</summary>');
+    expect(heading).toContain('2 tests');
+    expect(heading).not.toContain('limitation');
+    expect(list).toMatch(/sample limitation A<\/a><div class="review">limitation A<\/div>/);
+    expect(list).toMatch(/sample limitation B<\/a><div class="review">limitation B<\/div>/);
+  });
+
+  test('a known failure that passes is reported as passed unexpectedly', about(
+    `Runs a nested Playwright run of a sample test marked as a known failure (IDS-0002) that passes, as when the bug gets fixed or the behaviour changes. Passes when the overview counts it as Failed, its drop-down row reads "Passed unexpectedly", the Failures section and the job summary (overview.md) say it was expected to fail under IDS-0002 but passed and to remove knownFailure(), and the run's result is Failed.`,
+    '@suite', '@off-nominal', { added: '2026-11-03' },
+  ), async ({}, testInfo) => {
+    const report = await sampleReport(testInfo, KNOWN_TESTS.slice(1));
+    expectLinkedRows(path.join(report, 'index.html'), path.join(report, 'procedures.html'), '', KNOWN_TESTS.slice(1));
+    const html = readFileSync(path.join(report, 'index.html'), 'utf8');
+    const summary = JSON.parse(readFileSync(path.join(report, 'summary.json'), 'utf8'));
+    const name = summary.features.find((f: { id: string }) => f.id === FEATURE).name;
+    expect(summaryRow(html, new RegExp(`^${name}$`)).slice(0, 6)).toEqual([name, '1', '0', '1', '0', '0']);
+    const message = 'Expected to fail (known issue IDS-0002) but passed: the behaviour changed.';
+    expect(html).toMatch(/<h2>Failures<\/h2>[\s\S]*sample known failure that passes/);
+    expect(html).toContain(message);
+    expect(html).toContain('remove knownFailure()');
+    expect(readFileSync(path.join(report, 'overview.md'), 'utf8')).toContain(message);
+    expect(html).toContain('<span class="pill fail">Failed</span>');
+  });
+
+  test('the report prints to one PDF', about(
+    `Runs the three sample tests, then \`scripts/report-pdf.mjs\` on their report (it opens the overview and procedures pages in Chromium, opens every drop-down and prints them as one PDF). Passes when the script exits 0 and writes a PDF file (it starts with \`%PDF-\`) of more than 10 kB.`,
+    '@suite', '@nominal', { added: '2026-11-03' },
+  ), async ({}, testInfo) => {
+    const report = await sampleReport(testInfo);
+    const pdf = testInfo.outputPath('report.pdf');
+    const r = await run(['node', path.join(E2E_ROOT, 'scripts', 'report-pdf.mjs'), '--report', report, '--out', pdf], { cwd: E2E_ROOT });
+    expect(r.exitCode, r.stderr).toBe(0);
+    const bytes = readFileSync(pdf);
+    expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+    expect(bytes.length).toBeGreaterThan(10_000);
+    await testInfo.attach('report.pdf', { path: pdf, contentType: 'application/pdf' });
+  });
+
+  test('the PDF script refuses a folder without a report', about(
+    `Runs \`scripts/report-pdf.mjs\` on an empty folder (no test run yet). Passes when it exits non-zero, says the folder has no index.html, and writes no PDF.`,
+    '@suite', '@off-nominal', { added: '2026-11-03' },
+  ), async ({}, testInfo) => {
+    const empty = testInfo.outputPath('no-report');
+    mkdirSync(empty, { recursive: true });
+    const pdf = testInfo.outputPath('report.pdf');
+    const r = await run(['node', path.join(E2E_ROOT, 'scripts', 'report-pdf.mjs'), '--report', empty, '--out', pdf], { cwd: E2E_ROOT });
+    expect(r.exitCode).not.toBe(0);
+    expect(r.stderr).toContain('no index.html');
+    expect(existsSync(pdf), 'no PDF written').toBe(false);
   });
 
   test('the site lists each capability\'s tests, linked to their procedures', about(

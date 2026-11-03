@@ -25,7 +25,7 @@ open report/index.html                             # feature overview; full Play
 - **Python:** set `VICARIO_PYTHON=/path/to/python` if the default `python3` has no `lxml`.
 - **JDK:** `JAVA_HOME` selects the JDK used for `jConvertIIO`.
 - **Single feature:** `npx playwright test --grep @pds3` (each feature's id is its tag).
-- **Deferred tests:** `VICARIO_RUN_DEFERRED=1 npx playwright test --project fast` also runs the tests marked `deferred(...)`, which are expected to fail.
+- **PDF report:** `npx playwright install chromium` once, then `npm run report:pdf` prints the overview and procedures as one PDF, `report/pdf/vicario-test-report.pdf`, with every drop-down open.
 
 ## How the feature tests work
 
@@ -55,8 +55,7 @@ open report/index.html                             # feature overview; full Play
 
   Missing or altered data fails the run; it is never skipped.
 - **Goldens.** `tests/e2e/goldens/goldens.json` records the pixel hash of each public product. Regenerate with `npm run goldens:update` and say why in the PR.
-- **Known failures.** `knownFailure('IDS-8497', why)` marks a test as expected to fail. Use it only for a bug that has a ticket or other record. It shows in the report and the job summary, and turns red once the bug is fixed, so the marker gets removed with the fix.
-- **Deferred.** `deferred('REVIEW-16', why)` marks a reviewed bug or missing capability that we decided not to fix yet. The test still reproduces it, but is skipped by default and the report shows the reason. Run deferred tests with `VICARIO_RUN_DEFERRED=1`: they fail until the behaviour is fixed, and then the marker is removed.
+- **Known failures.** `knownFailure('IDS-8497', why)` marks a test as expected to fail (Playwright's `test.fail()`). Use it only for a bug that has a ticket, including bugs reviewed and deliberately left unfixed for now. The test still runs every time: its failure counts as a "Known issue" in the report and the job summary, not as a failure, so the run stays green. If it passes, the run turns red and the report lists it as "Passed unexpectedly": the behaviour changed. **To turn it off** once the bug is fixed, delete the `knownFailure(...)` line and tag the test `@regression` with `issue('IDS-8497', 'what was wrong')`. Nothing is skipped: the Skipped column counts only tests skipped elsewhere (such as skipped JUnit tests).
 - **Needs review.** `needsReview('REVIEW-3', why)` flags behaviour a test found that looks wrong but has no ticket or other record yet. The test fails as normal and the report marks it "needs review" until someone decides: a bug (ticket it, then fix it, or use `knownFailure` until it is fixed) or intended (correct the test and say why).
 
 ## Data sensitivity
@@ -82,7 +81,7 @@ Every code change comes with tests, written in the same pull request. Which spec
 | New capability, keyword or format | A `@nominal` test that it works, and an `@off-nominal` test for bad or edge-case input. If it is new behaviour, add or extend a feature in `features.yml`. |
 | Bug fix | A test that fails without the fix and passes with it, tagged `@regression`, with `issue('IDS-NNNN', 'what was wrong')`. If the bug had a `knownFailure` test, delete the marker: the test now passes and documents the fix. |
 | Bug found but not fixed | A test that reproduces it. Without a ticket, mark it `needsReview('REVIEW-N', 'what fails')`: it fails visibly until reviewed. Once ticketed, `knownFailure('IDS-NNNN', 'what fails')`: it reports "expected to fail" until someone fixes the bug, then turns red so the marker gets removed. |
-| Bug reviewed and deliberately left unfixed | A test that reproduces it, marked `deferred('REVIEW-N' or 'IDS-NNNN', 'why it is not fixed')`. It is skipped by default; `VICARIO_RUN_DEFERRED=1` runs it. |
+| Bug reviewed and deliberately left unfixed | Ticket it, then mark the reproducing test `knownFailure('IDS-NNNN', 'why it is not fixed')`. It runs every time and turns red if the behaviour changes. |
 | Java-level logic | A JUnit test in `src/test/java`. Add its class to the owning feature's `junit:` list in `features.yml`. |
 
 ### Anatomy of a test
@@ -183,15 +182,18 @@ open report/procedures.html                           # check your tests read we
 | `security-scan.yml` | pull requests to `main`/`develop`, push to `main`, manual | CodeQL (Java, Python, workflows) and SonarQube Cloud analysis; see [Security scanning](#security-scanning) |
 
 The report has three parts:
-- **`report/index.html`**, the feature overview: the overall result, then a summary table with each feature's test, passed, failed, known-issue, skipped, new and modified counts and a total row (new and modified are since the last release; see [Test history](#test-history)). Below it: the failures (with any "needs review" note), each feature's description, status and a drop-down table of its tests (each linked to its procedure and marked New or Modified, ending with a "Detailed procedures" link to the feature's section), ticketed known failures grouped by ticket when there are any, and the features not yet automated. Each feature links into the full report.
+- **`report/index.html`**, the feature overview: the overall result, then a summary table with each feature's test, passed, failed, known-issue, skipped, new and modified counts and a total row (new and modified are since the last release; see [Test history](#test-history)). Below it: the failures (with any "needs review" note, and known failures that passed unexpectedly), each feature's description, status and a drop-down table of its tests (each linked to its procedure and marked New or Modified, ending with a "Detailed procedures" link to the feature's section), ticketed known failures grouped by ticket when there are any, and the features not yet automated. Each feature links into the full report.
 - **`report/procedures.html`**, the test procedures: every test grouped by feature, with its description, scope tags, added and modified dates, issue notes, latest result and the image previews it read or wrote (copied to `report/images/`), plus links to its run details and its source on GitHub. A scope legend at the top filters the list.
 - **`report/playwright/`**, the Playwright HTML report: every test with its command line, logs, label text and image previews, including the JUnit results.
 
-`features/report-pages.spec.ts` checks the overview and the site: it runs a few sample tests through the reporter with a fixed baseline release, builds the site from that report, and checks the summary's counts (including new and modified), that every drop-down link reaches a test on the procedures page, the "Detailed procedures" link, and that image previews appear with their test on the procedures page and not on the overview.
+`npm run report:pdf` (`scripts/report-pdf.mjs`) prints the overview and the procedures as one PDF, `report/pdf/vicario-test-report.pdf`: light colours, landscape Letter, every drop-down open, tables unclipped, links between the pages kept inside the PDF, and the tier, date and commit in the footer. It needs Chromium (`npx playwright install chromium`).
+
+`features/report-pages.spec.ts` checks the overview and the site: it runs a few sample tests through the reporter with a fixed baseline release, builds the site from that report, and checks the summary's counts (including new and modified), that every drop-down link reaches a test on the procedures page, the "Detailed procedures" link, that image previews appear with their test on the procedures page and not on the overview, that a known failure counts as a known issue (and as "Passed unexpectedly" when it passes), and that the report prints to a PDF.
 
 Where to find it:
-- **Pull requests:** `ci.yml` uploads it as the `feature-report-fast` artifact, kept for **5 days**. GitHub serves artifacts as zip downloads, so unzip it and open `report/index.html`. The job summary also shows the feature table inline.
-- **`main`:** `publish.yml` runs the full tier on every push (and nightly), then publishes a project home page with the latest report to GitHub Pages at <https://nasa-ammos.github.io/vicario/>. The site is published even when tests fail, so it always shows the current state. Pages must be set to "GitHub Actions" as its source (Settings → Pages).
+- **Pull requests:** `ci.yml` uploads it as the `feature-report-fast` artifact and the PDF as `feature-report-pdf-fast`, both kept for **5 days**. GitHub serves artifacts as zip downloads, so unzip it and open `report/index.html`. The job summary also shows the feature table inline.
+- **`main`:** `publish.yml` runs the full tier on every push (and nightly), uploads `feature-report-full` and `feature-report-pdf-full` (5 days), then publishes a project home page with the latest report to GitHub Pages at <https://nasa-ammos.github.io/vicario/>. The site is published even when tests fail, so it always shows the current state. Pages must be set to "GitHub Actions" as its source (Settings → Pages).
+- **Not publishing:** set the repository variable `PUBLISH_TEST_REPORT` to `false` (Settings → Secrets and variables → Actions → Variables) and `publish.yml` skips the Pages deploy; the artifacts are still kept. A manual run can also untick "publish". Delete the variable (or set it to anything else) to publish again.
 
 ## Security scanning
 

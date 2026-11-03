@@ -10,7 +10,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { expect, test } from '../support/test';
 import { synthetic } from '../support/env';
-import { about, deferred, feature, issue, type Scope } from '../support/features';
+import { about, feature, issue, knownFailure, type Scope } from '../support/features';
 import { convert, expectConverted, expectSamePixels, probe } from '../support/run';
 import type { SyntheticSpec } from '../support/synthetic';
 
@@ -21,7 +21,7 @@ const BMP_FIXED = 'REVIEW-4: fixed: the BMP writers threw ArrayIndexOutOfBoundsE
 const PNM_FIXED = 'REVIEW-4: fixed: the jai_imageio PNM writer could not load on Java 17+; vicario now has its own PNM writer';
 /** Attach a fixed-issue note written as "ID: what was wrong". */
 const fixedIssue = (note: string) => issue(note.split(': ')[0], note.split(': ').slice(1).join(': '));
-// [name, mode, reason]: for 'skip' why it is deferred, otherwise the fixed issue it guards
+// [name, mode, reason]: for 'skip' why it is a known issue (IDS-10429), otherwise the fixed issue it guards
 const FORMATS: [string, Mode, string?][] = [
   ['tif', 'lossless'], ['tiff', 'lossless'], ['TIF', 'lossless'], ['TIFF', 'lossless'],
   ['png', 'lossless'], ['PNG', 'lossless'],
@@ -43,7 +43,7 @@ const CHECKS: Record<Mode, string> = {
   lossy: "Passes when the output has the input's size and bands and its mean is within 2 DN of the input (JPEG is lossy).",
   raw: 'Passes when the file holds exactly width x height x bands bytes and they are the input pixels in band-sequential (BSQ) order.',
   pnm: "Passes when the file is a binary PPM (`P6`, maxval 255) of the input's size whose samples are exactly the input pixels.",
-  skip: "Deferred (REVIEW-19), so skipped by default. When run, passes when the output has the input's size and bands and its mean is within 2 DN of the input.",
+  skip: "A known issue (IDS-10429): expected to fail until the format gets a writer. Passes when the output has the input's size and bands and its mean is within 2 DN of the input.",
 };
 const SCOPES_FOR: Record<Mode, Scope[]> = { lossless: ['@lossless'], lossy: ['@nominal'], raw: ['@nominal', '@lossless'], pnm: ['@nominal', '@lossless'], skip: ['@off-nominal'] };
 
@@ -92,9 +92,9 @@ test.describe('Output formats', feature('output-formats'), () => {
     // output directory on case-insensitive file systems (macOS)
     test(`FORMAT=${format} (#${String(i + 1).padStart(2, '0')})`, about(
       `Converts the synthetic 3-band BYTE image with \`FORMAT=${format}\`, one of the 29 format names and aliases in the legacy test. ${CHECKS[mode]}`,
-      '@legacy', ...SCOPES_FOR[mode], ...(fixed ? ['@regression' as Scope] : []), { added: '2026-10-22', modified: '2026-10-26' },
+      '@legacy', ...SCOPES_FOR[mode], ...(fixed ? ['@regression' as Scope] : []), { added: '2026-10-22', modified: '2026-11-03' },
     ), async ({}, testInfo) => {
-      if (mode === 'skip') deferred('REVIEW-19', reason!);
+      if (mode === 'skip') knownFailure('IDS-10429', `no writer for FORMAT=${format}: ${reason!}`);
       if (fixed) fixedIssue(fixed);
       const src = await probe(testInfo, input);
       const r = await convert(testInfo, input, `out.${format.replace(/ /g, '_').toLowerCase()}`, { format });
@@ -214,10 +214,10 @@ test.describe('Output formats', feature('output-formats'), () => {
   }
 
   test('a PNM file written by jConvertIIO can be read back as input', about(
-    'Writes the synthetic 3-band BYTE image as PNM, then converts that PNM to PNG. Passes when the second conversion succeeds and the PNG has exactly the original pixels.',
-    '@off-nominal', { added: '2026-10-24' },
+    'Writes the synthetic 3-band BYTE image as PNM, then converts that PNM to PNG. A known issue (IDS-10429): expected to fail until PNM input is supported. Passes when the second conversion succeeds and the PNG has exactly the original pixels.',
+    '@off-nominal', { added: '2026-10-24', modified: '2026-11-03' },
   ), async ({}, testInfo) => {
-    deferred('NEW-output-3', 'jConvertIIO cannot read PNM input: jai_imageio 1.1\'s PNM reader cannot load on Java 17+ (it uses a JDK-internal class). PNM input is not documented, and a replacement reader is a new feature beyond the PNM output fix');
+    knownFailure('IDS-10429', 'PNM input: jConvertIIO cannot read PNM input: jai_imageio 1.1\'s PNM reader cannot load on Java 17+ (it uses a JDK-internal class). PNM input is not documented, and a replacement reader is a new feature beyond the PNM output fix');
     const pnm = await convert(testInfo, input, 'out.pnm', { format: 'pnm' });
     expectConverted(pnm);
     const r = await convert(testInfo, pnm.out, 'back.png', { format: 'png' });
