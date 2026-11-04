@@ -12,7 +12,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSyn
 import path from 'node:path';
 import type { FullConfig, FullResult, Reporter, Suite, TestCase } from '@playwright/test/reporter';
 import { E2E_ROOT, sourceUrl } from './env';
-import { ABOUT, ADDED, DEFERRED, MODIFIED, NEEDS_REVIEW, SCOPES, features, tagOf, type Feature, type Scope } from './features';
+import { ABOUT, ADDED, MODIFIED, NEEDS_REVIEW, SCOPES, features, tagOf, type Feature, type Scope } from './features';
 import { baselineRelease, changeSince, type Baseline } from './releases';
 
 interface Row {
@@ -31,7 +31,7 @@ interface Row {
 }
 interface Procedure {
   title: string; group: string; testId: string; about: string; scopes: Scope[]; issues: string[];
-  result: 'passed' | 'failed' | 'known' | 'skipped'; source: string;
+  result: 'passed' | 'failed' | 'unexpected-pass' | 'known' | 'skipped'; source: string;
   added?: string; modified?: string; change: '' | 'new' | 'modified'; images: Picture[];
 }
 /** An image preview, copied to report/images/<hash>.png. */
@@ -44,7 +44,8 @@ const PW = 'playwright/index.html';
 const rank = (p: Procedure) => (p.scopes.includes('@suite') ? 2 : p.scopes.includes('@unit') ? 1 : 0);
 const byRank = (ps: Procedure[]) => [...ps].sort((a, b) => rank(a) - rank(b));
 const RESULT: Record<Procedure['result'], [string, string]> =
-  { passed: ['pass', 'Passed'], failed: ['fail', 'Failed'], known: ['warn', 'Known issue'], skipped: ['', 'Skipped'] };
+  { passed: ['pass', 'Passed'], failed: ['fail', 'Failed'], 'unexpected-pass': ['fail', 'Passed unexpectedly'],
+    known: ['warn', 'Known issue'], skipped: ['', 'Skipped'] };
 /** Anchor of a test's entry on the procedures page. */
 const procedureId = (testId: string) => `t-${testId}`;
 /** Anchor of a feature's row on the overview. */
@@ -179,8 +180,13 @@ export default class OverviewReporter implements Reporter {
       if (outcome === 'skipped') { row.skipped++; result = 'skipped'; }
       else if (outcome === 'unexpected' || outcome === 'flaky') {
         row.failed++;
-        result = 'failed';
-        failures.push({ ...item, error: (last?.error?.message ?? '').replace(/\u001b\[[0-9;]*m/g, '').split('\n')[0] });
+        // a knownFailure() test that passed: the bug looks fixed, or the behaviour changed
+        const unexpectedPass = t.expectedStatus === 'failed' && last?.status === 'passed';
+        result = unexpectedPass ? 'unexpected-pass' : 'failed';
+        failures.push({ ...item, error: unexpectedPass
+          ? `Expected to fail (known issue ${issue || 'untracked'}) but passed: the behaviour changed. Check it; if the bug is fixed, `
+            + 'remove knownFailure() and tag the test @regression with issue().'
+          : (last?.error?.message ?? '').replace(/\u001b\[[0-9;]*m/g, '').split('\n')[0] });
       } else if (last && (last.status === 'failed' || last.status === 'timedOut')) {
         row.known++;
         result = 'known';
@@ -197,9 +203,8 @@ export default class OverviewReporter implements Reporter {
         title: t.title, group: t.parent.title, testId: t.id, scopes, result, added, modified, change,
         images: images.add(last?.attachments ?? []),
         about: t.annotations.find((a) => a.type === ABOUT)?.description ?? '',
-        issues: [...t.annotations, ...(last?.annotations ?? [])].filter((a) => a.type === 'issue' || a.type === NEEDS_REVIEW || a.type === DEFERRED)
-          .map((a) => a.type === NEEDS_REVIEW ? `NEEDS REVIEW: ${a.description ?? ''}`
-            : a.type === DEFERRED ? `DEFERRED: ${a.description ?? ''}` : a.description ?? '')
+        issues: [...t.annotations, ...(last?.annotations ?? [])].filter((a) => a.type === 'issue' || a.type === NEEDS_REVIEW)
+          .map((a) => a.type === NEEDS_REVIEW ? `NEEDS REVIEW: ${a.description ?? ''}` : a.description ?? '')
           .filter((v, i, a) => a.indexOf(v) === i),
         source: t.annotations.find((a) => a.type === 'junit source')?.description ?? sourceUrl(t.location.file, t.location.line),
       });
@@ -286,9 +291,13 @@ ${byRank(r.procedures).map((p) => `<tr><td><a href="procedures.html#${esc(proced
 
     const byIssue = new Map<string, Item[]>();
     for (const k of known) byIssue.set(k.issue, [...(byIssue.get(k.issue) ?? []), k]);
-    const knownHtml = [...byIssue].sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).map(([issue, items]) => `
-<details><summary><span class="issue">${esc(issue || 'untracked')}</span> ${esc(items[0].why)} <span class="count">${items.length} test${items.length > 1 ? 's' : ''}</span></summary>
-<ul>${items.map((i) => `<li>${esc(i.feature)}: ${testLink(i)}</li>`).join('')}</ul></details>`).join('\n');
+    // one ticket can cover several limitations: then each test shows its own reason
+    const knownHtml = [...byIssue].sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).map(([issue, items]) => {
+      const same = items.every((i) => i.why === items[0].why);
+      return `
+<details><summary><span class="issue">${esc(issue || 'untracked')}</span> ${same ? esc(items[0].why) : ''} <span class="count">${items.length} test${items.length > 1 ? 's' : ''}</span></summary>
+<ul>${items.map((i) => `<li>${esc(i.feature)}: ${testLink(i)}${same ? '' : `<div class="review">${esc(i.why)}</div>`}</li>`).join('')}</ul></details>`;
+    }).join('\n');
 
     const failHtml = failures.length ? `<section><h2>Failures</h2><ul class="fails">${failures.map((f) =>
       `<li><strong>${esc(f.feature)}</strong>: ${testLink(f)}${f.review ? `<div class="review">Needs review (bug or intended?): ${esc(f.review)}</div>` : ''}<div class="err">${esc(f.error ?? '')}</div></li>`).join('')}</ul></section>` : '';

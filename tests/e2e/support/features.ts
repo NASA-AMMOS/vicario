@@ -89,9 +89,11 @@ export function about(description: string, ...args: (Scope | History)[]) {
 }
 
 /**
- * Mark the running test as a known failure tied to an issue. The report shows
- * it as "expected to fail"; once the bug is fixed the test turns red so the
- * marker gets removed.
+ * Mark the running test as a known failure tied to a ticket (IDS-NNNN). It
+ * still runs every time; Playwright counts the failure as expected, so the run
+ * stays green and the report shows a "Known issue". If the test passes, the run
+ * turns red ("Passed unexpectedly"): the behaviour changed. To turn it off once
+ * the bug is fixed, delete the call and tag the test @regression with issue().
  */
 export function knownFailure(issue: string, why: string) {
   test.info().annotations.push({ type: 'issue', description: `${issue}: ${why}` });
@@ -109,19 +111,6 @@ export function needsReview(id: string, why: string) {
   test.info().annotations.push({ type: NEEDS_REVIEW, description: `${id}: ${why}` });
 }
 
-/** The annotation type of deferred notes. */
-export const DEFERRED = 'deferred';
-
-/**
- * Mark a reviewed bug or missing capability that we decided not to fix yet.
- * The test still reproduces it, but is skipped by default so the suite stays
- * green; set VICARIO_RUN_DEFERRED=1 to run it (it fails until someone fixes the
- * behaviour, then the marker gets removed). The reason shows in the report.
- */
-export function deferred(id: string, why: string) {
-  test.info().annotations.push({ type: DEFERRED, description: `${id}: ${why}` });
-  test.skip(!process.env.VICARIO_RUN_DEFERRED, `${id}: ${why}`);
-}
 
 export function issue(id: string, what: string) {
   test.info().annotations.push({ type: 'issue', description: `${id}: ${what}` });
