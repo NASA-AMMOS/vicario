@@ -3,7 +3,7 @@
 // TreeInfo and jConvertIIO command lines.
 // Unit-level XXE coverage, against both the JDK parser and Xerces, is in
 // src/test/java/jpl/mipl/io/util/DOMutilsXXETest.java (run by `mvn test`).
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test } from '../support/test';
@@ -87,5 +87,35 @@ test.describe('XML metadata and parser security', feature('xml-security'), () =>
     expectValidPds3Label(r.out, { lines: 64, samples: 48, bands: 3 });
     expect(pdsLabel(r.out), 'secret not in the label').not.toContain(SECRET);
     expect(`${r.stdout}\n${r.stderr}`, 'secret not in the log').not.toContain(SECRET);
+  });
+
+  test('an XSL stylesheet cannot read files with document(), write files or call Java', about(
+    `Converts the synthetic image to PDS3 with \`XSL=\` set to a copy of \`VicarToPDSmer1.xsl\` that adds a \`LEAK\` label item filled by \`document()\` from a local "secret" XML file, a \`JAVA\` item filled by a Xalan Java extension call that builds a marker string, and a Xalan \`redirect:write\` that tries to create a file. Passes when the conversion still writes a valid label, the secret and the marker appear in neither the label nor the log, and no file is created.`,
+    '@security', '@malformed-input', '@regression', { added: '2026-11-11' },
+  ), async ({}, testInfo) => {
+    issue('IDS-10406', 'fixed: Xalan ignores the JAXP 1.5 attributes (Sonar java:S2755 on newTransformerFactory), '
+      + 'so XSL= could read local XML files with document(), write files with redirect:write and run Java through extension functions');
+    const secret = testInfo.outputPath('secret.xml');
+    writeFileSync(secret, `<s>${SECRET}</s>`);
+    const marker = 'JAVA-CALLED';
+    const written = testInfo.outputPath('written.txt');
+    const xsl = testInfo.outputPath('evil.xsl');
+    writeFileSync(xsl, readFileSync(path.join(XSL_DIR, 'VicarToPDSmer1.xsl'), 'utf8')
+      .replace('<xsl:stylesheet', '<xsl:stylesheet xmlns:str="xalan://java.lang.String"'
+        + ' xmlns:redirect="http://xml.apache.org/xalan/redirect" extension-element-prefixes="redirect"')
+      .replace('<PDS_LABEL>', `<PDS_LABEL><item name="LEAK"><xsl:value-of select="document('${pathToFileURL(secret)}')"/></item>`
+        + `<item name="JAVA"><xsl:value-of select="str:new(concat('JAVA-', 'CALLED'))"/></item>`
+        + `<redirect:write file="${written}">written</redirect:write>`));
+    const r = await convert(testInfo, synthetic('gen_byte_bsq.vic'), 'xslt.pds', { format: 'pds', XSL: xsl });
+    // the refused document() call is logged, so expectConverted() does not apply
+    expect(r.exitCode, 'jConvertIIO exit code').toBe(0);
+    expectValidPds3Label(r.out, { lines: 64, samples: 48, bands: 3 });
+    const label = pdsLabel(r.out);
+    const log = `${r.stdout}\n${r.stderr}`;
+    expect(label, 'document() did not read the file into the label').not.toContain(SECRET);
+    expect(log, 'secret not in the log').not.toContain(SECRET);
+    expect(label, 'Java extension was not called').not.toContain(marker);
+    expect(log, 'Java extension was not called').not.toContain(marker);
+    expect(existsSync(written), 'redirect:write did not create a file').toBe(false);
   });
 });

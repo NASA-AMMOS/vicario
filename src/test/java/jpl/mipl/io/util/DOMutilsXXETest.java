@@ -85,7 +85,8 @@ public class DOMutilsXXETest {
 	}
 
 	static String text(Document doc) {
-		return doc == null ? "" : doc.getDocumentElement().getTextContent();
+		// a refused transform returns null or an empty Document
+		return doc == null || doc.getDocumentElement() == null ? "" : doc.getDocumentElement().getTextContent();
 	}
 
 	@Test
@@ -173,6 +174,97 @@ public class DOMutilsXXETest {
 			assertEquals(impl, DOMutils.newTransformerFactory().getClass().getName());
 			Document doc = transformWith(xsl);
 			assertFalse(impl + " resolved an external entity in a stylesheet", text(doc).contains(SECRET));
+		}
+	}
+
+	@Test
+	public void stylesheetDocumentFunctionCannotReadFiles() throws Exception {
+		// Sonar java:S2755 on newTransformerFactory: Xalan ignores the JAXP 1.5
+		// attributes, so document() could read any local XML file.
+		File secretXml = tmp.newFile("secret.xml");
+		try (FileWriter w = new FileWriter(secretXml)) {
+			w.write("<s>" + SECRET + "</s>");
+		}
+		String xsl = "<?xml version=\"1.0\"?>\n"
+			+ "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">"
+			+ "<xsl:template match=\"/\"><out><xsl:value-of select=\"document('" + secretXml.toURI() + "')\"/></out></xsl:template>"
+			+ "</xsl:stylesheet>";
+		for (String impl : TRANSFORMER_IMPLS) {
+			System.setProperty(TRANSFORMER_PROPERTY, impl);
+			Document doc = transformWith(xsl);
+			assertFalse(impl + " let document() read a local file", text(doc).contains(SECRET));
+		}
+	}
+
+	@Test
+	public void stylesheetIncludeCannotReadFiles() throws Exception {
+		File included = tmp.newFile("included.xsl");
+		try (FileWriter w = new FileWriter(included)) {
+			w.write("<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">"
+				+ "<xsl:template match=\"/\"><out>" + SECRET + "</out></xsl:template></xsl:stylesheet>");
+		}
+		String xsl = "<?xml version=\"1.0\"?>\n"
+			+ "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">"
+			+ "<xsl:include href=\"" + included.toURI() + "\"/>"
+			+ "</xsl:stylesheet>";
+		for (String impl : TRANSFORMER_IMPLS) {
+			System.setProperty(TRANSFORMER_PROPERTY, impl);
+			Document doc = transformWith(xsl);
+			assertFalse(impl + " let xsl:include read a local file", text(doc).contains(SECRET));
+		}
+	}
+
+	@Test
+	public void stylesheetCannotCallJavaExtensions() throws Exception {
+		String marker = "jvm-" + System.nanoTime();
+		System.setProperty("vicario.xxe.marker", marker);
+		try {
+			String xsl = "<?xml version=\"1.0\"?>\n"
+				+ "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\""
+				+ " xmlns:sys=\"xalan://java.lang.System\" xmlns:jsys=\"http://xml.apache.org/xalan/java/java.lang.System\">"
+				+ "<xsl:template match=\"/\"><out><xsl:value-of select=\"sys:getProperty('vicario.xxe.marker')\"/>"
+				+ "<xsl:value-of select=\"jsys:getProperty('vicario.xxe.marker')\"/></out></xsl:template>"
+				+ "</xsl:stylesheet>";
+			for (String impl : TRANSFORMER_IMPLS) {
+				System.setProperty(TRANSFORMER_PROPERTY, impl);
+				Document doc = transformWith(xsl);
+				assertFalse(impl + " let a stylesheet call Java", text(doc).contains(marker));
+			}
+		} finally {
+			System.clearProperty("vicario.xxe.marker");
+		}
+	}
+
+	@Test
+	public void stylesheetCannotUseRedirectToWriteFiles() throws Exception {
+		File target = new File(tmp.getRoot(), "written.txt");
+		String xsl = "<?xml version=\"1.0\"?>\n"
+			+ "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\""
+			+ " xmlns:redirect=\"http://xml.apache.org/xalan/redirect\" extension-element-prefixes=\"redirect\">"
+			+ "<xsl:template match=\"/\"><out><redirect:write file=\"" + target.getAbsolutePath() + "\">written</redirect:write></out></xsl:template>"
+			+ "</xsl:stylesheet>";
+		for (String impl : TRANSFORMER_IMPLS) {
+			System.setProperty(TRANSFORMER_PROPERTY, impl);
+			transformWith(xsl);
+			assertFalse(impl + " let redirect:write create a file", target.exists());
+		}
+	}
+
+	@Test
+	public void literalResultElementsKeepTheirAttributes() throws Exception {
+		// Xalan's factory-level secure processing drops these attributes;
+		// every bundled label stylesheet writes <item name="...">.
+		String xsl = "<?xml version=\"1.0\"?>\n"
+			+ "<xsl:stylesheet version=\"1.0\" xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\">"
+			+ "<xsl:template match=\"/\"><out><item name=\"LINES\" key=\"k\">10</item></out></xsl:template>"
+			+ "</xsl:stylesheet>";
+		for (String impl : TRANSFORMER_IMPLS) {
+			System.setProperty(TRANSFORMER_PROPERTY, impl);
+			Document doc = transformWith(xsl);
+			assertNotNull(impl + " failed to transform", doc);
+			org.w3c.dom.Element item = (org.w3c.dom.Element) doc.getElementsByTagName("item").item(0);
+			assertEquals(impl, "LINES", item.getAttribute("name"));
+			assertEquals(impl, "k", item.getAttribute("key"));
 		}
 	}
 
