@@ -228,24 +228,83 @@ public class DOMutils
 
   /**
   * Create a TransformerFactory hardened against XML External Entity (XXE)
-  * attacks. The JAXP 1.5 properties stop the JDK transformer loading external
-  * DTDs and stylesheets. Xalan (the transformer this library ships with)
-  * rejects them, so stylesheets must also be read through
-  * {@link #secureStylesheetSource(StreamSource)}. All code that creates a
-  * Transformer should get its factory from here.
+  * attacks, for both the JDK transformer and Xalan (the transformer this
+  * library ships with):
+  * <ul>
+  * <li>the JAXP 1.5 properties stop the JDK transformer loading external
+  * DTDs and stylesheets;</li>
+  * <li>Xalan rejects those properties, so a URIResolver that refuses every
+  * URI does the same job: xsl:include, xsl:import and document() cannot
+  * read other files or URLs. The transformers the factory creates inherit
+  * it;</li>
+  * <li>secure processing stops stylesheets calling Java extension functions
+  * and elements. The JDK transformer gets it here; Xalan gets it in
+  * {@link #newStylesheetTransformer(TransformerFactory, StreamSource)}, as
+  * Xalan's factory-level setting drops the attributes of literal result
+  * elements (e.g. the name of every &lt;item name="..."&gt; in a label).</li>
+  * </ul>
+  * Stylesheets must be compiled with
+  * {@link #newStylesheetTransformer(TransformerFactory, StreamSource)}. All
+  * code that creates a Transformer should get its factory from here.
   *
-  * @return a TransformerFactory with XXE protection where supported
+  * @return a TransformerFactory with XXE protection
+  * @throws IllegalStateException if the JDK transformer cannot do secure processing
   **/
   public static TransformerFactory newTransformerFactory() {
     TransformerFactory tFactory = TransformerFactory.newInstance();
+    tFactory.setURIResolver(DENY_EXTERNAL_URIS);
+    if (!(tFactory instanceof org.apache.xalan.processor.TransformerFactoryImpl)) {
+      try {
+        tFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+      }
+      catch (TransformerConfigurationException tce) {
+        throw new IllegalStateException("XSL transformer does not support secure processing: "
+          + tFactory.getClass().getName(), tce);
+      }
+    }
     try {
       tFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
       tFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
     }
     catch (IllegalArgumentException iae) {
-      // transformer does not support JAXP 1.5 properties (Xalan)
+      // transformer does not support JAXP 1.5 properties (Xalan);
+      // DENY_EXTERNAL_URIS covers it
     }
     return tFactory;
+  }
+
+  /**
+  * Refuses every URI a stylesheet asks for (xsl:include, xsl:import,
+  * document()), so a stylesheet can only use the document it is given.
+  **/
+  static final URIResolver DENY_EXTERNAL_URIS = (href, base) -> {
+    throw new TransformerException("access to external resource '" + href
+      + "' from an XSL stylesheet is not allowed");
+  };
+
+  /**
+  * Compile an XSL stylesheet into a Transformer that cannot read external
+  * entities or files, or call Java. The stylesheet is read through
+  * {@link #secureStylesheetSource(StreamSource)}; for Xalan, secure
+  * processing is switched on for the compiled stylesheet (extension
+  * elements such as redirect:write) and its XPath context (extension
+  * functions) — see {@link #newTransformerFactory()} for why not on the
+  * factory.
+  *
+  * @param tFactory a factory from {@link #newTransformerFactory()}
+  * @param xsl the stylesheet to compile
+  * @return the hardened Transformer
+  * @throws TransformerConfigurationException if the stylesheet cannot be compiled
+  **/
+  public static Transformer newStylesheetTransformer(TransformerFactory tFactory, StreamSource xsl)
+      throws TransformerConfigurationException {
+    Transformer transformer = tFactory.newTransformer(secureStylesheetSource(xsl));
+    if (transformer instanceof org.apache.xalan.transformer.TransformerImpl) {
+      org.apache.xalan.transformer.TransformerImpl xalan = (org.apache.xalan.transformer.TransformerImpl) transformer;
+      xalan.getStylesheet().setSecureProcessing(true);
+      xalan.getXPathContext().setSecureProcessing(true);
+    }
+    return transformer;
   }
 
   /**
@@ -1251,7 +1310,7 @@ public class DOMutils
       DOMResult domResult = null;
       try {
       // Transformer transformer = tFactory.newTransformer(new StreamSource(xsl));
-      Transformer transformer = tFactory.newTransformer(secureStylesheetSource(xslStreamSource));
+      Transformer transformer = newStylesheetTransformer(tFactory, xslStreamSource);
       if (errorListener != null) {
     	  transformer.setErrorListener(errorListener);
       }

@@ -56,6 +56,7 @@ Labels and binary data:
 | `PDS_FILENAME_IN_LABEL` | With `FORMAT=pds`, the data pointers name the output file: `^IMAGE = ("out.pds",n)` instead of `^IMAGE = n`. Default false. `PDS_FILENAME` is the older spelling. |
 | `KEEP_LINE_PREFIX` | Write the input's binary line prefixes (`NBB`) to VICAR or PDS output. Default true. The prefixes are dropped, with a warning, when the output has a different number of lines or bands, or when `BANDS`/`READ_BANDS` moves a band to a new position. |
 | `ADD_BINARY_HEADER` | Write the input's binary header (`NLB` records) to VICAR or PDS output. Default false. If the record size changes, each record is zero-padded, cut if only zero bytes are cut, or re-blocked. |
+| `XSL=f` | XSL stylesheet the PDS writer uses to build the label (`XSL=-` uses the default in the jar). The stylesheet must be self-contained: `xsl:include`, `xsl:import`, `document()`, external entities and Java/Xalan extensions are refused. |
 
 PDS4 tables (exported as text to `OUT`):
 

@@ -960,6 +960,8 @@ public void printHelp() {
 	System.out.println("REAL, FLOAT, DOUB, DOUBLE, DEFAULT");
 	System.out.println("XSL=[Transcoder XSL file] xsl script to be used by the transcoder");
 	System.out.println("  XSL=- or XSL will cause the default MER XSL script in the jar to be used");
+	System.out.println("  The script must be self-contained: xsl:include, xsl:import, document(),");
+	System.out.println("  external entities and Java/Xalan extensions are refused");
 	System.out.println("DISPLAY=[true,false] will cause the image to be displayed");
 	System.out.println("PDS specific items");
 	System.out.println("PDS_MER=[no,addMerItems] adds MER non-statistics items to the PDS IMAGE label object");
