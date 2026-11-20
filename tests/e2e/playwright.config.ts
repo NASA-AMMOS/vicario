@@ -22,7 +22,7 @@ export default defineConfig({
   projects: [
     // PR gate: synthetic data, GDAL fixtures and small public products
     { name: 'fast', grep: /@fast/ },
-    // nightly / release: adds full-size public products
+    // main / release: adds full-size public products
     { name: 'full', grep: /@fast|@full/ },
   ],
 });

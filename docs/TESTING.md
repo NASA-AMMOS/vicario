@@ -5,7 +5,7 @@ vicario has two test layers:
 | Layer | Where | Runs |
 |---|---|---|
 | Unit tests (JUnit 4) | `src/test/java` | `mvn test` |
-| Feature tests (Playwright Test driving `jConvertIIO`) | `tests/e2e` | fast tier on every PR; full tier on every push to `main`, nightly and on release (published to GitHub Pages) |
+| Feature tests (Playwright Test driving `jConvertIIO`) | `tests/e2e` | fast tier on every PR; full tier on every push to `main` and on release (published to GitHub Pages) |
 
 Both run in GitHub Actions. The fast tier and the unit tests are **required checks**: a pull request into `main` or `develop` cannot merge until they pass.
 
@@ -137,7 +137,7 @@ Every test records when it was added and when it last changed, so the report can
 - **Imported JUnit tests** need nothing: their dates come from `git blame` of the test method.
 
 How the report uses the dates:
-- **Baseline:** on the build for a release (the workflow's `release` event) it is the release before that one, so the counts show what the new release added; on every other build (pushes, nightly, pull requests, local runs) it is the latest published GitHub release, so they show the work since. `publish.yml` runs when a release is published, so the site updates as soon as you release.
+- **Baseline:** on the build for a release (the workflow's `release` event) it is the release before that one, so the counts show what the new release added; on every other build (pushes, pull requests, local runs) it is the latest published GitHub release, so they show the work since. `publish.yml` runs when a release is published, so the site updates as soon as you release.
 - **New:** `added` is after the baseline's publication date. **Modified:** `added` is on or before it and `modified` after it. A test added or changed on the release day counts as part of that release.
 - **Offline:** if the release list cannot be read (no network, rate limit), the New and Modified columns show "–". `VICARIO_BASELINE_RELEASE=<tag>@<YYYY-MM-DD>` sets the baseline by hand, and `none` makes every test new.
 
@@ -177,7 +177,7 @@ open report/procedures.html                           # check your tests read we
 | Workflow | Trigger | Jobs |
 |---|---|---|
 | `ci.yml` | pull requests to `main`/`develop`; called by `release.yml` on push | `junit`, `e2e-fast`, `data-guard` |
-| `publish.yml` | push to `main`, 07:00 UTC daily, release published, manual | `e2e-full`, then `deploy` to GitHub Pages |
+| `publish.yml` | push to `main`, release published, manual | `e2e-full`, then `deploy` to GitHub Pages |
 | `release.yml` | push to `main`/`develop` | `ci`, then build, release, publish |
 | `security-scan.yml` | pull requests to `main`/`develop`, push to `main`, manual | CodeQL (Java, Python, workflows) and SonarQube Cloud analysis; see [Security scanning](#security-scanning) |
 
@@ -192,7 +192,7 @@ The report has three parts:
 
 Where to find it:
 - **Pull requests:** `ci.yml` uploads it as the `feature-report-fast` artifact and the PDF as `feature-report-pdf-fast`, both kept for **5 days**. GitHub serves artifacts as zip downloads, so unzip it and open `report/index.html`. The job summary also shows the feature table inline.
-- **`main`:** `publish.yml` runs the full tier on every push (and nightly), uploads `feature-report-full` and `feature-report-pdf-full` (5 days), then publishes a project home page with the latest report to GitHub Pages at <https://nasa-ammos.github.io/vicario/>. The site is published even when tests fail, so it always shows the current state. Pages must be set to "GitHub Actions" as its source (Settings → Pages).
+- **`main`:** `publish.yml` runs the full tier on every push, uploads `feature-report-full` and `feature-report-pdf-full` (5 days), then publishes a project home page with the latest report to GitHub Pages at <https://nasa-ammos.github.io/vicario/>. The site is published even when tests fail, so it always shows the current state. Pages must be set to "GitHub Actions" as its source (Settings → Pages).
 - **Not publishing:** set the repository variable `PUBLISH_TEST_REPORT` to `false` (Settings → Secrets and variables → Actions → Variables) and `publish.yml` skips the Pages deploy; the artifacts are still kept. A manual run can also untick "publish". Delete the variable (or set it to anything else) to publish again.
 
 ## Security scanning

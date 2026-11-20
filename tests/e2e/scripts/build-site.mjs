@@ -275,7 +275,7 @@ ${formats.map(([f, r, w, n]) => `<tr><td class="fname">${esc(f)}</td><td class="
 
 <section id="testing">
 <h2>Testing</h2>
-<p>Every change runs a feature test suite: the real <code>jConvertIIO</code> command against synthetic images and public mission products from the PDS, with each output decoded and compared pixel for pixel. The full suite runs on every merge to <code>main</code> and nightly, and publishes the report linked here.</p>
+<p>Every change runs a feature test suite: the real <code>jConvertIIO</code> command against synthetic images and public mission products from the PDS, with each output decoded and compared pixel for pixel. The full suite runs on every merge to <code>main</code> and every release, and publishes the report linked here.</p>
 <div class="results"><p>${statusLine}</p><span class="actions" style="margin:0"><a class="button" href="tests/procedures.html">Test procedures</a><a class="button alt" href="tests/index.html">Test report</a></span></div>
 <h3>Capabilities</h3>
 <p class="muted">Each capability is a feature in the test suite. Click one to read its test procedures: what each test does and what makes it pass. Open its test list for a summary of every test, linked to that test's procedure. The tags count tests by the kind of testing (nominal, off-nominal, malformed input, lossless, mission data, ...). Passed excludes tests that document a known bug.</p>
@@ -288,7 +288,7 @@ ${capabilityRows}
 </main>
 <footer><div class="wrap">VICARIO is developed by the Multimission Image Processing Laboratory at JPL for NASA AMMOS.
 Source, issues and the <a href="${repoUrl}/blob/main/docs/TESTING.md">testing guide</a> are on <a href="${repoUrl}">GitHub</a>.
-This site and its test report are regenerated on every merge to main and nightly.</div></footer>
+This site and its test report are regenerated on every merge to main and every release.</div></footer>
 </body></html>
 `;
 writeFileSync(join(outDir, 'index.html'), html);

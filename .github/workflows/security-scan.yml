@@ -129,7 +129,7 @@ jobs:
       # Feature-test coverage: the full tier again, with the JaCoCo agent on
       # every jConvertIIO process it starts (docs/TESTING.md, "Coverage"). Runs
       # after the CodeQL scan so the tests are not traced. Its pass/fail is
-      # gated in ci.yml and nightly.yml, not here.
+      # gated in ci.yml and publish.yml, not here.
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
